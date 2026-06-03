@@ -3,6 +3,15 @@ import { db } from "@/lib/firebase"
 
 export type DisciplineStatus = "none" | "cursando" | "concluido"
 export type DisciplineType = "essential" | "important" | "discarded"
+export type GradeMode = "simple" | "detailed"
+export type ActivityCategory = "teste" | "exercicio" | "exame"
+
+export interface Activity {
+  id: string
+  name: string
+  category: ActivityCategory
+  grade: string
+}
 
 export interface Discipline {
   id: string
@@ -11,6 +20,9 @@ export interface Discipline {
   type: DisciplineType
   status: DisciplineStatus
   grade: string
+  gradeMode?: GradeMode
+  activities?: Activity[]
+  recoveryGrade?: string
 }
 
 export interface Semester {
@@ -43,16 +55,53 @@ export function createId() {
   return crypto.randomUUID()
 }
 
+export function createActivity(category: ActivityCategory, name: string): Activity {
+  return { id: createId(), name, category, grade: "" }
+}
+
+export function defaultActivities(): Activity[] {
+  return [
+    ...Array.from({ length: 6 }, (_, i) =>
+      createActivity("teste", `Teste ${String(i + 1).padStart(2, "0")}`)
+    ),
+    createActivity("exercicio", "Avaliação Intermediária"),
+    createActivity("exame", "Prova"),
+  ]
+}
+
+export function normalizeDiscipline(discipline: Partial<Discipline>): Discipline {
+  const gradeMode = discipline.gradeMode ?? "simple"
+  return {
+    id: discipline.id ?? createId(),
+    emoji: discipline.emoji ?? "🔥",
+    name: discipline.name ?? "Disciplina",
+    type: discipline.type ?? "important",
+    status: discipline.status ?? "none",
+    grade: discipline.grade ?? "",
+    gradeMode,
+    activities:
+      gradeMode === "detailed"
+        ? discipline.activities?.length
+          ? discipline.activities
+          : defaultActivities()
+        : discipline.activities,
+    recoveryGrade: discipline.recoveryGrade ?? "",
+  }
+}
+
 export function createDiscipline(type: DisciplineType, name?: string): Discipline {
   const preset = DISCIPLINE_PRESETS[type]
-  return {
+  return normalizeDiscipline({
     id: createId(),
     emoji: preset.emoji,
     name: name ?? `${preset.label}...`,
     type,
     status: "none",
     grade: "",
-  }
+    gradeMode: "detailed",
+    activities: defaultActivities(),
+    recoveryGrade: "",
+  })
 }
 
 export function createSemester(title = "Novo Semestre", disciplines: Discipline[] = []): Semester {
@@ -124,7 +173,10 @@ export function fipecafiDefaultTemplate(): ProgressionData {
 
 function normalizeData(data: Partial<ProgressionData>): ProgressionData {
   return {
-    semesters: data.semesters ?? [],
+    semesters: (data.semesters ?? []).map((semester) => ({
+      ...semester,
+      disciplines: (semester.disciplines ?? []).map((d) => normalizeDiscipline(d)),
+    })),
     notes: data.notes ?? "",
     logoData: data.logoData ?? null,
     reminders: data.reminders ?? [],
