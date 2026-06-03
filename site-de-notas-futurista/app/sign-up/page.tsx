@@ -18,7 +18,7 @@ export default function SignUpPage() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center neon-border">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold gradient-text">NexusPortal</span>
+              <span className="text-2xl font-bold gradient-text">AdvForte Portal</span>
             </Link>
             <h1 className="text-3xl font-bold text-foreground mb-2">Crie sua conta</h1>
             <p className="text-muted-foreground">Comece a organizar suas notas e recados</p>

@@ -12,12 +12,12 @@ import {
   Moon,
   Plus,
   Search,
-  Sparkles,
   Sun,
 } from "lucide-react"
 import { auth } from "@/lib/firebase"
 import { useAuth } from "@/components/auth-provider"
 import { useTheme } from "@/components/theme-provider"
+import { InstagramIcon, WhatsAppIcon } from "@/components/social-icons"
 import { Button } from "@/components/ui/button"
 import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
@@ -31,6 +31,7 @@ import {
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { getPortalHref, PORTAL_LINKS } from "@/lib/portal-links"
+import { assetPath } from "@/lib/base-path"
 
 export function ProgressionDashboard() {
   const { user } = useAuth()
@@ -45,7 +46,6 @@ export function ProgressionDashboard() {
   const [dragOverSemesterIndex, setDragOverSemesterIndex] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipSave = useRef(true)
-  const logoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) return
@@ -94,14 +94,6 @@ export function ProgressionDashboard() {
   const handleSignOut = async () => {
     await signOut(auth)
     router.push("/")
-  }
-
-  const handleLogoUpload = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      updateData((prev) => ({ ...prev, logoData: e.target?.result as string }))
-    }
-    reader.readAsDataURL(file)
   }
 
   const moveSemester = (from: number, to: number) => {
@@ -168,32 +160,31 @@ export function ProgressionDashboard() {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    data.logoData
-                      ? window.open("https://fipecafi.org/", "_blank")
-                      : logoInputRef.current?.click()
-                  }
-                  className="glass-card-gold neon-border-gold rounded-xl px-4 py-2 flex items-center gap-3 hover:scale-[1.02] transition-transform"
-                >
-                  {data.logoData ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.logoData} alt="Logo" className="h-9 w-auto" />
-                  ) : (
-                    <Sparkles className="w-6 h-6 text-accent" />
-                  )}
-                  <span className="text-sm font-bold text-accent border-l border-accent/30 pl-3">
+                <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
+                  <a
+                    href="https://fipecafi.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 hover:opacity-80 transition-opacity"
+                    title="FIPECAFI"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assetPath("/fipecafi-logo-dark.svg")}
+                      alt="FIPECAFI"
+                      className="h-9 w-auto dark:hidden"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assetPath("/fipecafi-logo.svg")}
+                      alt="FIPECAFI"
+                      className="h-9 w-auto hidden dark:block"
+                    />
+                  </a>
+                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
                     Gestão de Progressão
                   </span>
-                </button>
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])}
-                />
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-3">
@@ -221,16 +212,18 @@ export function ProgressionDashboard() {
                   href="https://wa.me/5518997012718"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-primary/40 transition-colors"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
                 >
+                  <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
                   WhatsApp
                 </a>
                 <a
                   href="https://www.instagram.com/advforte/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-primary/40 transition-colors"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
                 >
+                  <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
                   @advforte
                 </a>
                 <Button
@@ -368,7 +361,8 @@ export function ProgressionDashboard() {
       <footer className="relative z-10 border-t border-border/50 py-8 px-6 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           Feito de aluno para aluno — esta não é uma página oficial da faculdade. Para garantir a
-          autenticidade, entre em contato pelos canais no topo.
+          autenticidade, entre em contato pelos canais no topo. Feito com carinho por Vinícius
+          Nascimento.
         </p>
       </footer>
     </main>

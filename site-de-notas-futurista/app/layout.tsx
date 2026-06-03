@@ -10,8 +10,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
 
 export const metadata: Metadata = {
-  title: 'NexusPortal | Sistema de Notas e Recados',
-  description: 'Seu portal futurista para acompanhar suas notas e recados de forma elegante e intuitiva',
+  title: 'AdvForte Portal | Sistema de Notas e Recados',
+  description: 'Portal AdvForte para acompanhar suas notas, progressão acadêmica e recados de forma elegante e intuitiva',
   generator: 'v0.app',
   icons: {
     icon: [

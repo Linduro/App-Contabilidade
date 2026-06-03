@@ -18,7 +18,7 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold gradient-text">NexusPortal</span>
+            <span className="text-xl font-bold gradient-text">AdvForte Portal</span>
           </Link>
 
           <div className="flex items-center gap-4">
@@ -126,7 +126,7 @@ export default function HomePage() {
               Pronto para elevar sua organização?
             </h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Crie sua conta gratuitamente e comece a usar o NexusPortal agora mesmo
+              Crie sua conta gratuitamente e comece a usar o AdvForte Portal agora mesmo
             </p>
             <Link href="/sign-up">
               <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground h-14 px-10 text-lg font-semibold neon-border-gold">
@@ -145,10 +145,10 @@ export default function HomePage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-foreground">NexusPortal</span>
+            <span className="font-semibold text-foreground">AdvForte Portal</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            2024 NexusPortal. Todos os direitos reservados.
+            © {new Date().getFullYear()} AdvForte Portal. Todos os direitos reservados.
           </p>
         </div>
       </footer>

@@ -19,7 +19,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem("nexus-theme") as Theme | null
+    const stored =
+      (localStorage.getItem("advforte-theme") as Theme | null) ??
+      (localStorage.getItem("nexus-theme") as Theme | null)
     const initial = stored === "dark" ? "dark" : "light"
     setTheme(initial)
     document.documentElement.classList.toggle("dark", initial === "dark")
@@ -29,7 +31,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === "light" ? "dark" : "light"
-      localStorage.setItem("nexus-theme", next)
+      localStorage.setItem("advforte-theme", next)
       document.documentElement.classList.toggle("dark", next === "dark")
       return next
     })
