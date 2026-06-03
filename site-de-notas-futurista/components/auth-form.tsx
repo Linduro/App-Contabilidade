@@ -74,7 +74,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Seu nome completo"
               required
-              className="w-full h-12 pl-12 pr-4 bg-secondary/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+              className="w-full h-12 pl-12 pr-4 bg-secondary/40 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
         </div>
@@ -90,7 +90,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
             required
-            className="w-full h-12 pl-12 pr-4 bg-secondary/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+            className="w-full h-12 pl-12 pr-4 bg-secondary/40 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           />
         </div>
       </div>
@@ -106,7 +106,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             placeholder="Sua senha segura"
             required
             minLength={8}
-            className="w-full h-12 pl-12 pr-12 bg-secondary/50 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+            className="w-full h-12 pl-12 pr-12 bg-secondary/40 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           />
           <button
             type="button"
@@ -127,7 +127,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-all neon-border"
+        className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all neon-border"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

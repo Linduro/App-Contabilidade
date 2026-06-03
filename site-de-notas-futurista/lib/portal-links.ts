@@ -1,3 +1,5 @@
+import { assetPath } from "./base-path"
+
 /** Atualize os hrefs dos PDFs quando o usuário enviar os links permanentes. */
 export const PORTAL_LINKS = [
   { label: "Portal de Aulas", href: "https://fipecafi.blackboard.com/?new_loc=%2Fultra" },
@@ -21,9 +23,9 @@ export const PORTAL_LINKS = [
 ]
 
 export const PDF_LINKS: Record<"guiaProvas" | "calendario2026" | "guiaAluno", string> = {
-  guiaProvas: "",
-  calendario2026: "",
-  guiaAluno: "",
+  guiaProvas: assetPath("/pdfs/calendario-academico-institucional-2026.pdf"),
+  calendario2026: assetPath("/pdfs/calendario-institucional-2026.pdf"),
+  guiaAluno: assetPath("/pdfs/guia-do-aluno-graduacao.pdf"),
 }
 
 export function getPortalHref(link: (typeof PORTAL_LINKS)[number]) {

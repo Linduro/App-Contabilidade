@@ -187,17 +187,17 @@ export function ProgressionDashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mt-3 w-full max-w-3xl">
                 {PORTAL_LINKS.map((link) => (
                   <a
                     key={link.label}
                     href={getPortalHref(link)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] font-semibold px-2.5 py-1 rounded-md bg-secondary/60 border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors flex items-center gap-1"
+                    className="group min-h-10 px-3 py-2 rounded-lg bg-primary/10 border border-primary/35 text-xs sm:text-sm font-semibold text-primary hover:bg-primary/20 hover:border-primary/60 transition-colors flex items-center justify-center gap-1.5 text-center leading-tight shadow-sm"
                   >
-                    {link.label}
-                    <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+                    <span>{link.label}</span>
+                    <ExternalLink className="w-3 h-3 shrink-0 opacity-70 group-hover:opacity-100" />
                   </a>
                 ))}
               </div>
