@@ -10,7 +10,7 @@ import {
 import { doc, serverTimestamp, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 import { getGoogleAuthErrorMessage, signInWithGoogle } from "@/lib/google-auth"
-import { WELCOME_VIDEO_SESSION_KEY } from "@/lib/welcome-video"
+import { WELCOME_GREETING_SESSION_KEY } from "@/lib/welcome-greeting"
 import { GoogleIcon } from "@/components/google-icon"
 import { PhoneAuthSection } from "@/components/phone-auth-section"
 import { EmailRecoverySection } from "@/components/email-recovery-section"
@@ -45,7 +45,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter()
 
   const finishAuth = () => {
-    sessionStorage.setItem(WELCOME_VIDEO_SESSION_KEY, "1")
+    sessionStorage.setItem(WELCOME_GREETING_SESSION_KEY, "1")
     router.push("/dashboard")
   }
 

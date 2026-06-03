@@ -33,7 +33,7 @@ import {
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
 import { isAdminEmail } from "@/lib/admin-access"
-import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
+import { SiteFooter } from "@/components/site-footer"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
@@ -372,11 +372,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         </section>
       </div>
 
-      <footer className="relative z-10 border-t border-border/50 py-8 px-6 text-center">
-        <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-          {SITE_FOOTER_NOTE}
-        </p>
-      </footer>
+      <SiteFooter />
 
       {ready && (
         <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />

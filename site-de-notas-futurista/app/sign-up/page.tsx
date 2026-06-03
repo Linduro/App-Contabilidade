@@ -1,7 +1,6 @@
 import { AuthForm } from "@/components/auth-form"
 import { AuthPageLayout } from "@/components/auth-page-layout"
 import { GuestOnly } from "@/components/guest-only"
-import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
 import Link from "next/link"
 
 export default function SignUpPage() {
@@ -10,7 +9,6 @@ export default function SignUpPage() {
       <AuthPageLayout
         title="Crie sua conta"
         subtitle="Organize suas disciplinas, notas e prioridades estratégicas"
-        footer={SITE_FOOTER_NOTE}
       >
         <AuthForm mode="sign-up" />
 

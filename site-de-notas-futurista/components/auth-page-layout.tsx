@@ -4,16 +4,16 @@ import Link from "next/link"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
+import { SiteFooter } from "@/components/site-footer"
 import { assetPath } from "@/lib/base-path"
 
 interface AuthPageLayoutProps {
   title: string
   subtitle: string
-  footer?: string
   children: React.ReactNode
 }
 
-export function AuthPageLayout({ title, subtitle, footer, children }: AuthPageLayoutProps) {
+export function AuthPageLayout({ title, subtitle, children }: AuthPageLayoutProps) {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -66,14 +66,10 @@ export function AuthPageLayout({ title, subtitle, footer, children }: AuthPageLa
           </div>
 
           <div className="glass-card rounded-2xl p-8 neon-border">{children}</div>
-
-          {footer && (
-            <p className="text-center text-muted-foreground/60 text-xs sm:text-sm mt-8 leading-relaxed">
-              {footer}
-            </p>
-          )}
         </div>
       </div>
+
+      <SiteFooter />
     </main>
   )
 }
