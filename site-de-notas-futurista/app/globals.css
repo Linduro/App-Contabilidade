@@ -90,6 +90,35 @@
   --sidebar-ring: #3b82f6;
 }
 
+.dark {
+  --background: #0f1419;
+  --foreground: #e2e8f0;
+  --card: #1a1f2e;
+  --card-foreground: #e2e8f0;
+  --popover: #1a1f2e;
+  --popover-foreground: #e2e8f0;
+  --primary: #60a5fa;
+  --primary-foreground: #0f1419;
+  --secondary: #252b3b;
+  --secondary-foreground: #e2e8f0;
+  --muted: #2a3142;
+  --muted-foreground: #94a3b8;
+  --accent: #d4af37;
+  --accent-foreground: #0f1419;
+  --destructive: #f87171;
+  --border: #334155;
+  --input: #334155;
+  --ring: #60a5fa;
+  --sidebar: #1a1f2e;
+  --sidebar-foreground: #e2e8f0;
+  --sidebar-primary: #60a5fa;
+  --sidebar-primary-foreground: #0f1419;
+  --sidebar-accent: #d4af37;
+  --sidebar-accent-foreground: #0f1419;
+  --sidebar-border: #334155;
+  --sidebar-ring: #60a5fa;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -170,5 +199,21 @@
       linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
       linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px);
     background-size: 50px 50px;
+  }
+
+  .dark .glass-card {
+    background: linear-gradient(135deg, rgba(26, 31, 46, 0.95) 0%, rgba(15, 20, 25, 0.85) 100%);
+    border-color: rgba(96, 165, 250, 0.25);
+  }
+
+  .dark .glass-card-gold {
+    background: linear-gradient(135deg, rgba(26, 31, 46, 0.95) 0%, rgba(30, 28, 22, 0.9) 100%);
+    border-color: rgba(212, 175, 55, 0.35);
+  }
+
+  .dark .grid-pattern {
+    background-image:
+      linear-gradient(rgba(96, 165, 250, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px);
   }
 }

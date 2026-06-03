@@ -19,20 +19,19 @@ export interface Semester {
   disciplines: Discipline[]
 }
 
+export interface Reminder {
+  id: string
+  title: string
+  date: string
+  done: boolean
+}
+
 export interface ProgressionData {
   semesters: Semester[]
   notes: string
   logoData: string | null
+  reminders: Reminder[]
 }
-
-export const PORTAL_LINKS = [
-  { label: "Portal de Aulas", href: "https://fipecafi.blackboard.com/?new_loc=%2Fultra" },
-  { label: "Portal de solicitações e financeiro", href: "https://sistemas.fipecafi.org/PortalWebAluno" },
-  { label: "Minha Biblioteca", href: "https://sso.minhabiblioteca.com.br/Login.aspx?key=FIPECAFI" },
-  { label: "Guia de Provas", href: "https://fipecafi.blackboard.com/" },
-  { label: "Calendário 2026", href: "https://fipecafi.blackboard.com/" },
-  { label: "Guia do Aluno", href: "https://fipecafi.blackboard.com/" },
-]
 
 export const DISCIPLINE_PRESETS: Record<DisciplineType, { emoji: string; label: string }> = {
   essential: { emoji: "🔥🔥", label: "Essencial" },
@@ -44,23 +43,28 @@ export function createId() {
   return crypto.randomUUID()
 }
 
-export function createDiscipline(type: DisciplineType): Discipline {
+export function createDiscipline(type: DisciplineType, name?: string): Discipline {
   const preset = DISCIPLINE_PRESETS[type]
   return {
     id: createId(),
     emoji: preset.emoji,
-    name: `${preset.label}...`,
+    name: name ?? `${preset.label}...`,
     type,
     status: "none",
     grade: "",
   }
 }
 
-export function createSemester(): Semester {
+export function createSemester(title = "Novo Semestre", disciplines: Discipline[] = []): Semester {
+  return { id: createId(), title, disciplines }
+}
+
+export function createReminder(): Reminder {
   return {
     id: createId(),
-    title: "Novo Semestre",
-    disciplines: [],
+    title: "",
+    date: new Date().toISOString().slice(0, 10),
+    done: false,
   }
 }
 
@@ -69,6 +73,61 @@ export function defaultProgression(): ProgressionData {
     semesters: [createSemester()],
     notes: "Anote aqui suas observações.",
     logoData: null,
+    reminders: [],
+  }
+}
+
+function buildSemester(
+  title: string,
+  items: { name: string; type: DisciplineType }[]
+): Semester {
+  return createSemester(
+    title,
+    items.map((item) => createDiscipline(item.type, item.name))
+  )
+}
+
+/** Grade padrão editável — estrutura inicial para novos alunos. */
+export function fipecafiDefaultTemplate(): ProgressionData {
+  return {
+    semesters: [
+      buildSemester("1º Semestre", [
+        { name: "Introdução à Contabilidade", type: "essential" },
+        { name: "Matemática Financeira", type: "essential" },
+        { name: "Comunicação e Expressão", type: "important" },
+        { name: "Introdução ao Direito", type: "important" },
+      ]),
+      buildSemester("2º Semestre", [
+        { name: "Contabilidade Intermediária", type: "essential" },
+        { name: "Microeconomia", type: "important" },
+        { name: "Estatística Aplicada", type: "important" },
+        { name: "Direito Civil", type: "important" },
+      ]),
+      buildSemester("3º Semestre", [
+        { name: "Contabilidade Avançada", type: "essential" },
+        { name: "Finanças Corporativas", type: "essential" },
+        { name: "Direito Tributário", type: "important" },
+        { name: "Auditoria", type: "important" },
+      ]),
+      buildSemester("4º Semestre", [
+        { name: "Contabilidade de Custos", type: "essential" },
+        { name: "Análise das Demonstrações Financeiras", type: "essential" },
+        { name: "Controladoria", type: "important" },
+        { name: "Trabalho de Conclusão — TCC", type: "essential" },
+      ]),
+    ],
+    notes: "Anote aqui suas observações.",
+    logoData: null,
+    reminders: [],
+  }
+}
+
+function normalizeData(data: Partial<ProgressionData>): ProgressionData {
+  return {
+    semesters: data.semesters ?? [],
+    notes: data.notes ?? "",
+    logoData: data.logoData ?? null,
+    reminders: data.reminders ?? [],
   }
 }
 
@@ -79,12 +138,7 @@ function progressionRef(userId: string) {
 export async function getProgression(userId: string): Promise<ProgressionData | null> {
   const snap = await getDoc(progressionRef(userId))
   if (!snap.exists()) return null
-  const data = snap.data()
-  return {
-    semesters: data.semesters ?? [],
-    notes: data.notes ?? "",
-    logoData: data.logoData ?? null,
-  }
+  return normalizeData(snap.data() as Partial<ProgressionData>)
 }
 
 export function subscribeProgression(
@@ -96,12 +150,7 @@ export function subscribeProgression(
     progressionRef(userId),
     (snap) => {
       if (snap.exists()) {
-        const data = snap.data()
-        onData({
-          semesters: data.semesters ?? [],
-          notes: data.notes ?? "",
-          logoData: data.logoData ?? null,
-        })
+        onData(normalizeData(snap.data() as Partial<ProgressionData>))
       } else {
         onData(defaultProgression())
       }
