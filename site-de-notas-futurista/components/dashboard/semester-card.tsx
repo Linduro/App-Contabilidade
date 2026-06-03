@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, ChevronUp, GripVertical, Plus, X } from "lucide-react"
+import { ChevronDown, ChevronUp, GripVertical, Pencil, Plus, X } from "lucide-react"
 import {
   createDiscipline,
   DISCIPLINE_PRESETS,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/progression-data"
 import { getSemesterStats, semesterMatchesSearch } from "@/lib/progression-utils"
 import { DisciplineRow } from "@/components/dashboard/discipline-row"
+import { DisciplineEmoji } from "@/components/discipline-emoji"
 
 export function SemesterCard({
   semester,
@@ -154,11 +155,18 @@ export function SemesterCard({
             </button>
           </div>
           <div className="flex-1 min-w-0">
-            <input
-              value={semester.title}
-              onChange={(e) => onChange({ ...semester, title: e.target.value })}
-              className="w-full bg-transparent border-none outline-none text-lg font-bold text-primary focus:ring-1 focus:ring-primary/40 rounded px-1"
-            />
+            <div className="relative group">
+              <input
+                value={semester.title}
+                onChange={(e) => onChange({ ...semester, title: e.target.value })}
+                placeholder="Nome do semestre"
+                className="w-full bg-secondary/30 border border-dashed border-border font-bold text-lg text-primary outline-none rounded-lg px-3 py-2 pr-9 transition-all hover:border-primary/40 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20"
+              />
+              <Pencil className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary/60 pointer-events-none opacity-70 group-focus-within:opacity-100" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1.5">
+              Clique para editar o título do semestre
+            </p>
             <div className="mt-2 space-y-1.5">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
@@ -232,7 +240,7 @@ export function SemesterCard({
                 onClick={() => addDiscipline(type)}
                 className="w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-primary/10 hover:text-primary flex items-center gap-2"
               >
-                <span>{DISCIPLINE_PRESETS[type].emoji}</span>
+                <DisciplineEmoji type={type} className="text-base" />
                 {DISCIPLINE_PRESETS[type].label}
               </button>
             ))}

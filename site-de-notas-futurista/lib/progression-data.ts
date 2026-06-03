@@ -208,7 +208,7 @@ export function fipecafiDefaultTemplate(): ProgressionData {
   }
 }
 
-function normalizeData(data: Partial<ProgressionData>): ProgressionData {
+export function normalizeProgressionData(data: Partial<ProgressionData>): ProgressionData {
   return {
     semesters: (data.semesters ?? []).map((semester) => ({
       ...semester,
@@ -227,7 +227,7 @@ function progressionRef(userId: string) {
 export async function getProgression(userId: string): Promise<ProgressionData | null> {
   const snap = await getDoc(progressionRef(userId))
   if (!snap.exists()) return null
-  return normalizeData(snap.data() as Partial<ProgressionData>)
+  return normalizeProgressionData(snap.data() as Partial<ProgressionData>)
 }
 
 export function subscribeProgression(
@@ -239,7 +239,7 @@ export function subscribeProgression(
     progressionRef(userId),
     (snap) => {
       if (snap.exists()) {
-        onData(normalizeData(snap.data() as Partial<ProgressionData>))
+        onData(normalizeProgressionData(snap.data() as Partial<ProgressionData>))
       } else {
         onData(defaultProgression())
       }

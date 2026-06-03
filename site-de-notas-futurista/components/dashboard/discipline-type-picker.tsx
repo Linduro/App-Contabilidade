@@ -6,6 +6,7 @@ import {
   DISCIPLINE_TYPE_ORDER,
   type DisciplineType,
 } from "@/lib/progression-data"
+import { DisciplineEmoji } from "@/components/discipline-emoji"
 
 interface DisciplineTypePickerProps {
   type: DisciplineType
@@ -33,11 +34,13 @@ export function DisciplineTypePicker({ type, onChange }: DisciplineTypePickerPro
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="w-12 h-10 flex items-center justify-center bg-secondary/40 border border-dashed border-border rounded-lg text-lg hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+        className={`h-10 flex items-center justify-center bg-secondary/40 border border-dashed border-border rounded-lg hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${
+          type === "essential" ? "w-14 px-1" : "w-12"
+        }`}
         aria-label={`Categoria: ${preset.label}`}
         title={`Categoria: ${preset.label}`}
       >
-        {preset.emoji}
+        <DisciplineEmoji type={type} className="text-base" />
       </button>
 
       {open && (
@@ -54,7 +57,7 @@ export function DisciplineTypePicker({ type, onChange }: DisciplineTypePickerPro
                 option === type ? "bg-primary/5 text-primary" : ""
               }`}
             >
-              <span>{DISCIPLINE_PRESETS[option].emoji}</span>
+              <DisciplineEmoji type={option} className="text-base" />
               {DISCIPLINE_PRESETS[option].label}
             </button>
           ))}

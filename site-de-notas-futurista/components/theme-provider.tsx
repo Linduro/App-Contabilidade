@@ -7,31 +7,41 @@ type Theme = "light" | "dark"
 interface ThemeContextValue {
   theme: Theme
   toggleTheme: () => void
+  applyTheme: (theme: Theme) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "light",
   toggleTheme: () => {},
+  applyTheme: () => {},
 })
+
+function readStoredTheme(): Theme {
+  if (typeof window === "undefined") return "light"
+  const stored =
+    localStorage.getItem("advforte-theme") ?? localStorage.getItem("nexus-theme")
+  return stored === "dark" ? "dark" : "light"
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light")
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const stored =
-      (localStorage.getItem("advforte-theme") as Theme | null) ??
-      (localStorage.getItem("nexus-theme") as Theme | null)
-    const initial = stored === "dark" ? "dark" : "light"
+    const initial = readStoredTheme()
     setTheme(initial)
     document.documentElement.classList.toggle("dark", initial === "dark")
     setReady(true)
   }, [])
 
+  const applyTheme = (next: Theme) => {
+    setTheme(next)
+    document.documentElement.classList.toggle("dark", next === "dark")
+  }
+
   const toggleTheme = () => {
     setTheme((prev) => {
       const next = prev === "light" ? "dark" : "light"
-      localStorage.setItem("advforte-theme", next)
       document.documentElement.classList.toggle("dark", next === "dark")
       return next
     })
@@ -39,7 +49,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   if (!ready) return <>{children}</>
 
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, applyTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme() {

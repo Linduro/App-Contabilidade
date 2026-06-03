@@ -24,12 +24,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       "Fale conosco pelo WhatsApp ou Instagram, alterne o tema claro/escuro e saia da conta por aqui.",
   },
   {
-    id: "import-grade",
-    title: "Importar grade FIPECAFI",
-    description:
-      "Carrega uma estrutura inicial de semestres e disciplinas. Você pode editar tudo depois.",
-  },
-  {
     id: "search",
     title: "Busca rápida",
     description: "Encontre disciplinas, semestres ou notas digitando palavras-chave.",

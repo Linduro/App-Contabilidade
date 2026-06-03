@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Cloud,
-  Download,
   GripVertical,
   LogOut,
   Moon,
@@ -22,16 +21,18 @@ import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
+import { HiddenAdminPanel } from "@/components/dashboard/hidden-admin-panel"
+import { DisciplineEmoji } from "@/components/discipline-emoji"
 import {
   createSemester,
   defaultProgression,
-  fipecafiDefaultTemplate,
   type ProgressionData,
   saveProgression,
   subscribeProgression,
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
+import { isAdminEmail } from "@/lib/admin-access"
 import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
@@ -46,6 +47,9 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   const [draggedSemesterIndex, setDraggedSemesterIndex] = useState<number | null>(null)
   const [dragOverSemesterIndex, setDragOverSemesterIndex] = useState<number | null>(null)
   const [tourRestartKey, setTourRestartKey] = useState(0)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const adminClickCount = useRef(0)
+  const adminClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipSave = useRef(true)
 
@@ -122,16 +126,31 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
     }))
   }
 
-  const importTemplate = () => {
-    if (
-      !window.confirm(
-        "Importar a grade padrão FIPECAFI? Isso substituirá todos os semestres atuais."
-      )
-    ) {
-      return
-    }
-    updateData(() => fipecafiDefaultTemplate())
-  }
+  const handleAdminLogoClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!isAdminEmail(user?.email)) return
+
+      e.preventDefault()
+      adminClickCount.current += 1
+
+      if (adminClickTimer.current) clearTimeout(adminClickTimer.current)
+
+      if (adminClickCount.current >= 3) {
+        adminClickCount.current = 0
+        setAdminOpen(true)
+        return
+      }
+
+      adminClickTimer.current = setTimeout(() => {
+        const clicks = adminClickCount.current
+        adminClickCount.current = 0
+        if (clicks === 1) {
+          window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
+        }
+      }, 500)
+    },
+    [user?.email]
+  )
 
   const filteredCount = data.semesters.filter((s) => semesterMatchesSearch(s, searchQuery)).length
 
@@ -167,6 +186,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                     href="https://fipecafi.org/"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={handleAdminLogoClick}
                     className="shrink-0 hover:opacity-80 transition-opacity"
                     title="FIPECAFI"
                   >
@@ -244,22 +264,11 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       </header>
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">Meu Percurso Acadêmico</h1>
-            <p className="text-muted-foreground">
-              Organize suas disciplinas, notas e prioridades estratégicas.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={importTemplate}
-            className="border-dashed border-accent/50 text-accent hover:bg-accent/10 shrink-0"
-            data-tour="import-grade"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Importar grade FIPECAFI
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">Meu Percurso Acadêmico</h1>
+          <p className="text-muted-foreground">
+            Organize suas disciplinas, notas e prioridades estratégicas.
+          </p>
         </div>
 
         <div className="relative mb-6" data-tour="search">
@@ -275,19 +284,16 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
         <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border" data-tour="legend">
           <span className="flex items-center gap-2 font-medium">
-            <span>🔥🔥</span> Essenciais
+            <DisciplineEmoji type="essential" className="text-base" /> Essenciais
           </span>
           <span className="flex items-center gap-2 font-medium">
-            <span>🔥</span> Importantes
+            <DisciplineEmoji type="important" className="text-base" /> Importantes
           </span>
           <span className="flex items-center gap-2 font-medium">
-            <span>⚪</span> Neutras
+            <DisciplineEmoji type="neutral" className="text-base" /> Neutras
           </span>
           <span className="flex items-center gap-2 font-medium text-muted-foreground">
-            <span>🚫</span> Dispensadas
-          </span>
-          <span className="flex items-center gap-2 font-medium text-muted-foreground w-full sm:w-auto">
-            Testes: média de N provas = 20% (ajuste a quantidade por disciplina)
+            <DisciplineEmoji type="discarded" className="text-base" /> Dispensadas
           </span>
           <span className="flex items-center gap-2 font-medium text-primary/80 w-full sm:w-auto sm:ml-auto">
             <GripVertical className="w-4 h-4" />
@@ -374,6 +380,10 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
       {ready && (
         <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />
+      )}
+
+      {isAdminEmail(user?.email) && (
+        <HiddenAdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
       )}
     </main>
   )
