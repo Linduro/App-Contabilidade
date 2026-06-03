@@ -9,6 +9,7 @@ import {
 } from "firebase/auth"
 import { doc, serverTimestamp, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
+import { WELCOME_VIDEO_SESSION_KEY } from "@/lib/welcome-video"
 import { Button } from "@/components/ui/button"
 import { Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react"
 
@@ -53,6 +54,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       } else {
         await signInWithEmailAndPassword(auth, email, password)
       }
+      sessionStorage.setItem(WELCOME_VIDEO_SESSION_KEY, "1")
       router.push("/dashboard")
     } catch (err: unknown) {
       const code = err && typeof err === "object" && "code" in err ? String(err.code) : ""
