@@ -160,7 +160,7 @@ function SemesterCard({
   }
 
   return (
-    <section className="glass-card rounded-2xl neon-border overflow-hidden mb-6">
+    <section className={`glass-card rounded-2xl neon-border mb-6 relative ${menuOpen ? "z-30" : "z-0"}`}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 border-t-4 border-t-primary">
         <input
           value={semester.title}
@@ -197,7 +197,7 @@ function SemesterCard({
           Adicionar Disciplina
         </button>
         {menuOpen && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 glass-card rounded-xl neon-border py-1 min-w-[200px] z-20">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 glass-card rounded-xl neon-border py-1 min-w-[200px] z-50 shadow-lg">
             {(Object.keys(DISCIPLINE_PRESETS) as DisciplineType[]).map((type) => (
               <button
                 key={type}
