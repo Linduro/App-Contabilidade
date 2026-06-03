@@ -59,14 +59,35 @@ export function createActivity(category: ActivityCategory, name: string): Activi
   return { id: createId(), name, category, grade: "" }
 }
 
-export function defaultActivities(): Activity[] {
+export function defaultActivities(testCount = 6): Activity[] {
+  const tests = Array.from({ length: Math.max(1, testCount) }, (_, i) =>
+    createActivity("teste", `Teste ${String(i + 1).padStart(2, "0")}`)
+  )
   return [
-    ...Array.from({ length: 6 }, (_, i) =>
-      createActivity("teste", `Teste ${String(i + 1).padStart(2, "0")}`)
-    ),
+    ...tests,
     createActivity("exercicio", "Avaliação Intermediária"),
     createActivity("exame", "Prova"),
   ]
+}
+
+/** Ajusta a quantidade de testes preservando notas já lançadas (índice a índice). */
+export function syncTestCount(activities: Activity[], count: number): Activity[] {
+  const clamped = Math.max(1, Math.min(20, count))
+  const nonTests = activities.filter((a) => a.category !== "teste")
+  const existingTests = activities.filter((a) => a.category === "teste")
+
+  const tests = Array.from({ length: clamped }, (_, i) => {
+    const existing = existingTests[i]
+    return (
+      existing ?? createActivity("teste", `Teste ${String(i + 1).padStart(2, "0")}`)
+    )
+  })
+
+  return [...tests, ...nonTests]
+}
+
+export function getTestCount(activities: Activity[]): number {
+  return activities.filter((a) => a.category === "teste").length
 }
 
 export function normalizeDiscipline(discipline: Partial<Discipline>): Discipline {

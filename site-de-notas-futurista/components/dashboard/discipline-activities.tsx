@@ -1,8 +1,10 @@
 "use client"
 
-import { Plus, Trash2 } from "lucide-react"
+import { Minus, Plus, Trash2 } from "lucide-react"
 import {
   createActivity,
+  getTestCount,
+  syncTestCount,
   type Activity,
   type ActivityCategory,
   type Discipline,
@@ -16,11 +18,20 @@ import {
 
 const CATEGORY_ORDER: ActivityCategory[] = ["teste", "exercicio", "exame"]
 
-function WeightBadge({ category }: { category: ActivityCategory }) {
+function WeightBadge({
+  category,
+  hint,
+}: {
+  category: ActivityCategory
+  hint?: string
+}) {
   return (
-    <span className="text-[10px] font-bold uppercase text-muted-foreground">
-      {CATEGORY_LABELS[category]} · {Math.round(CATEGORY_WEIGHTS[category] * 100)}%
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-bold uppercase text-muted-foreground">
+        {CATEGORY_LABELS[category]} · {Math.round(CATEGORY_WEIGHTS[category] * 100)}% da média
+      </span>
+      {hint && <span className="text-[10px] text-muted-foreground/80">{hint}</span>}
+    </div>
   )
 }
 
@@ -33,6 +44,7 @@ export function DisciplineActivities({
 }) {
   const activities = discipline.activities ?? []
   const breakdown = getGradeBreakdown(discipline)
+  const testCount = getTestCount(activities)
 
   const updateActivity = (id: string, patch: Partial<Activity>) => {
     onChange({
@@ -67,24 +79,77 @@ export function DisciplineActivities({
     })
   }
 
+  const setTestCount = (count: number) => {
+    onChange({
+      ...discipline,
+      activities: syncTestCount(activities, count),
+    })
+  }
+
   return (
     <div className="mt-3 pt-3 border-t border-border/40 space-y-4">
       {CATEGORY_ORDER.map((category) => {
         const items = activities.filter((a) => a.category === category)
         if (items.length === 0) return null
 
+        const isTestCategory = category === "teste"
+
         return (
           <div key={category} className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <WeightBadge category={category} />
-              <button
-                type="button"
-                onClick={() => addActivity(category)}
-                className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <Plus className="w-3 h-3" />
-                Adicionar
-              </button>
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <WeightBadge
+                category={category}
+                hint={
+                  isTestCategory
+                    ? `${testCount} teste${testCount !== 1 ? "s" : ""} → média vale ${Math.round(CATEGORY_WEIGHTS.teste * 100)}% (não importa a quantidade)`
+                    : undefined
+                }
+              />
+              <div className="flex items-center gap-2">
+                {isTestCategory && (
+                  <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-1 py-0.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground px-1.5">
+                      Qtd:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTestCount(testCount - 1)}
+                      disabled={testCount <= 1}
+                      className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+                      aria-label="Menos um teste"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={testCount}
+                      onChange={(e) => setTestCount(parseInt(e.target.value, 10) || 1)}
+                      className="w-10 h-7 text-center text-xs font-bold bg-background border border-border rounded-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTestCount(testCount + 1)}
+                      disabled={testCount >= 20}
+                      className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+                      aria-label="Mais um teste"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {!isTestCategory && (
+                  <button
+                    type="button"
+                    onClick={() => addActivity(category)}
+                    className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Adicionar
+                  </button>
+                )}
+              </div>
             </div>
             <ul className="space-y-1.5">
               {items.map((activity) => (
@@ -104,7 +169,7 @@ export function DisciplineActivities({
                     onChange={(e) => updateActivity(activity.id, { grade: e.target.value })}
                     className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-xs"
                   />
-                  {(category !== "teste" || items.length > 1) && (
+                  {!isTestCategory && items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeActivity(activity.id)}
@@ -131,7 +196,8 @@ export function DisciplineActivities({
                 breakdown.avgExercicio !== null &&
                 breakdown.exame !== null && (
                   <span className="block mt-1 text-[11px]">
-                    ({formatGrade(breakdown.avgTeste)} × 20%) + ({formatGrade(breakdown.avgExercicio)}{" "}
+                    (média de {breakdown.filledTestCount}/{breakdown.testCount} testes:{" "}
+                    {formatGrade(breakdown.avgTeste)} × 20%) + ({formatGrade(breakdown.avgExercicio)}{" "}
                     × 30%) + ({formatGrade(breakdown.exame)} × 50%)
                   </span>
                 )}
@@ -164,8 +230,8 @@ export function DisciplineActivities({
           </>
         ) : (
           <p className="text-muted-foreground">
-            Preencha ao menos uma nota em cada categoria (Testes, Exercício e Prova) para calcular a
-            média.
+            Preencha notas em cada categoria para calcular: ao menos 1 teste (média de todos vale 20%),
+            exercício (30%) e prova (50%).
           </p>
         )}
       </div>

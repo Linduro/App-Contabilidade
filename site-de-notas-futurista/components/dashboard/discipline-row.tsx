@@ -211,7 +211,7 @@ export function DisciplineRow({
             onClick={enableDetailedMode}
             className="text-[11px] font-semibold text-primary/80 hover:text-primary hover:underline"
           >
-            + Detalhar notas (Testes 20% · Exercício 30% · Prova 50%)
+            + Detalhar notas (Testes 20% · Exercício 30% · Prova 50% — qtd. de testes ajustável)
           </button>
         ) : (
           <button

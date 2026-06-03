@@ -67,11 +67,14 @@ export interface GradeBreakdown {
   media: number | null
   final: number | null
   hasRecovery: boolean
+  testCount: number
+  filledTestCount: number
 }
 
 export function getGradeBreakdown(discipline: Discipline): GradeBreakdown {
   const activities = discipline.activities ?? []
-  const avgTeste = average(getCategoryGrades(activities, "teste"))
+  const testGrades = getCategoryGrades(activities, "teste")
+  const avgTeste = average(testGrades)
   const avgExercicio = average(getCategoryGrades(activities, "exercicio"))
   const exameGrades = getCategoryGrades(activities, "exame")
   const exame = exameGrades.length === 1 ? exameGrades[0] : average(exameGrades)
@@ -86,6 +89,8 @@ export function getGradeBreakdown(discipline: Discipline): GradeBreakdown {
     media,
     final,
     hasRecovery: recovery !== null,
+    testCount: activities.filter((a) => a.category === "teste").length,
+    filledTestCount: testGrades.length,
   }
 }
 

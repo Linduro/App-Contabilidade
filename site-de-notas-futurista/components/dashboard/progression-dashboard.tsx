@@ -291,7 +291,7 @@ export function ProgressionDashboard() {
             <span>🚫</span> Dispensadas
           </span>
           <span className="flex items-center gap-2 font-medium text-muted-foreground w-full sm:w-auto">
-            Notas detalhadas: Testes 20% · Exercício 30% · Prova 50%
+            Testes: média de N provas = 20% (ajuste a quantidade por disciplina)
           </span>
           <span className="flex items-center gap-2 font-medium text-primary/80 w-full sm:w-auto sm:ml-auto">
             <GripVertical className="w-4 h-4" />
