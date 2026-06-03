@@ -23,7 +23,7 @@ export const PORTAL_LINKS = [
 ]
 
 export const PDF_LINKS: Record<"guiaProvas" | "calendario2026" | "guiaAluno", string> = {
-  guiaProvas: assetPath("/pdfs/calendario-academico-institucional-2026.pdf"),
+  guiaProvas: assetPath("/pdfs/guia-de-provas-grad.pdf"),
   calendario2026: assetPath("/pdfs/calendario-institucional-2026.pdf"),
   guiaAluno: assetPath("/pdfs/guia-do-aluno-graduacao.pdf"),
 }
