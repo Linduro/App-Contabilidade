@@ -10,7 +10,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "contact",
     title: "Dúvidas ou contato?",
     description:
-      "No topo à direita: WhatsApp e Instagram. À esquerda, reveja este tour ou alterne o tema. O botão Sair fica no canto inferior direito do cabeçalho.",
+      "No topo à direita: WhatsApp e Instagram. Logo abaixo, reveja este tour ou alterne o tema. O botão Sair fica no canto inferior direito do cabeçalho.",
   },
   {
     id: "portal-links",
