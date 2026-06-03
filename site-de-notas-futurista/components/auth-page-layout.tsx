@@ -4,8 +4,7 @@ import Link from "next/link"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
 import { Button } from "@/components/ui/button"
-import { SiteFooter } from "@/components/site-footer"
-import { assetPath } from "@/lib/base-path"
+import { AUTH_FOOTER_NOTE } from "@/lib/site-copy"
 
 interface AuthPageLayoutProps {
   title: string
@@ -27,23 +26,9 @@ export function AuthPageLayout({ title, subtitle, children }: AuthPageLayoutProp
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3 hover:opacity-90 transition-opacity"
+            className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={assetPath("/fipecafi-logo-dark.svg")}
-              alt="FIPECAFI"
-              className="h-9 w-auto dark:hidden"
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={assetPath("/fipecafi-logo.svg")}
-              alt="FIPECAFI"
-              className="h-9 w-auto hidden dark:block"
-            />
-            <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
-              Gestão de Progressão
-            </span>
+            Gestão de Progressão
           </Link>
 
           <Button
@@ -69,7 +54,9 @@ export function AuthPageLayout({ title, subtitle, children }: AuthPageLayoutProp
         </div>
       </div>
 
-      <SiteFooter />
+      <footer className="relative z-10 py-8 px-6 text-center">
+        <p className="text-sm text-muted-foreground/80 italic">{AUTH_FOOTER_NOTE}</p>
+      </footer>
     </main>
   )
 }

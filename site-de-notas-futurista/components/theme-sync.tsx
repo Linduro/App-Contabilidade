@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useTheme } from "@/components/theme-provider"
 
@@ -14,10 +14,17 @@ function themeStorageKey(userId: string) {
 export function ThemeSync() {
   const { user } = useAuth()
   const { theme, applyTheme } = useTheme()
+  const loadedForUser = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user?.uid) {
+      loadedForUser.current = null
+      return
+    }
 
+    if (loadedForUser.current === user.uid) return
+
+    loadedForUser.current = user.uid
     localStorage.setItem(LAST_USER_THEME_KEY, user.uid)
 
     const stored =
@@ -28,14 +35,14 @@ export function ThemeSync() {
     if (stored === "dark" || stored === "light") {
       applyTheme(stored)
     }
-  }, [user, applyTheme])
+  }, [user?.uid, applyTheme])
 
   useEffect(() => {
     localStorage.setItem(GLOBAL_THEME_KEY, theme)
-    if (user) {
+    if (user?.uid) {
       localStorage.setItem(themeStorageKey(user.uid), theme)
     }
-  }, [theme, user])
+  }, [theme, user?.uid])
 
   return null
 }

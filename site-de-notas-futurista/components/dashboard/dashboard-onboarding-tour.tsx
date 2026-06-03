@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
   clearOnboardingDone,
+  HEADER_TOUR_STEP_IDS,
   isOnboardingDone,
   markOnboardingDone,
   ONBOARDING_STEPS,
@@ -34,7 +35,11 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
     return visiblePending ?? pendingSteps[0] ?? null
   }, [pendingSteps, visible])
 
-  const showSpotlight = Boolean(currentStep && visible.has(currentStep.id))
+  const isHeaderStep = currentStep ? HEADER_TOUR_STEP_IDS.has(currentStep.id) : false
+  const showSpotlight = Boolean(
+    currentStep && targetRect && (isHeaderStep || visible.has(currentStep.id))
+  )
+  const canAdvance = Boolean(currentStep && (showSpotlight || isHeaderStep))
   const progress = explained.size
   const total = ONBOARDING_STEPS.length
 
@@ -69,16 +74,19 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
       const element = document.querySelector(`[data-tour="${step.id}"]`)
       if (!element) return
 
+      const isHeader = HEADER_TOUR_STEP_IDS.has(step.id)
       const observer = new IntersectionObserver(
         ([entry]) => {
           setVisible((previous) => {
             const next = new Set(previous)
             if (entry.isIntersecting) next.add(step.id)
-            else next.delete(step.id)
+            else if (!isHeader) next.delete(step.id)
             return next
           })
         },
-        { threshold: 0.35, rootMargin: "-8% 0px -8% 0px" }
+        isHeader
+          ? { threshold: 0.05, rootMargin: "0px" }
+          : { threshold: 0.25, rootMargin: "-4% 0px -6% 0px" }
       )
 
       observer.observe(element)
@@ -98,6 +106,26 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
   }, [currentStep])
 
   useEffect(() => {
+    if (!active) return
+
+    const markHeaderStepsVisible = () => {
+      setVisible((previous) => {
+        const next = new Set(previous)
+        HEADER_TOUR_STEP_IDS.forEach((stepId) => {
+          if (document.querySelector(`[data-tour="${stepId}"]`)) {
+            next.add(stepId)
+          }
+        })
+        return next
+      })
+    }
+
+    markHeaderStepsVisible()
+    window.addEventListener("resize", markHeaderStepsVisible)
+    return () => window.removeEventListener("resize", markHeaderStepsVisible)
+  }, [active])
+
+  useEffect(() => {
     if (!active || !currentStep) return
     updateTargetRect()
     window.addEventListener("scroll", updateTargetRect, true)
@@ -114,7 +142,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
   }, [user])
 
   const handleNext = () => {
-    if (!currentStep || !user) return
+    if (!currentStep || !user || !canAdvance) return
 
     const nextExplained = new Set(explained).add(currentStep.id)
     setExplained(nextExplained)
@@ -151,7 +179,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
         />
       )}
 
-      {!showSpotlight && pendingSteps.length > 0 && (
+      {!canAdvance && pendingSteps.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[290] glass-card neon-border rounded-full px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 shadow-lg">
           <ChevronDown className="w-4 h-4 text-primary animate-bounce" />
           Desça a página para ver o próximo item do tour
@@ -193,7 +221,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
             type="button"
             size="sm"
             onClick={handleNext}
-            disabled={!showSpotlight}
+            disabled={!canAdvance}
             className="rounded-lg neon-border"
           >
             {progress + 1 >= total ? "Concluir" : "Entendi"}

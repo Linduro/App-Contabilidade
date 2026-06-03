@@ -196,9 +196,6 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
               >
                 {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
-                <LogOut className="w-4 h-4" />
-              </Button>
             </div>
 
             <div className="flex flex-col items-end gap-1.5 ml-auto" data-tour="contact">
@@ -228,37 +225,50 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
             </div>
           </div>
 
-          <div className="py-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
-                <a
-                  href="https://fipecafi.org/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleAdminLogoClick}
-                  className="shrink-0 hover:opacity-80 transition-opacity"
-                  title="FIPECAFI"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={assetPath("/fipecafi-logo-dark.svg")}
-                    alt="FIPECAFI"
-                    className="h-9 w-auto dark:hidden"
-                  />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={assetPath("/fipecafi-logo.svg")}
-                    alt="FIPECAFI"
-                    className="h-9 w-auto hidden dark:block"
-                  />
-                </a>
-                <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
-                  Gestão de Progressão
-                </span>
+          <div className="py-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
+                  <a
+                    href="https://fipecafi.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleAdminLogoClick}
+                    className="shrink-0 hover:opacity-80 transition-opacity"
+                    title="FIPECAFI"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assetPath("/fipecafi-logo-dark.svg")}
+                      alt="FIPECAFI"
+                      className="h-9 w-auto dark:hidden"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assetPath("/fipecafi-logo.svg")}
+                      alt="FIPECAFI"
+                      className="h-9 w-auto hidden dark:block"
+                    />
+                  </a>
+                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
+                    Gestão de Progressão
+                  </span>
+                </div>
               </div>
+
+              <HeaderTutorialButtons />
             </div>
 
-            <HeaderTutorialButtons />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="self-end shrink-0 text-muted-foreground border-border/60 hover:text-foreground"
+              title="Sair da conta"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>
