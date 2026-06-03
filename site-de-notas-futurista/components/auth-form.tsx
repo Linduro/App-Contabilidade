@@ -12,6 +12,7 @@ import { auth, db } from "@/lib/firebase"
 import { getGoogleAuthErrorMessage, signInWithGoogle } from "@/lib/google-auth"
 import { WELCOME_VIDEO_SESSION_KEY } from "@/lib/welcome-video"
 import { GoogleIcon } from "@/components/google-icon"
+import { PhoneAuthSection } from "@/components/phone-auth-section"
 import { Button } from "@/components/ui/button"
 import { Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react"
 
@@ -38,6 +39,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
   const router = useRouter()
 
   const finishAuth = () => {
@@ -142,13 +144,21 @@ export function AuthForm({ mode }: AuthFormProps) {
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
+          {mode === "sign-in" && (
+            <p className="text-xs text-muted-foreground text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setError("")
+                  setRecoveryOpen(true)
+                }}
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                Esqueceu a senha? Recupere por SMS
+              </button>
+            </p>
+          )}
         </div>
-
-        {error && (
-          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-            {error}
-          </div>
-        )}
 
         <Button
           type="submit"
@@ -190,6 +200,32 @@ export function AuthForm({ mode }: AuthFormProps) {
           </>
         )}
       </Button>
+
+      <PhoneAuthSection
+        mode={mode}
+        name={name}
+        disabled={busy}
+        onSuccess={finishAuth}
+        onError={setError}
+      />
+
+      {mode === "sign-in" && recoveryOpen && (
+        <PhoneAuthSection
+          mode="sign-in"
+          intent="recovery"
+          defaultOpen
+          disabled={busy}
+          onClose={() => setRecoveryOpen(false)}
+          onSuccess={finishAuth}
+          onError={setError}
+        />
+      )}
+
+      {error && (
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+          {error}
+        </div>
+      )}
     </div>
   )
 }
