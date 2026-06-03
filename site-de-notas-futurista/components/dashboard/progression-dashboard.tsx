@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Cloud,
   Download,
-  ExternalLink,
   GripVertical,
   LogOut,
   Moon,
@@ -31,7 +30,6 @@ import {
   subscribeProgression,
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
-import { getPortalHref, PORTAL_LINKS } from "@/lib/portal-links"
 import { assetPath } from "@/lib/base-path"
 
 export function ProgressionDashboard() {
@@ -186,21 +184,6 @@ export function ProgressionDashboard() {
                     Gestão de Progressão
                   </span>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 mt-3 w-full max-w-2xl">
-                {PORTAL_LINKS.map((link) => (
-                  <a
-                    key={link.label}
-                    href={getPortalHref(link)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group min-h-8 px-2 py-1.5 rounded-md bg-primary/10 border border-primary/35 text-[10px] sm:text-xs font-semibold text-primary hover:bg-primary/20 hover:border-primary/60 transition-colors flex items-center justify-center gap-1 text-center leading-tight"
-                  >
-                    <span>{link.label}</span>
-                    <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70 group-hover:opacity-100" />
-                  </a>
-                ))}
               </div>
 
               <HeaderTutorialButtons />
