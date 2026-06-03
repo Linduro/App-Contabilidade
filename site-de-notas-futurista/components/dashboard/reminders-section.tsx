@@ -26,7 +26,7 @@ export function RemindersSection({
   const sorted = [...reminders].sort((a, b) => a.date.localeCompare(b.date))
 
   return (
-    <section className="glass-card rounded-2xl p-6 neon-border mb-8">
+    <section className="glass-card rounded-2xl p-6 neon-border mb-8" data-tour="reminders">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <Bell className="w-5 h-5" />

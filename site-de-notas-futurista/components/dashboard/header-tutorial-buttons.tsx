@@ -17,7 +17,7 @@ export function HeaderTutorialButtons() {
   return (
     <div className="mt-3 w-full space-y-2">
       <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-3">
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 flex-1 max-w-2xl">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 flex-1 max-w-2xl" data-tour="portal-links">
           {PORTAL_LINKS.map((link) => (
             <a
               key={link.label}
@@ -32,7 +32,10 @@ export function HeaderTutorialButtons() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-1.5 shrink-0 md:min-w-[12rem] lg:min-w-[15rem] xl:min-w-[16rem]">
+        <div
+          className="flex flex-col gap-1.5 shrink-0 md:min-w-[12rem] lg:min-w-[15rem] xl:min-w-[16rem]"
+          data-tour="video-tutorials"
+        >
           {TUTORIAL_VIDEOS.map((tutorial) => {
             const isOpen = openId === tutorial.id
 

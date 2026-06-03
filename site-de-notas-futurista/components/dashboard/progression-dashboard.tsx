@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
+import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
 import {
   createSemester,
   defaultProgression,
@@ -33,7 +34,7 @@ import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
 import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
 
-export function ProgressionDashboard() {
+export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
@@ -44,6 +45,7 @@ export function ProgressionDashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [draggedSemesterIndex, setDraggedSemesterIndex] = useState<number | null>(null)
   const [dragOverSemesterIndex, setDragOverSemesterIndex] = useState<number | null>(null)
+  const [tourRestartKey, setTourRestartKey] = useState(0)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipSave = useRef(true)
 
@@ -191,10 +193,19 @@ export function ProgressionDashboard() {
             </div>
 
             <div className="flex flex-col items-start lg:items-end gap-2">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                Dúvidas ou contato?
-              </span>
-              <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTourRestartKey((key) => key + 1)}
+                className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors"
+              >
+                Ver guia da página
+              </button>
+
+              <div className="flex flex-col items-start lg:items-end gap-2" data-tour="contact">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                  Dúvidas ou contato?
+                </span>
+                <div className="flex flex-wrap gap-2">
                 <a
                   href="https://wa.me/5518997012718"
                   target="_blank"
@@ -226,6 +237,7 @@ export function ProgressionDashboard() {
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -243,13 +255,14 @@ export function ProgressionDashboard() {
             variant="outline"
             onClick={importTemplate}
             className="border-dashed border-accent/50 text-accent hover:bg-accent/10 shrink-0"
+            data-tour="import-grade"
           >
             <Download className="w-4 h-4 mr-2" />
             Importar grade FIPECAFI
           </Button>
         </div>
 
-        <div className="relative mb-6">
+        <div className="relative mb-6" data-tour="search">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="search"
@@ -260,7 +273,7 @@ export function ProgressionDashboard() {
           />
         </div>
 
-        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border">
+        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border" data-tour="legend">
           <span className="flex items-center gap-2 font-medium">
             <span>🔥🔥</span> Essenciais
           </span>
@@ -288,30 +301,31 @@ export function ProgressionDashboard() {
 
         {ready &&
           data.semesters.map((semester, index) => (
-            <SemesterCard
-              key={semester.id}
-              semester={semester}
-              semesterIndex={index}
-              totalSemesters={data.semesters.length}
-              searchQuery={searchQuery}
-              isDragging={draggedSemesterIndex === index}
-              isDragOver={dragOverSemesterIndex === index && draggedSemesterIndex !== index}
-              onChange={(updated) =>
-                updateData((prev) => ({
-                  ...prev,
-                  semesters: prev.semesters.map((s) => (s.id === semester.id ? updated : s)),
-                }))
-              }
-              onDelete={() => deleteSemester(semester.id)}
-              onMoveSemester={moveSemester}
-              onSemesterDragStart={setDraggedSemesterIndex}
-              onSemesterDragOver={setDragOverSemesterIndex}
-              onSemesterDrop={handleSemesterDrop}
-              onSemesterDragEnd={() => {
-                setDraggedSemesterIndex(null)
-                setDragOverSemesterIndex(null)
-              }}
-            />
+            <div key={semester.id} data-tour={index === 0 ? "semesters" : undefined}>
+              <SemesterCard
+                semester={semester}
+                semesterIndex={index}
+                totalSemesters={data.semesters.length}
+                searchQuery={searchQuery}
+                isDragging={draggedSemesterIndex === index}
+                isDragOver={dragOverSemesterIndex === index && draggedSemesterIndex !== index}
+                onChange={(updated) =>
+                  updateData((prev) => ({
+                    ...prev,
+                    semesters: prev.semesters.map((s) => (s.id === semester.id ? updated : s)),
+                  }))
+                }
+                onDelete={() => deleteSemester(semester.id)}
+                onMoveSemester={moveSemester}
+                onSemesterDragStart={setDraggedSemesterIndex}
+                onSemesterDragOver={setDragOverSemesterIndex}
+                onSemesterDrop={handleSemesterDrop}
+                onSemesterDragEnd={() => {
+                  setDraggedSemesterIndex(null)
+                  setDragOverSemesterIndex(null)
+                }}
+              />
+            </div>
           ))}
 
         <Button
@@ -323,6 +337,7 @@ export function ProgressionDashboard() {
             }))
           }
           className="w-full sm:w-auto flex border-dashed border-primary/50 text-primary hover:bg-primary/10 mb-10"
+          data-tour="add-semester"
         >
           <Plus className="w-4 h-4 mr-2" />
           Adicionar Novo Semestre
@@ -333,7 +348,10 @@ export function ProgressionDashboard() {
           onChange={(reminders) => updateData((prev) => ({ ...prev, reminders }))}
         />
 
-        <section className="glass-card-gold rounded-2xl p-6 neon-border-gold border-l-4 border-l-accent">
+        <section
+          className="glass-card-gold rounded-2xl p-6 neon-border-gold border-l-4 border-l-accent"
+          data-tour="notes"
+        >
           <h3 className="text-lg font-bold text-accent mb-4">Anotações</h3>
           <textarea
             value={data.notes}
@@ -353,6 +371,10 @@ export function ProgressionDashboard() {
           {SITE_FOOTER_NOTE}
         </p>
       </footer>
+
+      {ready && (
+        <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />
+      )}
     </main>
   )
 }

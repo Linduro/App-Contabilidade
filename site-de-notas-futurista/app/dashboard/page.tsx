@@ -23,7 +23,7 @@ export default function DashboardPage() {
           revealed ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       >
-        <ProgressionDashboard />
+        <ProgressionDashboard tourEnabled={revealed} />
       </div>
     </RequireAuth>
   )
