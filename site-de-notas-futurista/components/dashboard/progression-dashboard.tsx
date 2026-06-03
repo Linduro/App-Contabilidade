@@ -21,6 +21,7 @@ import { InstagramIcon, WhatsAppIcon } from "@/components/social-icons"
 import { Button } from "@/components/ui/button"
 import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
+import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import {
   createSemester,
   defaultProgression,
@@ -201,6 +202,8 @@ export function ProgressionDashboard() {
                   </a>
                 ))}
               </div>
+
+              <HeaderTutorialButtons />
             </div>
 
             <div className="flex flex-col items-start lg:items-end gap-2">
