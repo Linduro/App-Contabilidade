@@ -1,1 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas da Faculdade</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; color: #333; }
+        input, button, textarea { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        .nota-item { background: #e9ecef; padding: 10px; margin: 5px 0; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="auth-section">
+        <h2 id="auth-title">Fazer Login</h2>
+        <input type="email" id="email" placeholder="Seu e-mail da faculdade">
+        <input type="password" id="password" placeholder="Sua senha">
+        <button id="btn-login" onclick="login()">Entrar</button>
+        <button id="btn-cadastro" onclick="cadastrar()" style="background:#28a745;">Criar Nova Conta</button>
+    </div>
+
+    <!-- TELA DO PAINEL DO ALUNO -->
+    <div id="app-section" class="hidden">
+        <h2>Minhas Notas</h2>
+        <p>Olá, <span id="user-display"></span>! (<a href="#" onclick="logout()">Sair</a>)</p>
+        
+        <hr>
+        
+        <h3>Adicionar Disciplina</h3>
+        <input type="text" id="materia" placeholder="Ex: Cálculo I">
+        <input type="number" id="nota" placeholder="Ex: 8.5" step="0.1">
+        <textarea id="anotacao" placeholder="Anotações sobre a matéria..."></textarea>
+        <button onclick="salvarNota()">Salvar Dados</button>
+
+        <hr>
+        
+        <h3>Histórico</h3>
+        <div id="lista-notas">Carregando suas notas...</div>
+    </div>
+</div>
+
+<!-- Scripts do Firebase (Módulos modernos) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ------------------------------------------------------------------------
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAQS75d3hx5mDQwixNRjyRPLOSVWpyDpvk",
+  authDomain: "contabilidade-ebed6.firebaseapp.com",
+  projectId: "contabilidade-ebed6",
+  storageBucket: "contabilidade-ebed6.firebasestorage.app",
+  messagingSenderId: "92104290412",
+  appId: "1:92104290412:web:e99492aeb27bd9f1902849",
+  measurementId: "G-Q1CL360G25"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+    // ------------------------------------------------------------------------
+
+    // Inicializando o Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let usuarioAtual = null;
+
+    // Monitorar se o usuário está logado ou não
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            usuarioAtual = user;
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            document.getElementById('user-display').innerText = user.email;
+            carregarNotas(user.uid);
+        } else {
+            usuarioAtual = null;
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('app-section').classList.add('hidden');
+        }
+    });
+
+    // Função de Cadastrar
+    window.cadastrar = function() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(() => alert("Conta criada com sucesso!"))
+            .catch(error => alert("Erro ao criar conta: " + error.message));
+    }
+
+    // Função de Login
+    window.login = function() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        signInWithEmailAndPassword(auth, email, password)
+            .catch(error => alert("Erro ao entrar: " + error.message));
+    }
+
+    // Função de Sair
+    window.logout = function() {
+        signOut(auth);
+    }
+
+    // Salvar nota no banco de dados vinculada ao ID do usuário
+    window.salvarNota = async function() {
+        const materia = document.getElementById('materia').value;
+        const nota = document.getElementById('nota').value;
+        const anotacao = document.getElementById('anotacao').value;
+
+        if(!materia || !nota) return alert("Preencha a matéria e a nota!");
+
+        try {
+            await addDoc(collection(db, "notas"), {
+                userId: usuarioAtual.uid,
+                materia: materia,
+                nota: parseFloat(nota),
+                anotacao: anotacao,
+                data: new Date()
+            });
+            document.getElementById('materia').value = '';
+            document.getElementById('nota').value = '';
+            document.getElementById('anotacao').value = '';
+            alert("Salvo com sucesso!");
+        } catch (e) {
+            alert("Erro ao salvar: " + e.message);
+        }
+    }
+
+    // Buscar no banco de dados APENAS as notas do usuário logado
+    function carregarNotas(uid) {
+        const q = query(collection(db, "notas"), where("userId", "==", uid));
+        onSnapshot(q, (querySnapshot) => {
+            const listaDiv = document.getElementById('lista-notas');
+            listaDiv.innerHTML = "";
+            
+            if(querySnapshot.empty) {
+                listaDiv.innerHTML = "Nenhuma nota cadastrada ainda.";
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                const dados = doc.data();
+                const item = document.createElement('div');
+                item.className = 'nota-item';
+                item.innerHTML = `<strong>${dados.materia}</strong> - Nota: ${dados.nota}<br><small>${dados.anotacao || ''}</small>`;
+                listaDiv.appendChild(item);
+            });
+        });
+    }
+</script>
+</body>
+</html>
