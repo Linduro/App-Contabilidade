@@ -31,6 +31,7 @@ import {
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
+import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
 
 export function ProgressionDashboard() {
   const { user } = useAuth()
@@ -266,6 +267,9 @@ export function ProgressionDashboard() {
           <span className="flex items-center gap-2 font-medium">
             <span>🔥</span> Importantes
           </span>
+          <span className="flex items-center gap-2 font-medium">
+            <span>⚪</span> Neutras
+          </span>
           <span className="flex items-center gap-2 font-medium text-muted-foreground">
             <span>🚫</span> Dispensadas
           </span>
@@ -346,9 +350,7 @@ export function ProgressionDashboard() {
 
       <footer className="relative z-10 border-t border-border/50 py-8 px-6 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-          Feito de aluno para aluno — esta não é uma página oficial da faculdade. Para garantir a
-          autenticidade, entre em contato pelos canais no topo. Feito com carinho por Vinícius
-          Nascimento.
+          {SITE_FOOTER_NOTE}
         </p>
       </footer>
     </main>

@@ -2,7 +2,7 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/fires
 import { db } from "@/lib/firebase"
 
 export type DisciplineStatus = "none" | "cursando" | "concluido"
-export type DisciplineType = "essential" | "important" | "discarded"
+export type DisciplineType = "essential" | "important" | "neutral" | "discarded"
 export type GradeMode = "simple" | "detailed"
 export type ActivityCategory = "teste" | "exercicio" | "exame"
 
@@ -48,7 +48,22 @@ export interface ProgressionData {
 export const DISCIPLINE_PRESETS: Record<DisciplineType, { emoji: string; label: string }> = {
   essential: { emoji: "🔥🔥", label: "Essencial" },
   important: { emoji: "🔥", label: "Importante" },
+  neutral: { emoji: "⚪", label: "Neutra" },
   discarded: { emoji: "🚫", label: "Dispensada" },
+}
+
+export const DISCIPLINE_TYPE_ORDER: DisciplineType[] = [
+  "essential",
+  "important",
+  "neutral",
+  "discarded",
+]
+
+function resolveDisciplineType(type: unknown): DisciplineType {
+  if (type === "essential" || type === "important" || type === "neutral" || type === "discarded") {
+    return type
+  }
+  return "important"
 }
 
 export function createId() {
@@ -92,11 +107,12 @@ export function getTestCount(activities: Activity[]): number {
 
 export function normalizeDiscipline(discipline: Partial<Discipline>): Discipline {
   const gradeMode = discipline.gradeMode ?? "simple"
+  const type = resolveDisciplineType(discipline.type)
   return {
     id: discipline.id ?? createId(),
-    emoji: discipline.emoji ?? "🔥",
+    emoji: DISCIPLINE_PRESETS[type].emoji,
     name: discipline.name ?? "Disciplina",
-    type: discipline.type ?? "important",
+    type,
     status: discipline.status ?? "none",
     grade: discipline.grade ?? "",
     gradeMode,

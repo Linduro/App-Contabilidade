@@ -3,8 +3,9 @@
 import { useState } from "react"
 import { ChevronDown, ChevronUp, GripVertical, Pencil, Trash2 } from "lucide-react"
 import { DisciplineActivities } from "@/components/dashboard/discipline-activities"
-import type { Discipline, DisciplineStatus } from "@/lib/progression-data"
-import { defaultActivities } from "@/lib/progression-data"
+import { DisciplineTypePicker } from "@/components/dashboard/discipline-type-picker"
+import type { Discipline, DisciplineStatus, DisciplineType } from "@/lib/progression-data"
+import { DISCIPLINE_PRESETS, defaultActivities } from "@/lib/progression-data"
 import { getDisciplineGradeDisplay } from "@/lib/grade-calculator"
 import { disciplineMatchesSearch } from "@/lib/progression-utils"
 
@@ -71,6 +72,14 @@ export function DisciplineRow({
     setExpanded(false)
   }
 
+  const setDisciplineType = (type: DisciplineType) => {
+    onChange({
+      ...discipline,
+      type,
+      emoji: DISCIPLINE_PRESETS[type].emoji,
+    })
+  }
+
   return (
     <li
       onDragOver={(e) => {
@@ -133,12 +142,7 @@ export function DisciplineRow({
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
           )}
-          <input
-            value={discipline.emoji}
-            onChange={(e) => onChange({ ...discipline, emoji: e.target.value })}
-            className="w-12 text-center bg-secondary/40 border border-dashed border-border rounded-lg outline-none text-lg shrink-0 focus:border-primary/50"
-            aria-label="Prioridade"
-          />
+          <DisciplineTypePicker type={discipline.type} onChange={setDisciplineType} />
           <div className="relative flex-1 min-w-0 group">
             <input
               value={discipline.name}

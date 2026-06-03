@@ -6,6 +6,7 @@ import {
   createDiscipline,
   DISCIPLINE_PRESETS,
   type Discipline,
+  DISCIPLINE_TYPE_ORDER,
   type DisciplineType,
   type Semester,
 } from "@/lib/progression-data"
@@ -224,7 +225,7 @@ export function SemesterCard({
         </button>
         {menuOpen && (
           <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 glass-card rounded-xl neon-border py-1 min-w-[200px] z-50 shadow-lg">
-            {(Object.keys(DISCIPLINE_PRESETS) as DisciplineType[]).map((type) => (
+            {DISCIPLINE_TYPE_ORDER.map((type) => (
               <button
                 key={type}
                 type="button"

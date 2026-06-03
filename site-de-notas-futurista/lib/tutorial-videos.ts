@@ -3,7 +3,7 @@ import { assetPath } from "./base-path"
 export const TUTORIAL_VIDEOS = [
   {
     id: "acesso-pagamentos",
-    label: "Tutorial de acesso ao pagamentos",
+    label: "Tutorial de acesso aos pagamentos",
     src: assetPath("/videos/tutorial-acesso-pagamentos.html"),
   },
   {

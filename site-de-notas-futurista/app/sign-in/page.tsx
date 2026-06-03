@@ -1,6 +1,7 @@
 import { AuthForm } from "@/components/auth-form"
 import { AuthPageLayout } from "@/components/auth-page-layout"
 import { GuestOnly } from "@/components/guest-only"
+import { SITE_FOOTER_NOTE } from "@/lib/site-copy"
 import Link from "next/link"
 
 export default function SignInPage() {
@@ -8,8 +9,8 @@ export default function SignInPage() {
     <GuestOnly>
       <AuthPageLayout
         title="Bem-vindo de volta"
-        subtitle="Entre para acessar seu percurso acadêmico. A recuperação de senha é feita por SMS."
-        footer="Feito de aluno para aluno — esta não é uma página oficial da faculdade."
+        subtitle="Entre para acessar seu percurso acadêmico. Recupere a senha por e-mail ou SMS."
+        footer={SITE_FOOTER_NOTE}
       >
         <AuthForm mode="sign-in" />
 
