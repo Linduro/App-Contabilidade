@@ -21,7 +21,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "contact",
     title: "Dúvidas e contato",
     description:
-      "Fale conosco pelo WhatsApp ou Instagram, alterne o tema claro/escuro e saia da conta por aqui.",
+      "No topo do cabeçalho: WhatsApp e Instagram. Ao lado, alterne o tema claro/escuro ou saia da conta.",
   },
   {
     id: "search",

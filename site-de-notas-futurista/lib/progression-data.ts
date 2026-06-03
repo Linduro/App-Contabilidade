@@ -155,12 +155,7 @@ export function createReminder(): Reminder {
 }
 
 export function defaultProgression(): ProgressionData {
-  return {
-    semesters: [createSemester()],
-    notes: "Anote aqui suas observações.",
-    logoData: null,
-    reminders: [],
-  }
+  return fipecafiDefaultTemplate()
 }
 
 function buildSemester(
@@ -178,28 +173,60 @@ export function fipecafiDefaultTemplate(): ProgressionData {
   return {
     semesters: [
       buildSemester("1º Semestre", [
-        { name: "Introdução à Contabilidade", type: "essential" },
-        { name: "Matemática Financeira", type: "essential" },
-        { name: "Comunicação e Expressão", type: "important" },
-        { name: "Introdução ao Direito", type: "important" },
+        { name: "Matemática Aplicada", type: "important" },
+        { name: "Comunicação e Informação Organizacional", type: "important" },
+        { name: "Contabilidade Geral", type: "essential" },
+        { name: "Economia: princípios e conceitos", type: "important" },
+        { name: "Teoria Geral da Administração", type: "important" },
       ]),
       buildSemester("2º Semestre", [
         { name: "Contabilidade Intermediária", type: "essential" },
-        { name: "Microeconomia", type: "important" },
-        { name: "Estatística Aplicada", type: "important" },
-        { name: "Direito Civil", type: "important" },
+        { name: "Matemática Financeira", type: "important" },
+        { name: "Sistemas de Informação Gerencial", type: "important" },
+        { name: "Legislação Social", type: "important" },
+        { name: "Estatística Aplicada a Negócios", type: "important" },
       ]),
       buildSemester("3º Semestre", [
+        { name: "Antropologia e Sociologia das Organizações", type: "important" },
         { name: "Contabilidade Avançada", type: "essential" },
-        { name: "Finanças Corporativas", type: "essential" },
-        { name: "Direito Tributário", type: "important" },
-        { name: "Auditoria", type: "important" },
+        { name: "Mercado Financeiro e Investimentos", type: "important" },
+        { name: "Métodos Quantitativos", type: "important" },
+        { name: "Optativa I", type: "neutral" },
       ]),
       buildSemester("4º Semestre", [
-        { name: "Contabilidade de Custos", type: "essential" },
-        { name: "Análise das Demonstrações Financeiras", type: "essential" },
-        { name: "Controladoria", type: "important" },
-        { name: "Trabalho de Conclusão — TCC", type: "essential" },
+        { name: "Linguagens de Programação", type: "important" },
+        { name: "Direito Empresarial", type: "important" },
+        { name: "Contabilidade Societária", type: "essential" },
+        { name: "Análise das Demonstrações Contábeis", type: "essential" },
+        { name: "Optativa II", type: "neutral" },
+      ]),
+      buildSemester("5º Semestre", [
+        { name: "Legislação e Contabilidade Tributária", type: "essential" },
+        { name: "Contabilidade e Análise de Custos", type: "essential" },
+        { name: "Laboratório de Contabilidade e Gestão", type: "important" },
+        { name: "Ética, Cidadania e Responsabilidade Social", type: "important" },
+        { name: "Optativa III", type: "neutral" },
+      ]),
+      buildSemester("6º Semestre", [
+        { name: "Contabilidade Gerencial", type: "essential" },
+        { name: "Business Intelligence, Big Data e Analytics", type: "important" },
+        { name: "Finanças Corporativas", type: "essential" },
+        { name: "Atuária", type: "important" },
+        { name: "Optativa IV", type: "neutral" },
+      ]),
+      buildSemester("7º Semestre", [
+        { name: "Auditoria e Perícia Contábil", type: "essential" },
+        { name: "Contabilidade Governamental", type: "important" },
+        { name: "Planejamento Tributário", type: "important" },
+        { name: "Teoria da Contabilidade", type: "essential" },
+        { name: "Optativa V", type: "neutral" },
+      ]),
+      buildSemester("8º Semestre", [
+        { name: "Controladoria", type: "essential" },
+        { name: "Valuation", type: "important" },
+        { name: "Tópicos Emergentes em Contabilidade", type: "important" },
+        { name: "Planejamento Estratégico e Orçamento Empresarial", type: "important" },
+        { name: "Optativa VI", type: "neutral" },
       ]),
     ],
     notes: "Anote aqui suas observações.",

@@ -177,88 +177,83 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       )}
 
       <header className="relative z-10 border-b border-border/50 glass-card">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
-                  <a
-                    href="https://fipecafi.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleAdminLogoClick}
-                    className="shrink-0 hover:opacity-80 transition-opacity"
-                    title="FIPECAFI"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={assetPath("/fipecafi-logo-dark.svg")}
-                      alt="FIPECAFI"
-                      className="h-9 w-auto dark:hidden"
-                    />
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={assetPath("/fipecafi-logo.svg")}
-                      alt="FIPECAFI"
-                      className="h-9 w-auto hidden dark:block"
-                    />
-                  </a>
-                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
-                    Gestão de Progressão
-                  </span>
-                </div>
-              </div>
-
-              <HeaderTutorialButtons />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-border/30">
+            <div className="flex flex-wrap items-center gap-2" data-tour="contact">
+              <a
+                href="https://wa.me/5518997012718"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
+              >
+                <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                WhatsApp
+              </a>
+              <a
+                href="https://www.instagram.com/advforte/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
+              >
+                <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
+                @advforte
+              </a>
             </div>
 
-            <div className="flex flex-col items-start lg:items-end gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setTourRestartKey((key) => key + 1)}
-                className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors"
+                className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors px-2 py-1"
               >
                 Ver guia da página
               </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="text-muted-foreground"
+                title={theme === "light" ? "Modo escuro" : "Modo claro"}
+              >
+                {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
 
-              <div className="flex flex-col items-start lg:items-end gap-2" data-tour="contact">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                  Dúvidas ou contato?
+          <div className="py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
+                <a
+                  href="https://fipecafi.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={handleAdminLogoClick}
+                  className="shrink-0 hover:opacity-80 transition-opacity"
+                  title="FIPECAFI"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={assetPath("/fipecafi-logo-dark.svg")}
+                    alt="FIPECAFI"
+                    className="h-9 w-auto dark:hidden"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={assetPath("/fipecafi-logo.svg")}
+                    alt="FIPECAFI"
+                    className="h-9 w-auto hidden dark:block"
+                  />
+                </a>
+                <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
+                  Gestão de Progressão
                 </span>
-                <div className="flex flex-wrap gap-2">
-                <a
-                  href="https://wa.me/5518997012718"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
-                >
-                  <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-                  WhatsApp
-                </a>
-                <a
-                  href="https://www.instagram.com/advforte/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
-                >
-                  <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
-                  @advforte
-                </a>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTheme}
-                  className="text-muted-foreground"
-                  title={theme === "light" ? "Modo escuro" : "Modo claro"}
-                >
-                  {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </div>
               </div>
             </div>
+
+            <HeaderTutorialButtons />
           </div>
         </div>
       </header>
