@@ -179,27 +179,6 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       <header className="relative z-10 border-b border-border/50 glass-card">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-border/30">
-            <div className="flex flex-wrap items-center gap-2" data-tour="contact">
-              <a
-                href="https://wa.me/5518997012718"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
-              >
-                <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
-                WhatsApp
-              </a>
-              <a
-                href="https://www.instagram.com/advforte/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
-              >
-                <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
-                @advforte
-              </a>
-            </div>
-
             <div className="flex items-center gap-1 sm:gap-2">
               <button
                 type="button"
@@ -220,6 +199,32 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
                 <LogOut className="w-4 h-4" />
               </Button>
+            </div>
+
+            <div className="flex flex-col items-end gap-1.5 ml-auto" data-tour="contact">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                Dúvidas ou contato?
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <a
+                  href="https://wa.me/5518997012718"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
+                >
+                  <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                  WhatsApp
+                </a>
+                <a
+                  href="https://www.instagram.com/advforte/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
+                >
+                  <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
+                  @advforte
+                </a>
+              </div>
             </div>
           </div>
 

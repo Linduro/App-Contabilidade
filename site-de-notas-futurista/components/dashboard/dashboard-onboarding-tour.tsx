@@ -9,6 +9,7 @@ import {
   isOnboardingDone,
   markOnboardingDone,
   ONBOARDING_STEPS,
+  scrollToTourStep,
 } from "@/lib/dashboard-onboarding"
 
 interface DashboardOnboardingTourProps {
@@ -41,11 +42,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
     setExplained(new Set())
     setVisible(new Set())
     setActive(true)
-    window.setTimeout(() => {
-      document
-        .querySelector(`[data-tour="${ONBOARDING_STEPS[0].id}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" })
-    }, 150)
+    scrollToTourStep(ONBOARDING_STEPS[0].id)
   }, [])
 
   useEffect(() => {
@@ -129,11 +126,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
 
     const nextStep = ONBOARDING_STEPS.find((step) => !nextExplained.has(step.id))
     if (nextStep) {
-      window.setTimeout(() => {
-        document
-          .querySelector(`[data-tour="${nextStep.id}"]`)
-          ?.scrollIntoView({ behavior: "smooth", block: "center" })
-      }, 200)
+      window.setTimeout(() => scrollToTourStep(nextStep.id), 200)
     }
   }
 

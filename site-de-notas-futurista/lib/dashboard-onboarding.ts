@@ -4,7 +4,14 @@ export interface OnboardingStep {
   description: string
 }
 
+/** Ordem segue o layout da página: topo do cabeçalho → atalhos → conteúdo principal. */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
+  {
+    id: "contact",
+    title: "Dúvidas ou contato?",
+    description:
+      "No topo à direita: WhatsApp e Instagram para falar conosco. À esquerda, você pode rever este tour, alternar tema claro/escuro ou sair da conta.",
+  },
   {
     id: "portal-links",
     title: "Atalhos do portal",
@@ -18,12 +25,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       "Vídeos passo a passo sobre pagamentos, serviços diversos e declaração de matrícula. Clique para assistir.",
   },
   {
-    id: "contact",
-    title: "Dúvidas e contato",
-    description:
-      "No topo do cabeçalho: WhatsApp e Instagram. Ao lado, alterne o tema claro/escuro ou saia da conta.",
-  },
-  {
     id: "search",
     title: "Busca rápida",
     description: "Encontre disciplinas, semestres ou notas digitando palavras-chave.",
@@ -32,18 +33,18 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     id: "legend",
     title: "Prioridades das disciplinas",
     description:
-      "Essenciais, importantes, neutras e dispensadas. Clique no emoji de cada disciplina para mudar a categoria.",
+      "Essenciais (🔥🔥), importantes (🔥), neutras (⚪) e dispensadas (🚫). Clique no emoji de cada disciplina para mudar a categoria.",
   },
   {
     id: "semesters",
     title: "Seus semestres",
     description:
-      "Cada card agrupa disciplinas. Edite nomes, notas, status Cursando/Concluído e arraste para reordenar.",
+      "A grade já vem com 8 semestres e 40 disciplinas. Clique no título tracejado para renomear, edite notas, marque Cursando/Concluído e arraste ☰ para reordenar.",
   },
   {
     id: "add-semester",
     title: "Adicionar semestre",
-    description: "Crie um novo bloco quando avançar para o próximo período letivo.",
+    description: "Use este botão se precisar criar um bloco extra além da grade padrão.",
   },
   {
     id: "reminders",
@@ -56,6 +57,8 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     description: "Espaço livre para observações, metas ou qualquer lembrete pessoal.",
   },
 ]
+
+export const HEADER_TOUR_STEP_IDS = new Set(["contact", "portal-links", "video-tutorials"])
 
 export function onboardingStorageKey(userId: string) {
   return `advforte-onboarding-done-${userId}`
@@ -72,4 +75,17 @@ export function markOnboardingDone(userId: string) {
 
 export function clearOnboardingDone(userId: string) {
   localStorage.removeItem(onboardingStorageKey(userId))
+}
+
+export function scrollToTourStep(stepId: string) {
+  if (stepId === "contact") {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  window.setTimeout(() => {
+    document.querySelector(`[data-tour="${stepId}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: HEADER_TOUR_STEP_IDS.has(stepId) ? "start" : "center",
+    })
+  }, stepId === "contact" ? 120 : 0)
 }
