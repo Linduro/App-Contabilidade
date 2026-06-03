@@ -8,6 +8,7 @@ import {
   ExternalLink,
   GripVertical,
   LogOut,
+  Pencil,
   Plus,
   Sparkles,
   Trash2,
@@ -32,12 +33,26 @@ import {
 
 function DisciplineRow({
   discipline,
+  index,
+  isDragging,
+  isDragOver,
   onChange,
   onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   discipline: Discipline
+  index: number
+  isDragging: boolean
+  isDragOver: boolean
   onChange: (updated: Discipline) => void
   onDelete: () => void
+  onDragStart: (index: number) => void
+  onDragOver: (index: number) => void
+  onDrop: (index: number) => void
+  onDragEnd: () => void
 }) {
   const isDiscarded = discipline.type === "discarded"
   const isCursando = discipline.status === "cursando"
@@ -53,25 +68,55 @@ function DisciplineRow({
 
   return (
     <li
-      className={`flex items-center justify-between gap-3 px-5 py-3 border-b border-border/50 last:border-b-0 ${
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "move"
+        onDragOver(index)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        onDrop(index)
+      }}
+      className={`flex items-center justify-between gap-3 px-5 py-3 border-b border-border/50 last:border-b-0 transition-all ${
         isCursando ? "bg-accent/5" : isConcluido ? "bg-primary/5" : ""
+      } ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${
+        isDragOver ? "border-t-2 border-t-primary bg-primary/5" : ""
       }`}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+        <div
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move"
+            onDragStart(index)
+          }}
+          onDragEnd={onDragEnd}
+          className="shrink-0 p-1 rounded-md hover:bg-secondary/60 cursor-grab active:cursor-grabbing"
+          title="Arrastar para reordenar"
+          aria-label="Arrastar para reordenar"
+        >
+          <GripVertical className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+        </div>
         <input
           value={discipline.emoji}
           onChange={(e) => onChange({ ...discipline, emoji: e.target.value })}
-          className="w-12 text-center bg-transparent border-none outline-none text-lg shrink-0"
+          className="w-12 text-center bg-secondary/40 border border-dashed border-border rounded-lg outline-none text-lg shrink-0 focus:border-primary/50"
           aria-label="Prioridade"
         />
-        <input
-          value={discipline.name}
-          onChange={(e) => onChange({ ...discipline, name: e.target.value })}
-          className={`flex-1 min-w-0 bg-transparent border-none outline-none font-medium text-sm focus:ring-1 focus:ring-primary/40 rounded px-1 ${
-            isDiscarded ? "line-through text-muted-foreground" : ""
-          }`}
-        />
+        <div className="relative flex-1 min-w-0 group">
+          <input
+            value={discipline.name}
+            onChange={(e) => onChange({ ...discipline, name: e.target.value })}
+            placeholder="Clique para editar o nome"
+            className={`w-full min-w-0 bg-secondary/40 border border-dashed border-border font-medium text-sm outline-none rounded-lg px-3 py-2 pr-9 transition-all hover:border-primary/40 focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/20 ${
+              isDiscarded ? "line-through text-muted-foreground" : ""
+            }`}
+          />
+          <Pencil
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary/60 pointer-events-none opacity-70 group-focus-within:opacity-100"
+            aria-hidden
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
@@ -127,6 +172,8 @@ function SemesterCard({
   onDelete: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -159,6 +206,24 @@ function SemesterCard({
     })
   }
 
+  const reorderDisciplines = (from: number, to: number) => {
+    if (from === to) return
+    const disciplines = [...semester.disciplines]
+    const [moved] = disciplines.splice(from, 1)
+    disciplines.splice(to, 0, moved)
+    onChange({ ...semester, disciplines })
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedIndex !== null) reorderDisciplines(draggedIndex, targetIndex)
+    handleDragEnd()
+  }
+
   return (
     <section className={`glass-card rounded-2xl neon-border mb-6 relative ${menuOpen ? "z-30" : "z-0"}`}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/50 border-t-4 border-t-primary">
@@ -180,9 +245,16 @@ function SemesterCard({
         {semester.disciplines.map((d, i) => (
           <DisciplineRow
             key={d.id}
+            index={i}
             discipline={d}
+            isDragging={draggedIndex === i}
+            isDragOver={dragOverIndex === i && draggedIndex !== i}
             onChange={(updated) => updateDiscipline(i, updated)}
             onDelete={() => deleteDiscipline(i)}
+            onDragStart={setDraggedIndex}
+            onDragOver={setDragOverIndex}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
           />
         ))}
       </ul>
@@ -285,34 +357,6 @@ export function ProgressionDashboard() {
     reader.readAsDataURL(file)
   }
 
-  const handleExport = () => {
-    const blob = new Blob(
-      [
-        `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Painel FIPECAFI Export</title></head><body>` +
-          `<h1>Meu Percurso Acadêmico</h1>` +
-          data.semesters
-            .map(
-              (s) =>
-                `<h2>${s.title}</h2><ul>` +
-                s.disciplines
-                  .map(
-                    (d) =>
-                      `<li>${d.emoji} ${d.name} — ${d.status}${d.grade ? ` (${d.grade})` : ""}</li>`
-                  )
-                  .join("") +
-                `</ul>`
-            )
-            .join("") +
-          `<h3>Anotações</h3><p>${data.notes}</p></body></html>`,
-      ],
-      { type: "text/html" }
-    )
-    const a = document.createElement("a")
-    a.href = URL.createObjectURL(blob)
-    a.download = "Painel_FIPECAFI_Export.html"
-    a.click()
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center grid-pattern">
@@ -405,9 +449,6 @@ export function ProgressionDashboard() {
                 >
                   @advforte
                 </a>
-                <span className="text-xs text-muted-foreground hidden sm:inline self-center">
-                  {user?.displayName || user?.email}
-                </span>
                 <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
                   <LogOut className="w-4 h-4" />
                 </Button>
@@ -425,7 +466,7 @@ export function ProgressionDashboard() {
           </p>
         </div>
 
-        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-6 text-sm neon-border">
+        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border">
           <span className="flex items-center gap-2 font-medium">
             <span>🔥🔥</span> Essenciais
           </span>
@@ -434,6 +475,10 @@ export function ProgressionDashboard() {
           </span>
           <span className="flex items-center gap-2 font-medium text-muted-foreground">
             <span>🚫</span> Dispensadas / Descartadas
+          </span>
+          <span className="flex items-center gap-2 font-medium text-primary/80 w-full sm:w-auto sm:ml-auto">
+            <GripVertical className="w-4 h-4" />
+            Arraste para reordenar
           </span>
         </div>
 
@@ -489,18 +534,9 @@ export function ProgressionDashboard() {
       <footer className="relative z-10 border-t border-border/50 py-8 px-6 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           Feito de aluno para aluno — esta não é uma página oficial da faculdade. Para garantir a
-          autenticidade, entre em contato pelos canais no topo. Feito com carinho por Vinícius
-          Nascimento.
+          autenticidade, entre em contato pelos canais no topo.
         </p>
       </footer>
-
-      <button
-        type="button"
-        onClick={handleExport}
-        className="fixed bottom-6 right-6 z-50 bg-accent hover:bg-accent/90 text-accent-foreground font-bold px-5 py-3 rounded-xl neon-border-gold shadow-lg transition-transform hover:scale-105"
-      >
-        Exportar HTML
-      </button>
     </main>
   )
 }
