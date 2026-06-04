@@ -31,7 +31,17 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
 
     fetchAllUsersForAdmin()
       .then(setUsers)
-      .catch(() => setError("Não foi possível carregar os registros."))
+      .catch((err: unknown) => {
+        const code =
+          err && typeof err === "object" && "code" in err ? String(err.code) : ""
+        if (code === "permission-denied") {
+          setError(
+            "Sem permissão para listar contas. Entre com cartoonhq@gmail.com e confirme que as regras do Firestore foram publicadas."
+          )
+        } else {
+          setError("Não foi possível carregar os registros.")
+        }
+      })
       .finally(() => setLoadingUsers(false))
   }, [open])
 
@@ -80,13 +90,15 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
         <div className="grid lg:grid-cols-[280px_1fr] min-h-0 flex-1">
           <div className="border-b lg:border-b-0 lg:border-r border-border/50 p-4 overflow-y-auto">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              Contas
+              Contas ({users.length})
             </p>
 
             {loadingUsers ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
               </div>
+            ) : users.length === 0 && !error ? (
+              <p className="text-sm text-muted-foreground">Nenhuma conta encontrada.</p>
             ) : (
               <div className="space-y-2">
                 {users.map((item) => (

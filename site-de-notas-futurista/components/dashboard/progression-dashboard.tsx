@@ -22,6 +22,7 @@ import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
 import { ScopeDataDrawer } from "@/components/dashboard/scope-data-drawer"
+import { useExtendedScope } from "@/components/use-extended-scope"
 import { DisciplineEmoji } from "@/components/discipline-emoji"
 import {
   createSemester,
@@ -32,11 +33,11 @@ import {
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
-import { hasExtendedScope } from "@/lib/admin-access"
 import { SiteFooter } from "@/components/site-footer"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
+  const canUseScope = useExtendedScope()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const [data, setData] = useState<ProgressionData>(defaultProgression())
@@ -128,7 +129,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
   const handleAdminLogoClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!hasExtendedScope(user?.email)) return
+      if (!canUseScope) return
 
       e.preventDefault()
       scopeClickCount.current += 1
@@ -149,7 +150,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         }
       }, 500)
     },
-    [user?.email]
+    [canUseScope]
   )
 
   const filteredCount = data.semesters.filter((s) => semesterMatchesSearch(s, searchQuery)).length
@@ -238,6 +239,15 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   </a>
                 </div>
                 <div className="flex items-center justify-end gap-1 sm:gap-2">
+                  {canUseScope && (
+                    <button
+                      type="button"
+                      onClick={() => setScopeOpen(true)}
+                      className="text-[10px] uppercase font-bold tracking-wider text-primary/80 hover:text-primary transition-colors px-2 py-1"
+                    >
+                      Consulta
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setTourRestartKey((key) => key + 1)}
@@ -387,7 +397,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />
       )}
 
-      {hasExtendedScope(user?.email) && (
+      {canUseScope && (
         <ScopeDataDrawer open={scopeOpen} onClose={() => setScopeOpen(false)} />
       )}
     </main>
