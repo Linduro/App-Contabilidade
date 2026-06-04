@@ -3,7 +3,7 @@ import { z } from "zod"
 const envSchema = z.object({
   DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")),
   REDIS_URL: z.string().min(1),
-  OPENAI_API_KEY: z.string().min(1),
+  GOOGLE_GENAI_API_KEY: z.string().min(1),
   BETTER_AUTH_SECRET: z.string().min(32),
   BETTER_AUTH_URL: z.string().url(),
   PORT: z.coerce.number().int().positive().default(3000),

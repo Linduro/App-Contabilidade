@@ -1,6 +1,6 @@
 # Networking Hub API
 
-Backend do hub de networking inteligente FIPECAFI — perfis profissionais, embeddings semânticos (OpenAI) e teia de expertises.
+Backend do hub de networking inteligente FIPECAFI — perfis profissionais, embeddings semânticos (Google GenAI) e teia de expertises.
 
 ## Stack
 
@@ -8,7 +8,7 @@ Backend do hub de networking inteligente FIPECAFI — perfis profissionais, embe
 - **Drizzle ORM** + PostgreSQL 16 + **pgvector**
 - **Better Auth** (`better-auth/crypto` para hash de senha + sessões bearer)
 - **BullMQ** + Redis (embeddings em background)
-- **OpenAI** `text-embedding-3-small` (1536 dims)
+- **Google GenAI** `gemini-embedding-001` (1536 dims, `GOOGLE_GENAI_API_KEY`)
 - **Zod** + **Vitest**
 
 ## Setup local

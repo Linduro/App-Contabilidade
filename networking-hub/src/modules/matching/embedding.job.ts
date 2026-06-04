@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 import { db } from "../../db/index.js"
 import { profiles } from "../../db/schema.js"
-import { createEmbedding } from "../../lib/openai.js"
+import { createEmbedding } from "../../lib/google-genai.js"
 import { createEmbeddingWorker, type EmbeddingJobPayload } from "../../lib/redis.js"
 import { buildProfileEmbeddingText } from "./embedding-text.js"
 
