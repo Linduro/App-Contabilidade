@@ -35,7 +35,6 @@ import {
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
 import { SiteFooter } from "@/components/site-footer"
-import { ProfilePhoneSection } from "@/components/dashboard/profile-phone-section"
 import { processDueReminders } from "@/lib/reminder-notifications"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
@@ -391,8 +390,6 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
           <Plus className="w-4 h-4 mr-2" />
           Adicionar Novo Semestre
         </Button>
-
-        <ProfilePhoneSection />
 
         <RemindersSection
           reminders={data.reminders}
