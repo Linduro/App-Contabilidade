@@ -9,6 +9,7 @@ import { profileRoutes } from "./modules/profile/profile.routes.js"
 import { matchingRoutes } from "./modules/matching/matching.routes.js"
 import { graphRoutes } from "./modules/graph/graph.routes.js"
 import { connectionsRoutes } from "./modules/connections/connections.routes.js"
+import { web3Routes } from "./modules/web3/web3.routes.js"
 
 const app = new Hono()
 
@@ -31,6 +32,7 @@ app.route("/profiles", profileRoutes)
 app.route("/matching", matchingRoutes)
 app.route("/graph", graphRoutes)
 app.route("/connections", connectionsRoutes)
+app.route("/web3", web3Routes)
 
 app.onError(errorMiddleware)
 

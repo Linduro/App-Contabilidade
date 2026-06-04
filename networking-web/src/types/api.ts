@@ -25,6 +25,7 @@ export interface Profile {
   disponivelMentoria: boolean
   bio: string | null
   avatarUrl: string | null
+  walletAddress?: string | null
   embeddingGeradoEm?: string | null
   createdAt?: string
   updatedAt?: string

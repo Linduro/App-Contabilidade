@@ -11,6 +11,20 @@ const envSchema = z
     BETTER_AUTH_URL: z.string().url(),
     PORT: z.coerce.number().int().positive().default(3000),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    WEB3_RPC_URL: z.string().min(1).optional(),
+    WEB3_CHAIN_ID: z.coerce.number().int().positive().optional(),
+    REPUTATION_SBT_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/)
+      .optional(),
+    CREDENTIAL_NFT_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/)
+      .optional(),
+    SERVICE_ESCROW_ADDRESS: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/)
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.EMBEDDING_PROVIDER === "openai") {

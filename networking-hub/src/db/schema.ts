@@ -61,6 +61,7 @@ export const profiles = pgTable(
     disponivelMentoria: boolean("disponivel_mentoria").notNull().default(false),
     bio: text("bio"),
     avatarUrl: text("avatar_url"),
+    walletAddress: text("wallet_address"),
     embedding: vector("embedding", { dimensions: 1536 }),
     embeddingGeradoEm: timestamp("embedding_gerado_em", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

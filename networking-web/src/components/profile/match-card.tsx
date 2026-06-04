@@ -6,6 +6,7 @@ import type { MatchSuggestion } from "@/types/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ConnectButton } from "@/components/connections/connect-button"
+import { ReputationStars } from "@/components/web3/reputation-stars"
 import { ExpertiseTag } from "./expertise-tag"
 
 export function MatchCard({ match }: { match: MatchSuggestion }) {
@@ -17,7 +18,12 @@ export function MatchCard({ match }: { match: MatchSuggestion }) {
         <CardContent className="pt-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-slate-900">{match.profile.nome}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-semibold text-slate-900">{match.profile.nome}</p>
+                {match.profile.walletAddress && (
+                  <ReputationStars walletAddress={match.profile.walletAddress} />
+                )}
+              </div>
               <p className="text-xs text-slate-500">
                 {match.profile.cargoAtual ?? "—"} · {match.profile.empresa ?? "—"}
               </p>
