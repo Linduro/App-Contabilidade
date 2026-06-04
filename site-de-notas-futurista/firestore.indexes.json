@@ -24,13 +24,6 @@
         { "fieldPath": "placement", "order": "ASCENDING" },
         { "fieldPath": "sortOrder", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "platformAds",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "sortOrder", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []
