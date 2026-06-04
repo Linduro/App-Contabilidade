@@ -11,16 +11,6 @@ export const RADIO_STATIONS: RadioStation[] = [
     url: "https://streams.ilovemusic.de/iloveradio17.mp3",
   },
   {
-    id: "jazz",
-    label: "Jazz",
-    url: "https://ice1.somafm.com/jazz128-mp3",
-  },
-  {
-    id: "classica",
-    label: "Clássica",
-    url: "https://ice1.somafm.com/classical128-mp3",
-  },
-  {
     id: "indie",
     label: "Indie",
     url: "https://ice1.somafm.com/indiepop-128-mp3",
@@ -31,3 +21,6 @@ export const RADIO_STATIONS: RadioStation[] = [
     url: "https://ice1.somafm.com/groovesalad-128-mp3",
   },
 ]
+
+export const DEFAULT_RADIO_STATION_ID = "lofi"
+export const DEFAULT_RADIO_VOLUME = 0.22
