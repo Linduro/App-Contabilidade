@@ -1,7 +1,17 @@
 {
+  "name": "app-contabilidade-genkit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "genkit:check": "tsx genkit/bootstrap-check.ts"
+  },
   "dependencies": {
     "@genkit-ai/firebase": "^1.36.0",
     "@genkit-ai/googleai": "^1.28.0",
     "genkit": "^1.36.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   }
 }
