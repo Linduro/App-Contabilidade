@@ -56,7 +56,7 @@ export function HeaderTutorialButtons() {
             </button>
 
             {hp12cOpen && (
-              <div className="w-full glass-card neon-border rounded-lg p-1.5 sm:p-2 overflow-hidden">
+              <div className="w-full glass-card neon-border rounded-lg p-1.5 sm:p-2 overflow-visible">
                 <Hp12cCalculatorPanel compact />
               </div>
             )}

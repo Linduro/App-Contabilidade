@@ -70,6 +70,10 @@ export function RemindersSection({
       </div>
 
       <div className="mb-4 rounded-xl border border-border/50 bg-secondary/20 px-4 py-3">
+        <p className="text-xs text-muted-foreground mb-3">
+          Ative os lembretes por e-mail. Os avisos são enviados no dia do prazo e um dia antes, conforme
+          seu contato cadastrado abaixo no painel.
+        </p>
         <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
@@ -81,11 +85,9 @@ export function RemindersSection({
           <Mail className="w-4 h-4 text-primary shrink-0" />
           <span>Receber avisos por e-mail</span>
         </label>
-        <p className="text-xs text-muted-foreground mt-2 pl-6">
-          {accountEmail
-            ? `Enviado para ${accountEmail} no dia do prazo e um dia antes.`
-            : "Vincule um e-mail à sua conta para receber avisos."}
-        </p>
+        {accountEmail && (
+          <p className="text-xs text-muted-foreground mt-2 pl-6">{accountEmail}</p>
+        )}
       </div>
 
       {sorted.length === 0 ? (

@@ -29,6 +29,7 @@ export interface Semester {
   id: string
   title: string
   disciplines: Discipline[]
+  collapsed?: boolean
 }
 
 export interface Reminder {
@@ -84,7 +85,7 @@ export function defaultActivities(testCount = 6): Activity[] {
   return [
     ...tests,
     createActivity("exercicio", "Avaliação Intermediária"),
-    createActivity("exame", "Prova"),
+    createActivity("exame", "Prova Final"),
   ]
 }
 
@@ -145,7 +146,7 @@ export function createDiscipline(type: DisciplineType, name?: string): Disciplin
 }
 
 export function createSemester(title = "Novo Semestre", disciplines: Discipline[] = []): Semester {
-  return { id: createId(), title, disciplines }
+  return { id: createId(), title, disciplines, collapsed: true }
 }
 
 function normalizeReminder(reminder: Reminder): Reminder {
@@ -254,6 +255,7 @@ export function normalizeProgressionData(data: Partial<ProgressionData>): Progre
   return {
     semesters: (data.semesters ?? []).map((semester) => ({
       ...semester,
+      collapsed: semester.collapsed ?? true,
       disciplines: (semester.disciplines ?? []).map((d) => normalizeDiscipline(d)),
     })),
     notes: data.notes ?? "",

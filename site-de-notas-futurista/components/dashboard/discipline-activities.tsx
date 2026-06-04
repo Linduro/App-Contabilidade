@@ -18,6 +18,10 @@ import {
 
 const CATEGORY_ORDER: ActivityCategory[] = ["teste", "exercicio", "exame"]
 
+function isLockedActivityName(category: ActivityCategory) {
+  return category === "teste" || category === "exercicio" || category === "exame"
+}
+
 function WeightBadge({
   category,
   hint,
@@ -70,7 +74,7 @@ export function DisciplineActivities({
             ? "Avaliação Intermediária"
             : `Exercício ${count}`
           : count === 1
-            ? "Prova"
+            ? "Prova Final"
             : `Exame ${count}`
 
     onChange({
@@ -154,11 +158,17 @@ export function DisciplineActivities({
             <ul className="space-y-1.5">
               {items.map((activity) => (
                 <li key={activity.id} className="flex items-center gap-2">
-                  <input
-                    value={activity.name}
-                    onChange={(e) => updateActivity(activity.id, { name: e.target.value })}
-                    className="flex-1 min-w-0 text-xs bg-secondary/30 border border-border/50 rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary/30"
-                  />
+                  {isLockedActivityName(category) ? (
+                    <span className="flex-1 min-w-0 text-xs bg-secondary/20 border border-border/40 rounded-md px-2 py-1.5 text-foreground/90">
+                      {activity.name}
+                    </span>
+                  ) : (
+                    <input
+                      value={activity.name}
+                      onChange={(e) => updateActivity(activity.id, { name: e.target.value })}
+                      className="flex-1 min-w-0 text-xs bg-secondary/30 border border-border/50 rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  )}
                   <input
                     type="number"
                     step="0.1"

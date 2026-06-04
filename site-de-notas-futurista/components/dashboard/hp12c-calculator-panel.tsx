@@ -5,6 +5,7 @@ import { HP12C_CALCULATOR_TITLE, HP12C_CALCULATOR_URL } from "@/lib/hp12c-calcul
 
 const SOURCE_WIDTH = 900
 const SOURCE_HEIGHT = 700
+const SCALE_BOOST = 1.1
 
 function Hp12cCompactFrame() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -16,7 +17,7 @@ function Hp12cCompactFrame() {
 
     const updateScale = () => {
       const width = element.clientWidth
-      if (width > 0) setScale(width / SOURCE_WIDTH)
+      if (width > 0) setScale((width / SOURCE_WIDTH) * SCALE_BOOST)
     }
 
     updateScale()

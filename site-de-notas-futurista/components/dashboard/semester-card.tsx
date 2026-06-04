@@ -47,6 +47,7 @@ export function SemesterCard({
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const collapsed = semester.collapsed ?? true
 
   const stats = getSemesterStats(semester)
 
@@ -125,6 +126,17 @@ export function SemesterCard({
     >
       <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border/50 border-t-4 border-t-primary">
         <div className="flex items-start gap-2 flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => onChange({ ...semester, collapsed: !collapsed })}
+            className="shrink-0 mt-2 p-1.5 rounded-md hover:bg-secondary/60 text-primary"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expandir semestre" : "Recolher semestre"}
+          >
+            <ChevronDown
+              className={`w-5 h-5 transition-transform ${collapsed ? "" : "rotate-180"}`}
+            />
+          </button>
           <div className="flex flex-col gap-0.5 shrink-0 pt-1">
             <button
               type="button"
@@ -197,6 +209,8 @@ export function SemesterCard({
         </button>
       </div>
 
+      {!collapsed && (
+        <>
       <ul className="divide-y divide-border/30">
         {semester.disciplines.map((d, i) => (
           <DisciplineRow
@@ -247,6 +261,14 @@ export function SemesterCard({
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {collapsed && searchQuery.trim() && visibleDisciplines.length > 0 && (
+        <p className="px-5 py-3 text-xs text-muted-foreground border-t border-border/30">
+          {visibleDisciplines.length} disciplina(s) neste semestre — expanda para ver.
+        </p>
+      )}
     </section>
   )
 }
