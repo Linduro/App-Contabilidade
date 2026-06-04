@@ -5,7 +5,7 @@ import { Loader2, Mail, MessageSquare, Send, Smartphone } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { formatPhoneInput } from "@/lib/phone-auth"
-import { queueAdminMessage, type AdminMessageChannel } from "@/lib/admin-messaging"
+import { sendAdminMessage, type AdminMessageChannel } from "@/lib/admin-messaging"
 
 interface AdminMessagePanelProps {
   selectedUser?: {
@@ -54,7 +54,7 @@ export function AdminMessagePanel({ selectedUser }: AdminMessagePanelProps) {
     setSending(true)
 
     try {
-      await queueAdminMessage({
+      await sendAdminMessage({
         adminUserId: user.uid,
         targetUserId: selectedUser?.id,
         channel,
@@ -63,8 +63,8 @@ export function AdminMessagePanel({ selectedUser }: AdminMessagePanelProps) {
       })
       setFeedback(
         channel === "email"
-          ? "E-mail personalizado enfileirado para envio."
-          : "SMS personalizado enfileirado para envio."
+          ? "E-mail enviado com sucesso."
+          : "SMS enviado com sucesso."
       )
       setMessage("")
     } catch (err: unknown) {

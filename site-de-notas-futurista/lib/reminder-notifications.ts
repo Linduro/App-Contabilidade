@@ -1,5 +1,6 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { sendEmailDirect, sendSmsDirect } from "@/lib/notification-delivery"
 import type { Reminder } from "@/lib/progression-data"
 import { getUserProfile } from "@/lib/user-profile"
 
@@ -13,19 +14,23 @@ function tomorrowIso() {
   return date.toISOString().slice(0, 10)
 }
 
-async function queueNotification(payload: {
+async function logNotification(payload: {
   userId: string
   reminderId: string
   channel: "email" | "sms"
   to: string
   title: string
   date: string
+  status: "sent" | "failed"
 }) {
-  await addDoc(collection(db, "notificationQueue"), {
-    ...payload,
-    status: "pending",
-    createdAt: serverTimestamp(),
-  })
+  try {
+    await addDoc(collection(db, "notificationQueue"), {
+      ...payload,
+      createdAt: serverTimestamp(),
+    })
+  } catch {
+    // Registro opcional.
+  }
 }
 
 export async function processDueReminders(userId: string, reminders: Reminder[]) {
@@ -47,25 +52,53 @@ export async function processDueReminders(userId: string, reminders: Reminder[])
     const body = `${title} — ${when} (${reminder.date})`
 
     if (reminder.notifyEmail !== false && allowEmail && email) {
-      await queueNotification({
-        userId,
-        reminderId: reminder.id,
-        channel: "email",
-        to: email,
-        title: body,
-        date: reminder.date,
-      })
+      try {
+        await sendEmailDirect(email, "Lembrete — App Contabilidade", body)
+        await logNotification({
+          userId,
+          reminderId: reminder.id,
+          channel: "email",
+          to: email,
+          title: body,
+          date: reminder.date,
+          status: "sent",
+        })
+      } catch {
+        await logNotification({
+          userId,
+          reminderId: reminder.id,
+          channel: "email",
+          to: email,
+          title: body,
+          date: reminder.date,
+          status: "failed",
+        })
+      }
     }
 
     if (reminder.notifySms && allowSms) {
-      await queueNotification({
-        userId,
-        reminderId: reminder.id,
-        channel: "sms",
-        to: phone,
-        title: body,
-        date: reminder.date,
-      })
+      try {
+        await sendSmsDirect(phone, body)
+        await logNotification({
+          userId,
+          reminderId: reminder.id,
+          channel: "sms",
+          to: phone,
+          title: body,
+          date: reminder.date,
+          status: "sent",
+        })
+      } catch {
+        await logNotification({
+          userId,
+          reminderId: reminder.id,
+          channel: "sms",
+          to: phone,
+          title: body,
+          date: reminder.date,
+          status: "failed",
+        })
+      }
     }
 
     if (typeof window !== "undefined" && "Notification" in window && reminder.date === today) {

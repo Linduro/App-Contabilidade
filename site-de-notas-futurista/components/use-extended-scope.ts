@@ -6,7 +6,7 @@ import { hasExtendedScope } from "@/lib/admin-access"
 
 export function useExtendedScope() {
   const { user } = useAuth()
-  const [allowed, setAllowed] = useState(false)
+  const [allowed, setAllowed] = useState(() => hasExtendedScope(user?.email))
 
   useEffect(() => {
     if (!user) {

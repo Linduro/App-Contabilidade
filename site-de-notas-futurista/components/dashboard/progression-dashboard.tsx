@@ -23,6 +23,7 @@ import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-bu
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
 import { ScopeDataDrawer } from "@/components/dashboard/scope-data-drawer"
 import { useExtendedScope } from "@/components/use-extended-scope"
+import { hasExtendedScope } from "@/lib/admin-access"
 import { DisciplineEmoji } from "@/components/discipline-emoji"
 import {
   createSemester,
@@ -40,6 +41,7 @@ import { processDueReminders } from "@/lib/reminder-notifications"
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
   const canUseScope = useExtendedScope()
+  const adminAccess = hasExtendedScope(user?.email) || canUseScope
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const [data, setData] = useState<ProgressionData>(defaultProgression())
@@ -133,7 +135,9 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
     (e: React.MouseEvent<HTMLAnchorElement>) => {
       e.preventDefault()
 
-      if (!canUseScope) {
+      const isAdmin = hasExtendedScope(user?.email) || canUseScope
+
+      if (!isAdmin) {
         window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
         return
       }
@@ -144,6 +148,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
       if (scopeClickCount.current >= 3) {
         scopeClickCount.current = 0
+        if (scopeClickTimer.current) clearTimeout(scopeClickTimer.current)
         setScopeOpen(true)
         return
       }
@@ -154,9 +159,9 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         if (clicks >= 1 && clicks < 3) {
           window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
         }
-      }, 500)
+      }, 800)
     },
-    [canUseScope]
+    [canUseScope, user?.email]
   )
 
   useEffect(() => {
@@ -418,7 +423,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />
       )}
 
-      {canUseScope && (
+      {adminAccess && (
         <ScopeDataDrawer open={scopeOpen} onClose={() => setScopeOpen(false)} />
       )}
     </main>

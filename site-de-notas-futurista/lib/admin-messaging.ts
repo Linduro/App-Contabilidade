@@ -1,10 +1,11 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { sendEmailDirect, sendSmsDirect } from "@/lib/notification-delivery"
 import { normalizeBrazilPhone } from "@/lib/phone-auth"
 
 export type AdminMessageChannel = "email" | "sms"
 
-export async function queueAdminMessage(params: {
+export async function sendAdminMessage(params: {
   adminUserId: string
   targetUserId?: string
   channel: AdminMessageChannel
@@ -21,15 +22,25 @@ export async function queueAdminMessage(params: {
     throw new Error("invalid-email")
   }
 
-  await addDoc(collection(db, "notificationQueue"), {
-    userId: params.adminUserId,
-    targetUserId: params.targetUserId ?? null,
-    channel: params.channel,
-    to,
-    title: trimmed,
-    subject: "Mensagem personalizada — App Contabilidade",
-    status: "pending",
-    source: "admin-custom",
-    createdAt: serverTimestamp(),
-  })
+  if (params.channel === "email") {
+    await sendEmailDirect(to, "Mensagem personalizada — App Contabilidade", trimmed)
+  } else {
+    await sendSmsDirect(to, trimmed)
+  }
+
+  try {
+    await addDoc(collection(db, "notificationQueue"), {
+      userId: params.adminUserId,
+      targetUserId: params.targetUserId ?? null,
+      channel: params.channel,
+      to,
+      title: trimmed,
+      subject: "Mensagem personalizada — App Contabilidade",
+      status: "sent",
+      source: "admin-custom",
+      createdAt: serverTimestamp(),
+    })
+  } catch {
+    // Histórico opcional — o envio principal já ocorreu.
+  }
 }
