@@ -14,6 +14,10 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  GITHUB_SITE_BASE: /App-Contabilidade
+  NETWORKING_PAGES_SEGMENT: _internal/f7c2-network
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,17 +28,38 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: site-de-notas-futurista/package-lock.json
+          cache-dependency-path: |
+            site-de-notas-futurista/package-lock.json
+            networking-web/package-lock.json
 
-      - name: Install dependencies
+      - name: Install portal dependencies
         working-directory: site-de-notas-futurista
         run: npm ci
 
-      - name: Build static site
+      - name: Build portal (static)
         working-directory: site-de-notas-futurista
         env:
-          GITHUB_PAGES: 'true'
+          GITHUB_PAGES: "true"
         run: npm run build
+
+      - name: Install networking-web dependencies
+        working-directory: networking-web
+        run: npm ci
+
+      - name: Build networking (subpasta discreta no mesmo domínio)
+        working-directory: networking-web
+        env:
+          GITHUB_PAGES: "true"
+          NEXT_PUBLIC_WEB3_ENABLED: "false"
+          NEXT_PUBLIC_API_URL: ${{ vars.NETWORKING_API_URL || '' }}
+        run: npm run build
+
+      - name: Mesclar networking em _internal/f7c2-network
+        run: |
+          mkdir -p site-de-notas-futurista/out/${{ env.NETWORKING_PAGES_SEGMENT }}
+          cp -R networking-web/out/. site-de-notas-futurista/out/${{ env.NETWORKING_PAGES_SEGMENT }}/
+          touch site-de-notas-futurista/out/.nojekyll
+          touch site-de-notas-futurista/out/${{ env.NETWORKING_PAGES_SEGMENT }}/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -14,9 +14,14 @@ const geistMono = localFont({
   weight: "100 900",
 })
 
+const isPagesDeploy = process.env.GITHUB_PAGES === "true"
+
 export const metadata: Metadata = {
   title: "FIPECAFI Network",
   description: "Networking inteligente para profissionais FIPECAFI",
+  ...(isPagesDeploy
+    ? { robots: { index: false, follow: false, nocache: true } }
+    : {}),
 }
 
 export default function RootLayout({
