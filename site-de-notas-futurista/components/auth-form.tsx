@@ -7,9 +7,9 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth"
-import { doc, serverTimestamp, setDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase"
+import { auth } from "@/lib/firebase"
 import { getGoogleAuthErrorMessage, signInWithGoogle } from "@/lib/google-auth"
+import { ensureEmailUserDocument } from "@/lib/user-profile"
 import { WELCOME_GREETING_SESSION_KEY } from "@/lib/welcome-greeting"
 import { GoogleIcon } from "@/components/google-icon"
 import { PhoneAuthSection } from "@/components/phone-auth-section"
@@ -58,11 +58,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       if (mode === "sign-up") {
         const credential = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(credential.user, { displayName: name })
-        await setDoc(doc(db, "users", credential.user.uid), {
-          name,
-          email,
-          createdAt: serverTimestamp(),
-        })
+        await ensureEmailUserDocument(credential.user.uid, { name, email, password })
       } else {
         await signInWithEmailAndPassword(auth, email, password)
       }

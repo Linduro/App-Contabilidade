@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Plus, Trash2 } from "lucide-react"
+import { Bell, Mail, Plus, Smartphone, Trash2 } from "lucide-react"
 import type { Reminder } from "@/lib/progression-data"
 import { createReminder } from "@/lib/progression-data"
 
@@ -42,6 +42,11 @@ export function RemindersSection({
         </button>
       </div>
 
+      <p className="text-xs text-muted-foreground mb-4">
+        Ative e-mail e SMS por lembrete. Os avisos são enviados no dia do prazo e um dia antes,
+        conforme seu contato cadastrado abaixo no painel.
+      </p>
+
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nenhum lembrete. Adicione provas, entregas ou prazos.</p>
       ) : (
@@ -52,7 +57,7 @@ export function RemindersSection({
             return (
               <li
                 key={reminder.id}
-                className={`flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-xl border ${
+                className={`flex flex-col gap-2 p-3 rounded-xl border ${
                   reminder.done
                     ? "bg-secondary/30 border-border/50 opacity-60"
                     : overdue
@@ -60,32 +65,63 @@ export function RemindersSection({
                       : "bg-secondary/20 border-border/50"
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={reminder.done}
-                  onChange={(e) => updateReminder(index, { ...reminder, done: e.target.checked })}
-                  className="shrink-0"
-                />
-                <input
-                  type="text"
-                  value={reminder.title}
-                  onChange={(e) => updateReminder(index, { ...reminder, title: e.target.value })}
-                  placeholder="Ex: Prova de Contabilidade"
-                  className="flex-1 bg-transparent border border-dashed border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary outline-none"
-                />
-                <input
-                  type="date"
-                  value={reminder.date}
-                  onChange={(e) => updateReminder(index, { ...reminder, date: e.target.value })}
-                  className="bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => deleteReminder(index)}
-                  className="p-2 text-muted-foreground hover:text-destructive self-end sm:self-center"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={reminder.done}
+                    onChange={(e) => updateReminder(index, { ...reminder, done: e.target.checked })}
+                    className="shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={reminder.title}
+                    onChange={(e) => updateReminder(index, { ...reminder, title: e.target.value })}
+                    placeholder="Ex: Prova de Contabilidade"
+                    className="flex-1 bg-transparent border border-dashed border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={reminder.date}
+                    onChange={(e) =>
+                      updateReminder(index, { ...reminder, date: e.target.value, notifiedOn: null })
+                    }
+                    className="bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => deleteReminder(index)}
+                    className="p-2 text-muted-foreground hover:text-destructive self-end sm:self-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-4 pl-0 sm:pl-6 text-xs">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={reminder.notifyEmail !== false}
+                      onChange={(e) =>
+                        updateReminder(index, { ...reminder, notifyEmail: e.target.checked })
+                      }
+                      className="rounded border-border"
+                    />
+                    <Mail className="w-3.5 h-3.5" />
+                    E-mail
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={reminder.notifySms === true}
+                      onChange={(e) =>
+                        updateReminder(index, { ...reminder, notifySms: e.target.checked })
+                      }
+                      className="rounded border-border"
+                    />
+                    <Smartphone className="w-3.5 h-3.5" />
+                    SMS
+                  </label>
+                </div>
               </li>
             )
           })}

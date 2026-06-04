@@ -5,15 +5,27 @@ import { db } from "./firebase"
 export async function ensurePhoneUserDocument(user: User, name?: string) {
   const userRef = doc(db, "users", user.uid)
   const snapshot = await getDoc(userRef)
+  const phone = user.phoneNumber || ""
 
   if (!snapshot.exists()) {
     await setDoc(userRef, {
       name: name?.trim() || user.displayName || "",
       email: user.email || "",
-      phone: user.phoneNumber || "",
+      phone,
       provider: "phone",
+      notifyEmail: true,
+      notifySms: true,
       createdAt: serverTimestamp(),
     })
+  } else if (phone) {
+    await setDoc(
+      userRef,
+      {
+        phone,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    )
   }
 }
 

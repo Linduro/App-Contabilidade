@@ -34,6 +34,8 @@ import {
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
 import { SiteFooter } from "@/components/site-footer"
+import { ProfilePhoneSection } from "@/components/dashboard/profile-phone-section"
+import { processDueReminders } from "@/lib/reminder-notifications"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
@@ -127,11 +129,15 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
     }))
   }
 
-  const handleAdminLogoClick = useCallback(
+  const handleLogoClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!canUseScope) return
-
       e.preventDefault()
+
+      if (!canUseScope) {
+        window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
+        return
+      }
+
       scopeClickCount.current += 1
 
       if (scopeClickTimer.current) clearTimeout(scopeClickTimer.current)
@@ -145,13 +151,35 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       scopeClickTimer.current = setTimeout(() => {
         const clicks = scopeClickCount.current
         scopeClickCount.current = 0
-        if (clicks === 1) {
+        if (clicks >= 1 && clicks < 3) {
           window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
         }
       }, 500)
     },
     [canUseScope]
   )
+
+  useEffect(() => {
+    if (!user || !ready || data.reminders.length === 0) return
+
+    let cancelled = false
+
+    processDueReminders(user.uid, data.reminders)
+      .then((updated) => {
+        if (cancelled) return
+        const changed = updated.some(
+          (item, index) => item.notifiedOn !== data.reminders[index]?.notifiedOn
+        )
+        if (changed) {
+          updateData((prev) => ({ ...prev, reminders: updated }))
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, ready, data.reminders, updateData])
 
   const filteredCount = data.semesters.filter((s) => semesterMatchesSearch(s, searchQuery)).length
 
@@ -187,7 +215,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                     href="https://fipecafi.org/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={handleAdminLogoClick}
+                    onClick={handleLogoClick}
                     className="shrink-0 hover:opacity-80 transition-opacity"
                     title="FIPECAFI"
                   >
@@ -239,15 +267,6 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   </a>
                 </div>
                 <div className="flex items-center justify-end gap-1 sm:gap-2">
-                  {canUseScope && (
-                    <button
-                      type="button"
-                      onClick={() => setScopeOpen(true)}
-                      className="text-[10px] uppercase font-bold tracking-wider text-primary/80 hover:text-primary transition-colors px-2 py-1"
-                    >
-                      Consulta
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => setTourRestartKey((key) => key + 1)}
@@ -367,6 +386,8 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
           <Plus className="w-4 h-4 mr-2" />
           Adicionar Novo Semestre
         </Button>
+
+        <ProfilePhoneSection />
 
         <RemindersSection
           reminders={data.reminders}

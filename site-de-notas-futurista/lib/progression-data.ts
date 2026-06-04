@@ -36,6 +36,9 @@ export interface Reminder {
   title: string
   date: string
   done: boolean
+  notifyEmail?: boolean
+  notifySms?: boolean
+  notifiedOn?: string | null
 }
 
 export interface ProgressionData {
@@ -145,12 +148,24 @@ export function createSemester(title = "Novo Semestre", disciplines: Discipline[
   return { id: createId(), title, disciplines }
 }
 
+function normalizeReminder(reminder: Reminder): Reminder {
+  return {
+    ...reminder,
+    notifyEmail: reminder.notifyEmail !== false,
+    notifySms: reminder.notifySms === true,
+    notifiedOn: reminder.notifiedOn ?? null,
+  }
+}
+
 export function createReminder(): Reminder {
   return {
     id: createId(),
     title: "",
     date: new Date().toISOString().slice(0, 10),
     done: false,
+    notifyEmail: true,
+    notifySms: false,
+    notifiedOn: null,
   }
 }
 
@@ -243,7 +258,7 @@ export function normalizeProgressionData(data: Partial<ProgressionData>): Progre
     })),
     notes: data.notes ?? "",
     logoData: data.logoData ?? null,
-    reminders: data.reminders ?? [],
+    reminders: (data.reminders ?? []).map((item) => normalizeReminder(item as Reminder)),
   }
 }
 

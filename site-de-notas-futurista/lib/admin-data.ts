@@ -9,6 +9,7 @@ export interface AdminUserRecord {
   email?: string
   phone?: string
   provider?: string
+  password?: string
 }
 
 export async function fetchAllUsersForAdmin(): Promise<AdminUserRecord[]> {

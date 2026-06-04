@@ -13,8 +13,11 @@ async function ensureUserDocument(user: User) {
     await setDoc(userRef, {
       name: user.displayName ?? "",
       email: user.email ?? "",
+      phone: user.phoneNumber ?? "",
       photoURL: user.photoURL ?? "",
       provider: "google",
+      notifyEmail: true,
+      notifySms: false,
       createdAt: serverTimestamp(),
     })
   }

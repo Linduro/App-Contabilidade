@@ -21,6 +21,15 @@ service cloud.firestore {
       }
     }
 
+    match /notificationQueue/{notificationId} {
+      allow create: if request.auth != null && request.resource.data.status == 'pending' && (
+        request.resource.data.userId == request.auth.uid
+        || (isAdmin() && request.resource.data.source == 'admin-custom')
+      );
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /notes/{noteId} {
       allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;

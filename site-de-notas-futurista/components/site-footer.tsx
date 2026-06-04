@@ -3,26 +3,29 @@ import { SITE_FOOTER_NOTE, SITE_FOOTER_TAGLINE } from "@/lib/site-copy"
 
 export function SiteFooter() {
   return (
-    <footer className="relative z-10 border-t border-border/50 bg-secondary/15 py-8 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-6 lg:gap-10 items-end">
-        <div className="flex flex-col justify-end text-center lg:text-left order-2 lg:order-1">
-          <p className="text-sm font-semibold text-foreground/80 mb-2">{SITE_FOOTER_TAGLINE}</p>
-          <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto lg:mx-0">
-            {SITE_FOOTER_NOTE}
-          </p>
-        </div>
-
+    <footer className="relative z-10 border-t border-border/50 bg-secondary/15 px-4 sm:px-6 py-8 sm:py-10 overflow-visible">
+      <div className="max-w-6xl mx-auto relative min-h-[10rem] sm:min-h-[12rem] lg:min-h-[14rem]">
+        {/* Dr Pitoco — região direita, maior, atrás do texto */}
         <div
-          className="flex flex-col items-center lg:items-end justify-end order-1 lg:order-2 shrink-0"
+          className="pointer-events-none select-none absolute z-0 right-0 top-0 sm:top-1 lg:-top-2 flex flex-col items-end"
           data-tour="dr-pitoco"
+          aria-hidden="true"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={assetPath("/dr-pitoco-transparent.png")}
-            alt="Dr Pitoco"
-            className="h-40 sm:h-48 md:h-52 lg:h-56 w-auto max-w-[min(100%,14rem)] object-contain object-bottom pointer-events-none select-none"
+            alt=""
+            className="h-44 sm:h-56 md:h-64 lg:h-72 xl:h-80 w-auto object-contain object-top drop-shadow-lg opacity-95"
           />
-          <p className="text-xs font-bold text-muted-foreground/80 mt-1 tracking-wide">Dr Pitoco</p>
+          <p className="text-xs font-bold text-muted-foreground/90 tracking-wide pr-1 -mt-1">
+            Dr Pitoco
+          </p>
+        </div>
+
+        {/* Mensagem — região esquerda (área circulada), à frente */}
+        <div className="relative z-10 max-w-[min(100%,34rem)] lg:max-w-[min(58%,36rem)] pt-1 lg:pt-3 text-center lg:text-left">
+          <p className="text-sm font-semibold text-foreground/85 mb-2">{SITE_FOOTER_TAGLINE}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{SITE_FOOTER_NOTE}</p>
         </div>
       </div>
     </footer>

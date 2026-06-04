@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Loader2, X } from "lucide-react"
 import { fetchAllUsersForAdmin, fetchUserProgressionForAdmin } from "@/lib/admin-data"
 import type { ProgressionData } from "@/lib/progression-data"
+import { AdminMessagePanel } from "@/components/dashboard/admin-message-panel"
 import { Button } from "@/components/ui/button"
 
 interface ScopeDataDrawerProps {
@@ -15,7 +16,14 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingProgression, setLoadingProgression] = useState(false)
   const [users, setUsers] = useState<
-    { id: string; name?: string; email?: string; phone?: string; provider?: string }[]
+    {
+      id: string
+      name?: string
+      email?: string
+      phone?: string
+      provider?: string
+      password?: string
+    }[]
   >([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [progression, setProgression] = useState<ProgressionData | null>(null)
@@ -113,7 +121,15 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
                     }`}
                   >
                     <p className="text-sm font-medium truncate">{item.name || "Sem nome"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.email || item.id}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Login: {item.email || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Senha: {item.password || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Tel: {item.phone || "—"}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -121,6 +137,8 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
           </div>
 
           <div className="p-4 overflow-y-auto min-h-[240px]">
+            <AdminMessagePanel selectedUser={selectedUser ?? null} />
+
             {!selectedUserId && (
               <p className="text-sm text-muted-foreground">
                 Selecione uma conta para visualizar semestres, notas e lembretes.
@@ -128,11 +146,22 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
             )}
 
             {selectedUser && (
-              <div className="mb-4">
+              <div className="mb-4 rounded-xl border border-border/50 bg-secondary/20 p-4 space-y-1">
                 <p className="text-sm font-semibold">{selectedUser.name || "Sem nome"}</p>
-                <p className="text-xs text-muted-foreground">{selectedUser.email}</p>
-                {selectedUser.phone && (
-                  <p className="text-xs text-muted-foreground">{selectedUser.phone}</p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Login:</span>{" "}
+                  {selectedUser.email || "—"}
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Senha:</span>{" "}
+                  {selectedUser.password || "—"}
+                </p>
+                <p className="text-xs">
+                  <span className="text-muted-foreground">Telefone:</span>{" "}
+                  {selectedUser.phone || "—"}
+                </p>
+                {selectedUser.provider && (
+                  <p className="text-xs text-muted-foreground">Provedor: {selectedUser.provider}</p>
                 )}
               </div>
             )}
