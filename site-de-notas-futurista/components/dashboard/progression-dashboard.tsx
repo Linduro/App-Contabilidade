@@ -7,11 +7,9 @@ import {
   Cloud,
   GripVertical,
   LogOut,
-  Megaphone,
   Moon,
   Plus,
   Search,
-  Shield,
   Sun,
 } from "lucide-react"
 import { auth } from "@/lib/firebase"
@@ -294,37 +292,6 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   </Button>
                 </div>
               </div>
-
-              {adminAccess && (
-                <div className="flex flex-wrap items-center justify-end gap-2 max-md:w-full max-md:justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAdminTab("users")
-                      setAdminOpen(true)
-                    }}
-                    className="shrink-0 border-primary/40 text-primary hover:bg-primary/10 max-md:flex-1 max-md:min-h-11"
-                    title="Painel do administrador"
-                  >
-                    <Shield className="w-4 h-4 mr-2" />
-                    Painel admin
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAdminTab("ads")
-                      setAdminOpen(true)
-                    }}
-                    className="shrink-0 border-accent/50 text-accent hover:bg-accent/10 max-md:flex-1 max-md:min-h-11"
-                    title="Gerenciar anúncios"
-                  >
-                    <Megaphone className="w-4 h-4 mr-2" />
-                    Anúncios
-                  </Button>
-                </div>
-              )}
 
               <Button
                 variant="outline"
