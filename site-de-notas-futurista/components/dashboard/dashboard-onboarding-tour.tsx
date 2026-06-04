@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
   clearOnboardingDone,
+  FOOTER_TOUR_STEP_IDS,
   HEADER_TOUR_STEP_IDS,
   isOnboardingDone,
   markOnboardingDone,
@@ -36,10 +37,12 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
   }, [pendingSteps, visible])
 
   const isHeaderStep = currentStep ? HEADER_TOUR_STEP_IDS.has(currentStep.id) : false
+  const isFooterStep = currentStep ? FOOTER_TOUR_STEP_IDS.has(currentStep.id) : false
+  const isPinnedStep = isHeaderStep || isFooterStep
   const showSpotlight = Boolean(
-    currentStep && targetRect && (isHeaderStep || visible.has(currentStep.id))
+    currentStep && targetRect && (isPinnedStep || visible.has(currentStep.id))
   )
-  const canAdvance = Boolean(currentStep && (showSpotlight || isHeaderStep))
+  const canAdvance = Boolean(currentStep && (showSpotlight || isPinnedStep))
   const progress = explained.size
   const total = ONBOARDING_STEPS.length
 
@@ -75,18 +78,21 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
       if (!element) return
 
       const isHeader = HEADER_TOUR_STEP_IDS.has(step.id)
+      const isFooter = FOOTER_TOUR_STEP_IDS.has(step.id)
       const observer = new IntersectionObserver(
         ([entry]) => {
           setVisible((previous) => {
             const next = new Set(previous)
             if (entry.isIntersecting) next.add(step.id)
-            else if (!isHeader) next.delete(step.id)
+            else if (!isHeader && !isFooter) next.delete(step.id)
             return next
           })
         },
         isHeader
           ? { threshold: 0.05, rootMargin: "0px" }
-          : { threshold: 0.25, rootMargin: "-4% 0px -6% 0px" }
+          : isFooter
+            ? { threshold: 0.15, rootMargin: "0px 0px 0px 0px" }
+            : { threshold: 0.25, rootMargin: "-4% 0px -6% 0px" }
       )
 
       observer.observe(element)
@@ -108,10 +114,10 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
   useEffect(() => {
     if (!active) return
 
-    const markHeaderStepsVisible = () => {
+    const markPinnedStepsVisible = () => {
       setVisible((previous) => {
         const next = new Set(previous)
-        HEADER_TOUR_STEP_IDS.forEach((stepId) => {
+        ;[...HEADER_TOUR_STEP_IDS, ...FOOTER_TOUR_STEP_IDS].forEach((stepId) => {
           if (document.querySelector(`[data-tour="${stepId}"]`)) {
             next.add(stepId)
           }
@@ -120,9 +126,9 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
       })
     }
 
-    markHeaderStepsVisible()
-    window.addEventListener("resize", markHeaderStepsVisible)
-    return () => window.removeEventListener("resize", markHeaderStepsVisible)
+    markPinnedStepsVisible()
+    window.addEventListener("resize", markPinnedStepsVisible)
+    return () => window.removeEventListener("resize", markPinnedStepsVisible)
   }, [active])
 
   useEffect(() => {

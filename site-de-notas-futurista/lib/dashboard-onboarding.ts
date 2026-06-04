@@ -25,6 +25,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       "Vídeos passo a passo sobre pagamentos, serviços diversos e declaração de matrícula. Clique para assistir.",
   },
   {
+    id: "hp12c",
+    title: "Calculadora HP-12C",
+    description:
+      "Barra expansível abaixo dos atalhos do portal. Abra para usar o emulador completo em tamanho compacto — ideal para matemática financeira.",
+  },
+  {
     id: "search",
     title: "Busca rápida",
     description: "Encontre disciplinas, semestres ou notas digitando palavras-chave.",
@@ -56,9 +62,15 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     title: "Anotações gerais",
     description: "Espaço livre para observações, metas ou qualquer lembrete pessoal.",
   },
+  {
+    id: "dr-pitoco",
+    title: "Dr Pitoco",
+    description: "Dr Pitoco",
+  },
 ]
 
-export const HEADER_TOUR_STEP_IDS = new Set(["contact", "portal-links", "video-tutorials"])
+export const HEADER_TOUR_STEP_IDS = new Set(["contact", "portal-links", "video-tutorials", "hp12c"])
+export const FOOTER_TOUR_STEP_IDS = new Set(["dr-pitoco"])
 
 export function onboardingStorageKey(userId: string) {
   return `advforte-onboarding-done-${userId}`
@@ -85,7 +97,11 @@ export function scrollToTourStep(stepId: string) {
   window.setTimeout(() => {
     document.querySelector(`[data-tour="${stepId}"]`)?.scrollIntoView({
       behavior: "smooth",
-      block: HEADER_TOUR_STEP_IDS.has(stepId) ? "start" : "center",
+      block: FOOTER_TOUR_STEP_IDS.has(stepId)
+        ? "end"
+        : HEADER_TOUR_STEP_IDS.has(stepId)
+          ? "start"
+          : "center",
     })
   }, stepId === "contact" ? 120 : 0)
 }

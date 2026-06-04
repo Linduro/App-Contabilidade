@@ -12,6 +12,7 @@ export function SiteFooter() {
         <img
           src={assetPath("/dr-pitoco-transparent.png")}
           alt="Dr Pitoco"
+          data-tour="dr-pitoco"
           className="shrink-0 self-end sm:self-auto ml-auto h-52 sm:h-60 md:h-72 lg:h-80 w-auto object-contain object-bottom pointer-events-none select-none"
         />
       </div>
