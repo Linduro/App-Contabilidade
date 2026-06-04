@@ -1,35 +1,51 @@
 import { HP12C_CALCULATOR_TITLE, HP12C_CALCULATOR_URL } from "@/lib/hp12c-calculator"
 
-export function Hp12cCalculatorPanel({ embedded = false }: { embedded?: boolean }) {
-  return (
-    <div
-      className={
-        embedded
-          ? "h-full flex flex-col min-h-0"
-          : "glass-card neon-border rounded-lg p-2 sm:p-3"
-      }
-    >
-      <div
-        className={`flex items-center justify-between gap-2 shrink-0 ${
-          embedded ? "mb-1.5 px-0.5" : "flex-col sm:flex-row sm:items-center mb-3 px-1"
-        }`}
-      >
-        <div>
-          <p
-            className={
-              embedded
-                ? "text-[10px] sm:text-xs font-semibold text-foreground"
-                : "text-xs sm:text-sm font-semibold text-foreground"
-            }
-          >
-            Calculadora HP-12C
-          </p>
-          {!embedded && (
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-              Emulador online para provas e exercícios de matemática financeira.
-            </p>
-          )}
+const SOURCE_WIDTH = 900
+const SOURCE_HEIGHT = 700
+const COMPACT_SCALE = 0.36
+
+export function Hp12cCalculatorPanel({ compact = false }: { compact?: boolean }) {
+  const frameWidth = Math.round(SOURCE_WIDTH * COMPACT_SCALE)
+  const frameHeight = Math.round(SOURCE_HEIGHT * COMPACT_SCALE)
+
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center gap-2 pt-1">
+        <div
+          className="overflow-hidden rounded-md border border-border bg-[#1a1a1a] shadow-inner"
+          style={{ width: frameWidth, height: frameHeight }}
+        >
+          <iframe
+            src={HP12C_CALCULATOR_URL}
+            title={HP12C_CALCULATOR_TITLE}
+            className="border-0 pointer-events-auto"
+            style={{
+              width: SOURCE_WIDTH,
+              height: SOURCE_HEIGHT,
+              transform: `scale(${COMPACT_SCALE})`,
+              transformOrigin: "top left",
+            }}
+            scrolling="no"
+            loading="lazy"
+            allow="fullscreen"
+          />
         </div>
+        <a
+          href={HP12C_CALCULATOR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80"
+        >
+          Abrir em tela cheia
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="glass-card neon-border rounded-lg p-2 sm:p-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 px-1">
+        <p className="text-xs sm:text-sm font-semibold text-foreground">Calculadora HP-12C</p>
         <a
           href={HP12C_CALCULATOR_URL}
           target="_blank"
@@ -39,20 +55,11 @@ export function Hp12cCalculatorPanel({ embedded = false }: { embedded?: boolean 
           Abrir em nova aba
         </a>
       </div>
-
-      <div
-        className={`w-full overflow-hidden rounded-md border border-border bg-[#1a1a1a] shadow-inner ${
-          embedded ? "flex-1 min-h-[280px] sm:min-h-[360px] lg:min-h-[420px]" : "max-w-[900px] mx-auto"
-        }`}
-      >
+      <div className="w-full max-w-[900px] mx-auto overflow-hidden rounded-md border border-border bg-[#1a1a1a] shadow-inner">
         <iframe
           src={HP12C_CALCULATOR_URL}
           title={HP12C_CALCULATOR_TITLE}
-          className={`block w-full border-0 ${
-            embedded
-              ? "h-full min-h-[280px] sm:min-h-[360px] lg:min-h-[420px]"
-              : "h-[min(700px,72vh)] max-h-[700px]"
-          }`}
+          className="block w-full h-[min(700px,72vh)] max-h-[700px] border-0"
           scrolling="no"
           loading="lazy"
           allow="fullscreen"

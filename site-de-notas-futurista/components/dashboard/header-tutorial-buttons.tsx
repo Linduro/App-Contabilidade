@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ExternalLink, PlayCircle } from "lucide-react"
+import { Calculator, ChevronDown, ExternalLink, PlayCircle } from "lucide-react"
 import { Hp12cCalculatorPanel } from "@/components/dashboard/hp12c-calculator-panel"
 import { getPortalHref, PORTAL_LINKS } from "@/lib/portal-links"
 import { TUTORIAL_VIDEOS } from "@/lib/tutorial-videos"
+
+const HP12C_PANEL_ID = "hp12c"
 
 export function HeaderTutorialButtons() {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -14,11 +16,12 @@ export function HeaderTutorialButtons() {
   }
 
   const openTutorial = TUTORIAL_VIDEOS.find((tutorial) => tutorial.id === openId)
+  const hp12cOpen = openId === HP12C_PANEL_ID
 
   return (
     <div className="mt-3 w-full space-y-2">
-      <div className="flex flex-col md:flex-row md:items-stretch gap-2 md:gap-3">
-        <div className="flex-1 min-w-0 max-w-2xl flex flex-col gap-2">
+      <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-3">
+        <div className="flex-1 min-w-0 max-w-2xl flex flex-col gap-1.5">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-1.5 shrink-0" data-tour="portal-links">
             {PORTAL_LINKS.map((link) => (
               <a
@@ -34,11 +37,29 @@ export function HeaderTutorialButtons() {
             ))}
           </div>
 
-          <div
-            className="flex-1 glass-card neon-border rounded-lg p-2 sm:p-2.5 min-h-0"
-            data-tour="hp12c"
-          >
-            <Hp12cCalculatorPanel embedded />
+          <div data-tour="hp12c" className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => toggle(HP12C_PANEL_ID)}
+              aria-expanded={hp12cOpen}
+              className={`group w-full min-h-8 px-2 py-1.5 rounded-md border text-[10px] sm:text-xs font-semibold transition-colors flex items-center justify-center gap-1 text-center leading-tight ${
+                hp12cOpen
+                  ? "bg-primary/20 border-primary/60 text-primary"
+                  : "bg-primary/10 border-primary/35 text-primary hover:bg-primary/20 hover:border-primary/60"
+              }`}
+            >
+              <Calculator className="w-2.5 h-2.5 shrink-0 opacity-80" />
+              <span>Calculadora HP-12C</span>
+              <ChevronDown
+                className={`w-2.5 h-2.5 shrink-0 opacity-70 transition-transform ${hp12cOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {hp12cOpen && (
+              <div className="glass-card neon-border rounded-lg p-2 sm:p-2.5 flex justify-center">
+                <Hp12cCalculatorPanel compact />
+              </div>
+            )}
           </div>
         </div>
 

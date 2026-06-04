@@ -6,12 +6,12 @@ import { fetchAllUsersForAdmin, fetchUserProgressionForAdmin } from "@/lib/admin
 import type { ProgressionData } from "@/lib/progression-data"
 import { Button } from "@/components/ui/button"
 
-interface HiddenAdminPanelProps {
+interface ScopeDataDrawerProps {
   open: boolean
   onClose: () => void
 }
 
-export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
+export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingProgression, setLoadingProgression] = useState(false)
   const [users, setUsers] = useState<
@@ -31,7 +31,7 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
 
     fetchAllUsersForAdmin()
       .then(setUsers)
-      .catch(() => setError("Não foi possível carregar os usuários."))
+      .catch(() => setError("Não foi possível carregar os registros."))
       .finally(() => setLoadingUsers(false))
   }, [open])
 
@@ -45,7 +45,7 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
       const data = await fetchUserProgressionForAdmin(userId)
       setProgression(data)
     } catch {
-      setError("Não foi possível carregar os dados deste usuário.")
+      setError("Não foi possível carregar os dados deste registro.")
     } finally {
       setLoadingProgression(false)
     }
@@ -62,16 +62,16 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
       <div className="relative w-full max-w-5xl max-h-[85vh] overflow-hidden glass-card neon-border rounded-2xl shadow-2xl flex flex-col">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border/50">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Painel administrativo</h2>
+            <h2 className="text-lg font-bold text-foreground">Consulta de registros</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Visualização restrita dos dados de progressão de outros usuários.
+              Visualização de progressão acadêmica por conta.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Fechar painel administrativo"
+            aria-label="Fechar"
           >
             <X className="w-5 h-5" />
           </button>
@@ -80,7 +80,7 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
         <div className="grid lg:grid-cols-[280px_1fr] min-h-0 flex-1">
           <div className="border-b lg:border-b-0 lg:border-r border-border/50 p-4 overflow-y-auto">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              Usuários
+              Contas
             </p>
 
             {loadingUsers ? (
@@ -111,7 +111,7 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
           <div className="p-4 overflow-y-auto min-h-[240px]">
             {!selectedUserId && (
               <p className="text-sm text-muted-foreground">
-                Selecione um usuário para visualizar semestres, notas e lembretes.
+                Selecione uma conta para visualizar semestres, notas e lembretes.
               </p>
             )}
 
@@ -138,7 +138,7 @@ export function HiddenAdminPanel({ open, onClose }: HiddenAdminPanelProps) {
             )}
 
             {!loadingProgression && selectedUserId && progression === null && !error && (
-              <p className="text-sm text-muted-foreground">Este usuário ainda não possui dados salvos.</p>
+              <p className="text-sm text-muted-foreground">Esta conta ainda não possui dados salvos.</p>
             )}
 
             {progression && (

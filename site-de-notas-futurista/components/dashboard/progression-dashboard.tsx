@@ -21,7 +21,7 @@ import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
-import { HiddenAdminPanel } from "@/components/dashboard/hidden-admin-panel"
+import { ScopeDataDrawer } from "@/components/dashboard/scope-data-drawer"
 import { DisciplineEmoji } from "@/components/discipline-emoji"
 import {
   createSemester,
@@ -32,7 +32,7 @@ import {
 } from "@/lib/progression-data"
 import { semesterMatchesSearch } from "@/lib/progression-utils"
 import { assetPath } from "@/lib/base-path"
-import { isAdminEmail } from "@/lib/admin-access"
+import { hasExtendedScope } from "@/lib/admin-access"
 import { SiteFooter } from "@/components/site-footer"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
@@ -47,9 +47,9 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   const [draggedSemesterIndex, setDraggedSemesterIndex] = useState<number | null>(null)
   const [dragOverSemesterIndex, setDragOverSemesterIndex] = useState<number | null>(null)
   const [tourRestartKey, setTourRestartKey] = useState(0)
-  const [adminOpen, setAdminOpen] = useState(false)
-  const adminClickCount = useRef(0)
-  const adminClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [scopeOpen, setScopeOpen] = useState(false)
+  const scopeClickCount = useRef(0)
+  const scopeClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipSave = useRef(true)
 
@@ -128,22 +128,22 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
   const handleAdminLogoClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!isAdminEmail(user?.email)) return
+      if (!hasExtendedScope(user?.email)) return
 
       e.preventDefault()
-      adminClickCount.current += 1
+      scopeClickCount.current += 1
 
-      if (adminClickTimer.current) clearTimeout(adminClickTimer.current)
+      if (scopeClickTimer.current) clearTimeout(scopeClickTimer.current)
 
-      if (adminClickCount.current >= 3) {
-        adminClickCount.current = 0
-        setAdminOpen(true)
+      if (scopeClickCount.current >= 3) {
+        scopeClickCount.current = 0
+        setScopeOpen(true)
         return
       }
 
-      adminClickTimer.current = setTimeout(() => {
-        const clicks = adminClickCount.current
-        adminClickCount.current = 0
+      scopeClickTimer.current = setTimeout(() => {
+        const clicks = scopeClickCount.current
+        scopeClickCount.current = 0
         if (clicks === 1) {
           window.open("https://fipecafi.org/", "_blank", "noopener,noreferrer")
         }
@@ -387,8 +387,8 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         <DashboardOnboardingTour autoStart={tourEnabled} restartKey={tourRestartKey} />
       )}
 
-      {isAdminEmail(user?.email) && (
-        <HiddenAdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
+      {hasExtendedScope(user?.email) && (
+        <ScopeDataDrawer open={scopeOpen} onClose={() => setScopeOpen(false)} />
       )}
     </main>
   )
