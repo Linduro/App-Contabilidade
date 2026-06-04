@@ -35,7 +35,7 @@ export function AuthPageLayout({ title, subtitle, children }: AuthPageLayoutProp
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="text-muted-foreground shrink-0"
+            className="text-muted-foreground shrink-0 max-md:h-11 max-md:w-11 max-md:px-0"
             title={theme === "light" ? "Modo escuro" : "Modo claro"}
           >
             {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -50,7 +50,7 @@ export function AuthPageLayout({ title, subtitle, children }: AuthPageLayoutProp
             <p className="text-muted-foreground">{subtitle}</p>
           </div>
 
-          <div className="glass-card rounded-2xl p-8 neon-border">{children}</div>
+          <div className="glass-card rounded-2xl p-8 max-md:p-5 neon-border">{children}</div>
         </div>
       </div>
 

@@ -77,7 +77,7 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-background/85 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative w-full max-w-5xl max-h-[85vh] overflow-hidden glass-card neon-border rounded-2xl shadow-2xl flex flex-col">
+      <div className="relative w-full max-w-5xl max-h-[85vh] overflow-hidden glass-card neon-border rounded-2xl shadow-2xl flex flex-col max-md:max-h-[92vh] max-md:rounded-xl">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border/50">
           <div>
             <h2 className="text-lg font-bold text-foreground">Consulta de registros</h2>
@@ -88,7 +88,7 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
           <button
             type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors max-md:p-2.5 max-md:min-h-11 max-md:min-w-11 max-md:flex max-md:items-center max-md:justify-center max-md:rounded-lg"
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />
@@ -96,7 +96,7 @@ export function ScopeDataDrawer({ open, onClose }: ScopeDataDrawerProps) {
         </div>
 
         <div className="grid lg:grid-cols-[280px_1fr] min-h-0 flex-1">
-          <div className="border-b lg:border-b-0 lg:border-r border-border/50 p-4 overflow-y-auto">
+          <div className="border-b lg:border-b-0 lg:border-r border-border/50 p-4 overflow-y-auto max-md:max-h-[40vh]">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Contas ({users.length})
             </p>

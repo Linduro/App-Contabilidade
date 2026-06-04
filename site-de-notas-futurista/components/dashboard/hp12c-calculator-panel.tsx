@@ -17,7 +17,10 @@ function Hp12cCompactFrame() {
 
     const updateScale = () => {
       const width = element.clientWidth
-      if (width > 0) setScale((width / SOURCE_WIDTH) * SCALE_BOOST)
+      if (width > 0) {
+        const boost = window.matchMedia("(min-width: 768px)").matches ? SCALE_BOOST : 1
+        setScale((width / SOURCE_WIDTH) * boost)
+      }
     }
 
     updateScale()
@@ -62,7 +65,7 @@ export function Hp12cCalculatorPanel({ compact = false }: { compact?: boolean })
           href={HP12C_CALCULATOR_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80 text-center"
+          className="text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80 text-center max-md:text-xs"
         >
           Abrir em tela cheia
         </a>

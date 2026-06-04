@@ -196,14 +196,14 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   }
 
   return (
-    <main className="min-h-screen grid-pattern relative overflow-hidden pb-24">
+    <main className="min-h-screen grid-pattern relative overflow-hidden pb-24 max-md:pb-32">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-3xl" />
       </div>
 
       {saving && (
-        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 text-xs bg-background/90 border border-border px-4 py-2 rounded-full neon-border">
+        <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 text-xs bg-background/90 border border-border px-4 py-2 rounded-full neon-border max-md:bottom-20 max-md:left-1/2 max-md:-translate-x-1/2 max-md:whitespace-nowrap">
           <Cloud className="w-3.5 h-3.5 text-primary animate-pulse" />
           Salvando na nuvem...
         </div>
@@ -214,7 +214,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div className="flex-1 min-w-0 order-2 lg:order-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3">
+                <div className="glass-card neon-border rounded-xl px-4 py-2 flex items-center gap-3 max-md:flex-wrap max-md:gap-2">
                   <a
                     href="https://fipecafi.org/"
                     target="_blank"
@@ -236,7 +236,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                       className="h-9 w-auto hidden dark:block"
                     />
                   </a>
-                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3">
+                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3 max-md:border-l-0 max-md:pl-0 max-md:w-full max-md:text-xs">
                     Gestão de Progressão
                   </span>
                 </div>
@@ -245,17 +245,17 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
               <HeaderTutorialButtons />
             </div>
 
-            <div className="flex flex-col items-end justify-between gap-4 shrink-0 order-1 lg:order-2 lg:self-stretch lg:min-h-full">
-              <div className="flex flex-col items-end gap-2" data-tour="contact">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+            <div className="flex flex-col items-end justify-between gap-4 shrink-0 order-1 lg:order-2 lg:self-stretch lg:min-h-full max-md:items-stretch max-md:w-full">
+              <div className="flex flex-col items-end gap-2 max-md:items-stretch" data-tour="contact">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground max-md:text-xs">
                   Dúvidas ou contato?
                 </span>
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2 max-md:justify-start">
                   <a
                     href="https://wa.me/5518997012718"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#25D366]/50 transition-colors flex items-center gap-1.5 max-md:min-h-11 max-md:px-4 max-md:text-sm"
                   >
                     <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
                     WhatsApp
@@ -264,17 +264,17 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                     href="https://www.instagram.com/advforte/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5"
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/60 border border-border hover:border-[#E4405F]/50 transition-colors flex items-center gap-1.5 max-md:min-h-11 max-md:px-4 max-md:text-sm"
                   >
                     <InstagramIcon className="w-4 h-4 text-[#E4405F]" />
                     @advforte
                   </a>
                 </div>
-                <div className="flex items-center justify-end gap-1 sm:gap-2">
+                <div className="flex items-center justify-end gap-1 sm:gap-2 max-md:justify-between max-md:w-full">
                   <button
                     type="button"
                     onClick={() => setTourRestartKey((key) => key + 1)}
-                    className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors px-2 py-1"
+                    className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary transition-colors px-2 py-1 max-md:text-xs max-md:min-h-11 max-md:px-3"
                   >
                     Ver guia da página
                   </button>
@@ -282,7 +282,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                     variant="ghost"
                     size="sm"
                     onClick={toggleTheme}
-                    className="text-muted-foreground h-8 px-2"
+                    className="text-muted-foreground h-8 px-2 max-md:h-11 max-md:w-11 max-md:px-0"
                     title={theme === "light" ? "Modo escuro" : "Modo claro"}
                   >
                     {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -294,7 +294,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
-                className="shrink-0 text-muted-foreground border-border/60 hover:text-foreground"
+                className="shrink-0 text-muted-foreground border-border/60 hover:text-foreground max-md:w-full max-md:min-h-11"
                 title="Sair da conta"
               >
                 <LogOut className="w-4 h-4 mr-2" />
@@ -324,7 +324,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
           />
         </div>
 
-        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border" data-tour="legend">
+        <div className="glass-card rounded-xl px-5 py-4 mb-8 flex flex-wrap gap-x-6 gap-y-2 text-sm neon-border max-md:px-4 max-md:gap-y-3" data-tour="legend">
           <span className="flex items-center gap-2 font-medium">
             <DisciplineEmoji type="essential" className="text-base" /> Essenciais
           </span>
@@ -397,7 +397,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
         />
 
         <section
-          className="glass-card-gold rounded-2xl p-6 neon-border-gold border-l-4 border-l-accent"
+          className="glass-card-gold rounded-2xl p-6 neon-border-gold border-l-4 border-l-accent max-md:p-4"
           data-tour="notes"
         >
           <h3 className="text-lg font-bold text-accent mb-4">Anotações</h3>

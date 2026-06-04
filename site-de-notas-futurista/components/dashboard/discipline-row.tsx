@@ -91,7 +91,7 @@ export function DisciplineRow({
         e.preventDefault()
         onDrop(index)
       }}
-      className={`px-5 py-3 border-b border-border/50 last:border-b-0 transition-all ${
+      className={`px-5 py-3 border-b border-border/50 last:border-b-0 transition-all max-md:px-3 ${
         isCursando ? "bg-accent/5" : isConcluido ? "bg-primary/5" : ""
       } ${isDragging ? "opacity-40 scale-[0.98]" : ""} ${
         isDragOver ? "border-t-2 border-t-primary bg-primary/5" : ""
@@ -104,7 +104,7 @@ export function DisciplineRow({
               type="button"
               disabled={index === 0}
               onClick={() => onMove(index, index - 1)}
-              className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+              className="p-1 rounded hover:bg-secondary disabled:opacity-30 max-md:p-2.5 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
               aria-label="Mover para cima"
             >
               <ChevronUp className="w-4 h-4" />
@@ -113,7 +113,7 @@ export function DisciplineRow({
               type="button"
               disabled={index === total - 1}
               onClick={() => onMove(index, index + 1)}
-              className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+              className="p-1 rounded hover:bg-secondary disabled:opacity-30 max-md:p-2.5 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
               aria-label="Mover para baixo"
             >
               <ChevronDown className="w-4 h-4" />
@@ -135,7 +135,7 @@ export function DisciplineRow({
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="shrink-0 p-1 rounded-md hover:bg-secondary/60 text-muted-foreground"
+              className="shrink-0 p-1 rounded-md hover:bg-secondary/60 text-muted-foreground max-md:p-2.5 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
               aria-label={expanded ? "Ocultar atividades" : "Ver atividades"}
               title="Testes, exercícios e prova"
             >
@@ -156,11 +156,11 @@ export function DisciplineRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 pl-10 sm:pl-0 flex-wrap justify-end">
+        <div className="flex items-center gap-2 shrink-0 pl-10 sm:pl-0 flex-wrap justify-end max-md:pl-0 max-md:w-full">
           <button
             type="button"
             onClick={() => setStatus("cursando")}
-            className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded-md border transition-all ${
+            className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded-md border transition-all max-md:min-h-10 max-md:px-3 max-md:text-xs ${
               isCursando
                 ? "bg-accent/20 border-accent text-accent"
                 : "bg-secondary/50 border-border text-muted-foreground hover:border-accent/50"
@@ -171,7 +171,7 @@ export function DisciplineRow({
           <button
             type="button"
             onClick={() => setStatus("concluido")}
-            className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded-md border transition-all ${
+            className={`text-[10px] font-bold uppercase px-2.5 py-1.5 rounded-md border transition-all max-md:min-h-10 max-md:px-3 max-md:text-xs ${
               isConcluido
                 ? "bg-primary/20 border-primary text-primary"
                 : "bg-secondary/50 border-border text-muted-foreground hover:border-primary/50"
@@ -194,26 +194,26 @@ export function DisciplineRow({
               placeholder="0.0"
               value={discipline.grade}
               onChange={(e) => onChange({ ...discipline, grade: e.target.value })}
-              className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-sm"
+              className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-sm max-md:w-16 max-md:h-10"
             />
           )}
 
           <button
             type="button"
             onClick={onDelete}
-            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="pl-10 sm:pl-[4.5rem] mt-1">
+      <div className="pl-10 sm:pl-[4.5rem] mt-1 max-md:pl-0">
         {!isDetailed ? (
           <button
             type="button"
             onClick={enableDetailedMode}
-            className="text-[11px] font-semibold text-primary/80 hover:text-primary hover:underline"
+            className="text-[11px] font-semibold text-primary/80 hover:text-primary hover:underline max-md:text-xs max-md:leading-relaxed max-md:text-left"
           >
             + Detalhar notas (Testes 20% · Exercício 30% · Prova 50% — qtd. de testes ajustável)
           </button>
@@ -229,7 +229,7 @@ export function DisciplineRow({
       </div>
 
       {isDetailed && expanded && (
-        <div className="pl-10 sm:pl-[4.5rem]">
+        <div className="pl-10 sm:pl-[4.5rem] max-md:pl-0">
           <DisciplineActivities discipline={discipline} onChange={onChange} />
         </div>
       )}

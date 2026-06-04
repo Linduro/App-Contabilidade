@@ -120,7 +120,7 @@ export function FloatingRadioPlayer() {
   const volumePercent = Math.round(volume * 100)
 
   return (
-    <div className="fixed bottom-5 right-5 z-[350] flex flex-col items-end gap-2">
+    <div className="fixed bottom-5 right-5 z-[350] flex flex-col items-end gap-2 max-md:bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] max-md:right-4">
       {open && (
         <div className="glass-card neon-border rounded-2xl p-4 w-[min(100vw-2.5rem,18rem)] shadow-xl">
           <p className="text-xs font-bold text-primary mb-3 flex items-center gap-1.5">
@@ -134,7 +134,7 @@ export function FloatingRadioPlayer() {
                 key={item.id}
                 type="button"
                 onClick={() => selectStation(item.id)}
-                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors max-md:min-h-10 max-md:px-3 max-md:text-xs ${
                   stationId === item.id
                     ? "bg-primary/15 border-primary/50 text-primary"
                     : "border-border/60 text-muted-foreground hover:border-primary/30"
@@ -153,7 +153,7 @@ export function FloatingRadioPlayer() {
           </p>
 
           {needsInteraction && (
-            <p className="text-[10px] text-muted-foreground mb-2">
+            <p className="text-[10px] text-muted-foreground mb-2 max-md:text-xs">
               Clique em qualquer lugar da página para iniciar o áudio.
             </p>
           )}
@@ -162,13 +162,13 @@ export function FloatingRadioPlayer() {
             <button
               type="button"
               onClick={() => setPlaying((value) => !value)}
-              className="h-9 w-9 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90"
+              className="h-9 w-9 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 max-md:h-11 max-md:w-11"
               aria-label={playing ? "Pausar rádio" : "Tocar rádio"}
             >
               {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
             </button>
             <div className="flex-1 min-w-0">
-              <label className="text-[10px] text-muted-foreground flex justify-between mb-1">
+              <label className="text-[10px] text-muted-foreground flex justify-between mb-1 max-md:text-xs">
                 <span>Volume</span>
                 <span>{volumePercent}%</span>
               </label>
@@ -178,7 +178,7 @@ export function FloatingRadioPlayer() {
                 max={100}
                 value={volumePercent}
                 onChange={(e) => setVolume(Number(e.target.value) / 100)}
-                className="w-full h-1.5 accent-primary cursor-pointer"
+                className="w-full h-1.5 accent-primary cursor-pointer max-md:h-2.5"
                 aria-label="Volume da rádio"
               />
             </div>

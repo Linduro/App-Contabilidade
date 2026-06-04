@@ -176,13 +176,13 @@ export function AuthForm({ mode }: AuthFormProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors max-md:min-h-11 max-md:min-w-11 max-md:flex max-md:items-center max-md:justify-center max-md:right-0"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
           {mode === "sign-in" && (
-            <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-right">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-right max-md:text-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -190,7 +190,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   setSmsRecoveryOpen(false)
                   setEmailRecoveryOpen(true)
                 }}
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
+                className="text-primary hover:text-primary/80 font-medium transition-colors max-md:py-2"
               >
                 Esqueci minha senha (e-mail)
               </button>
@@ -201,7 +201,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   setEmailRecoveryOpen(false)
                   setSmsRecoveryOpen(true)
                 }}
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
+                className="text-primary hover:text-primary/80 font-medium transition-colors max-md:py-2"
               >
                 Recuperar senha por SMS
               </button>

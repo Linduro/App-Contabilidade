@@ -32,10 +32,10 @@ function WeightBadge({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-bold uppercase text-muted-foreground">
+      <span className="text-[10px] font-bold uppercase text-muted-foreground max-md:text-xs">
         {CATEGORY_LABELS[category]} · {Math.round(CATEGORY_WEIGHTS[category] * 100)}% da média
       </span>
-      {hint && <span className="text-[10px] text-muted-foreground/80">{hint}</span>}
+      {hint && <span className="text-[10px] text-muted-foreground/80 max-md:text-xs">{hint}</span>}
     </div>
   )
 }
@@ -109,7 +109,7 @@ export function DisciplineActivities({
 
         return (
           <div key={category} className="space-y-2">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex items-start justify-between gap-2 flex-wrap max-md:flex-col max-md:items-stretch">
               <WeightBadge
                 category={category}
                 hint={
@@ -121,14 +121,14 @@ export function DisciplineActivities({
               <div className="flex items-center gap-2">
                 {isTestCategory && (
                   <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-1 py-0.5">
-                    <span className="text-[10px] font-semibold text-muted-foreground px-1.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground px-1.5 max-md:text-xs">
                       Qtd:
                     </span>
                     <button
                       type="button"
                       onClick={() => setTestCount(testCount - 1)}
                       disabled={testCount <= 1}
-                      className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+                      className="p-1 rounded hover:bg-secondary disabled:opacity-30 max-md:p-2 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
                       aria-label="Menos um teste"
                     >
                       <Minus className="w-3 h-3" />
@@ -139,13 +139,13 @@ export function DisciplineActivities({
                       max={20}
                       value={testCount}
                       onChange={(e) => setTestCount(parseInt(e.target.value, 10) || 1)}
-                      className="w-10 h-7 text-center text-xs font-bold bg-background border border-border rounded-md"
+                      className="w-10 h-7 text-center text-xs font-bold bg-background border border-border rounded-md max-md:w-12 max-md:h-9"
                     />
                     <button
                       type="button"
                       onClick={() => setTestCount(testCount + 1)}
                       disabled={testCount >= 20}
-                      className="p-1 rounded hover:bg-secondary disabled:opacity-30"
+                      className="p-1 rounded hover:bg-secondary disabled:opacity-30 max-md:p-2 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
                       aria-label="Mais um teste"
                     >
                       <Plus className="w-3 h-3" />
@@ -156,7 +156,7 @@ export function DisciplineActivities({
                   <button
                     type="button"
                     onClick={() => addActivity(category)}
-                    className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1"
+                    className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1 max-md:text-xs max-md:min-h-10 max-md:px-2"
                   >
                     <Plus className="w-3 h-3" />
                     Adicionar
@@ -166,7 +166,7 @@ export function DisciplineActivities({
             </div>
             <ul className="space-y-1.5">
               {items.map((activity) => (
-                <li key={activity.id} className="flex items-center gap-2">
+                <li key={activity.id} className="flex items-center gap-2 max-md:flex-wrap">
                   {isLockedActivityName(category) ? (
                     <span className="flex-1 min-w-0 text-xs bg-secondary/20 border border-border/40 rounded-md px-2 py-1.5 text-foreground/90">
                       {activity.name}
@@ -186,13 +186,13 @@ export function DisciplineActivities({
                     placeholder="—"
                     value={activity.grade}
                     onChange={(e) => updateActivity(activity.id, { grade: e.target.value })}
-                    className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-xs"
+                    className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-xs max-md:w-16 max-md:h-10"
                   />
                   {isTestCategory && testCount > 1 && (
                     <button
                       type="button"
                       onClick={() => removeTest(activity.id)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-md"
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-md max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
                       aria-label="Remover teste"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export function DisciplineActivities({
                     <button
                       type="button"
                       onClick={() => removeActivity(activity.id)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-md"
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-md max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
                       aria-label="Remover atividade"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

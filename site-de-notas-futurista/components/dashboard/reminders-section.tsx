@@ -53,7 +53,7 @@ export function RemindersSection({
   const accountEmail = user?.email ?? ""
 
   return (
-    <section className="glass-card rounded-2xl p-6 neon-border mb-8" data-tour="reminders">
+    <section className="glass-card rounded-2xl p-6 neon-border mb-8 max-md:p-4" data-tour="reminders">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <Bell className="w-5 h-5" />
@@ -62,7 +62,7 @@ export function RemindersSection({
         <button
           type="button"
           onClick={addReminder}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1"
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1 max-md:min-h-10 max-md:px-4 max-md:text-sm"
         >
           <Plus className="w-3.5 h-3.5" />
           Novo
@@ -80,7 +80,7 @@ export function RemindersSection({
             checked={notifyEmail}
             disabled={prefsLoading || !accountEmail}
             onChange={(e) => handleNotifyEmailChange(e.target.checked)}
-            className="rounded border-border"
+            className="rounded border-border max-md:h-5 max-md:w-5"
           />
           <Mail className="w-4 h-4 text-primary shrink-0" />
           <span>Receber avisos por e-mail</span>
@@ -112,14 +112,14 @@ export function RemindersSection({
                   type="checkbox"
                   checked={reminder.done}
                   onChange={(e) => updateReminder(index, { ...reminder, done: e.target.checked })}
-                  className="shrink-0"
+                  className="shrink-0 max-md:h-5 max-md:w-5"
                 />
                 <input
                   type="text"
                   value={reminder.title}
                   onChange={(e) => updateReminder(index, { ...reminder, title: e.target.value })}
                   placeholder="Ex: Prova de Contabilidade"
-                  className="flex-1 bg-transparent border border-dashed border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary outline-none"
+                  className="flex-1 bg-transparent border border-dashed border-border rounded-lg px-3 py-1.5 text-sm focus:border-primary outline-none max-md:w-full"
                 />
                 <input
                   type="date"
@@ -127,12 +127,12 @@ export function RemindersSection({
                   onChange={(e) =>
                     updateReminder(index, { ...reminder, date: e.target.value, notifiedOn: null })
                   }
-                  className="bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-sm"
+                  className="bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-sm max-md:w-full"
                 />
                 <button
                   type="button"
                   onClick={() => deleteReminder(index)}
-                  className="p-2 text-muted-foreground hover:text-destructive self-end sm:self-center"
+                  className="p-2 text-muted-foreground hover:text-destructive self-end sm:self-center max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

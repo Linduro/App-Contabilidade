@@ -186,7 +186,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
       )}
 
       {!canAdvance && pendingSteps.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[290] glass-card neon-border rounded-full px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 shadow-lg">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[290] glass-card neon-border rounded-full px-4 py-2 text-xs text-muted-foreground flex items-center gap-2 shadow-lg max-md:bottom-24 max-md:max-w-[90vw] max-md:text-center max-md:justify-center">
           <ChevronDown className="w-4 h-4 text-primary animate-bounce" />
           Desça a página para ver o próximo item do tour
         </div>
@@ -203,7 +203,7 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
           <button
             type="button"
             onClick={finishTour}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors max-md:p-2 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center max-md:rounded-lg"
             aria-label="Fechar tour"
           >
             <X className="w-4 h-4" />
@@ -240,9 +240,10 @@ export function DashboardOnboardingTour({ autoStart, restartKey = 0 }: Dashboard
 
 function getBalloonStyle(rect: DOMRect, spotlight: boolean) {
   const margin = 16
-  const balloonWidth = 340
-  const balloonHeight = 220
   const viewportWidth = window.innerWidth
+  const isMobile = viewportWidth < 768
+  const balloonWidth = isMobile ? Math.min(340, viewportWidth - margin * 2) : 340
+  const balloonHeight = 220
   const viewportHeight = window.innerHeight
 
   let top = rect.bottom + margin

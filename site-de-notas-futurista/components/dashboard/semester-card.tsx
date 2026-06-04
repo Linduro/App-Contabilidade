@@ -124,12 +124,12 @@ export function SemesterCard({
         menuOpen ? "z-30" : "z-0"
       } ${isDragging ? "opacity-50" : ""} ${isDragOver ? "ring-2 ring-primary" : ""}`}
     >
-      <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border/50 border-t-4 border-t-primary">
+      <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border/50 border-t-4 border-t-primary max-md:px-3 max-md:gap-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">
           <button
             type="button"
             onClick={() => onChange({ ...semester, collapsed: !collapsed })}
-            className="shrink-0 mt-2 p-1.5 rounded-md hover:bg-secondary/60 text-primary"
+            className="shrink-0 mt-2 p-1.5 rounded-md hover:bg-secondary/60 text-primary max-md:p-2.5 max-md:min-h-11 max-md:min-w-11 max-md:flex max-md:items-center max-md:justify-center"
             aria-expanded={!collapsed}
             aria-label={collapsed ? "Expandir semestre" : "Recolher semestre"}
           >
@@ -142,7 +142,7 @@ export function SemesterCard({
               type="button"
               disabled={semesterIndex === 0}
               onClick={() => onMoveSemester(semesterIndex, semesterIndex - 1)}
-              className="p-1 rounded hover:bg-secondary disabled:opacity-30 sm:hidden"
+              className="p-1 rounded hover:bg-secondary disabled:opacity-30 sm:hidden max-md:p-2.5 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
               aria-label="Mover semestre para cima"
             >
               <ChevronUp className="w-4 h-4" />
@@ -160,7 +160,7 @@ export function SemesterCard({
               type="button"
               disabled={semesterIndex === totalSemesters - 1}
               onClick={() => onMoveSemester(semesterIndex, semesterIndex + 1)}
-              className="p-1 rounded hover:bg-secondary disabled:opacity-30 sm:hidden"
+              className="p-1 rounded hover:bg-secondary disabled:opacity-30 sm:hidden max-md:p-2.5 max-md:min-h-10 max-md:min-w-10 max-md:flex max-md:items-center max-md:justify-center"
               aria-label="Mover semestre para baixo"
             >
               <ChevronDown className="w-4 h-4" />
@@ -176,7 +176,7 @@ export function SemesterCard({
               />
               <Pencil className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary/60 pointer-events-none opacity-70 group-focus-within:opacity-100" />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">
+            <p className="text-[10px] text-muted-foreground mt-1.5 max-md:text-xs">
               Clique para editar o título do semestre
             </p>
             <div className="mt-2 space-y-1.5">
@@ -203,7 +203,7 @@ export function SemesterCard({
         <button
           type="button"
           onClick={onDelete}
-          className="p-2 text-muted-foreground hover:text-destructive rounded-md shrink-0"
+          className="p-2 text-muted-foreground hover:text-destructive rounded-md shrink-0 max-md:min-h-11 max-md:min-w-11 max-md:flex max-md:items-center max-md:justify-center"
         >
           <X className="w-4 h-4" />
         </button>
@@ -246,7 +246,7 @@ export function SemesterCard({
           Adicionar Disciplina
         </button>
         {menuOpen && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 glass-card rounded-xl neon-border py-1 min-w-[200px] z-50 shadow-lg">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 glass-card rounded-xl neon-border py-1 min-w-[200px] z-50 shadow-lg max-md:left-0 max-md:right-0 max-md:translate-x-0 max-md:mx-auto max-md:w-[min(100%,14rem)]">
             {DISCIPLINE_TYPE_ORDER.map((type) => (
               <button
                 key={type}

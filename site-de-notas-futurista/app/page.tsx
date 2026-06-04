@@ -12,22 +12,22 @@ export default function HomePage() {
       </div>
 
       <header className="relative z-10 border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-6 max-md:px-4 max-md:h-auto max-md:py-3 h-20 flex max-md:flex-wrap max-md:gap-3 items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold gradient-text">AdvForte Portal</span>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 max-md:w-full max-md:justify-end">
             <Link href="/sign-in">
-              <Button variant="ghost" className="text-foreground/80 hover:text-foreground">
+              <Button variant="ghost" className="text-foreground/80 hover:text-foreground max-md:min-h-11 max-md:px-4">
                 Entrar
               </Button>
             </Link>
             <Link href="/sign-up">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground max-md:min-h-11 max-md:px-4">
                 Criar Conta
               </Button>
             </Link>
@@ -35,7 +35,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24 md:py-32">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 max-md:px-4 py-24 max-md:py-16 md:py-32">
         <div className="text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card-gold neon-border-gold mb-8">
             <GraduationCap className="w-4 h-4 text-accent" />
@@ -75,8 +75,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-        <div className="text-center mb-16">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 max-md:px-4 py-24 max-md:py-16">
+        <div className="text-center mb-16 max-md:mb-10">
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             O que você encontra aqui
           </h2>
@@ -86,7 +86,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          <div className="glass-card rounded-2xl p-8 neon-border group hover:scale-[1.02] transition-transform duration-300">
+          <div className="glass-card rounded-2xl p-8 max-md:p-6 neon-border group hover:scale-[1.02] transition-transform duration-300">
             <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
               <BookOpen className="w-7 h-7 text-primary" />
             </div>
@@ -97,7 +97,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="glass-card-gold rounded-2xl p-8 neon-border-gold group hover:scale-[1.02] transition-transform duration-300">
+          <div className="glass-card-gold rounded-2xl p-8 max-md:p-6 neon-border-gold group hover:scale-[1.02] transition-transform duration-300">
             <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-6 group-hover:bg-accent/20 transition-colors">
               <Bell className="w-7 h-7 text-accent" />
             </div>
@@ -108,7 +108,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="glass-card rounded-2xl p-8 neon-border group hover:scale-[1.02] transition-transform duration-300">
+          <div className="glass-card rounded-2xl p-8 max-md:p-6 neon-border group hover:scale-[1.02] transition-transform duration-300">
             <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
               <Calendar className="w-7 h-7 text-primary" />
             </div>
@@ -121,8 +121,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative z-10 max-w-7xl mx-auto px-6 py-24">
-        <div className="glass-card rounded-3xl p-12 md:p-16 text-center neon-border relative overflow-hidden">
+      <section className="relative z-10 max-w-7xl mx-auto px-6 max-md:px-4 py-24 max-md:py-16">
+        <div className="glass-card rounded-3xl p-12 max-md:p-6 md:p-16 text-center neon-border relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5" />
           <div className="relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-balance">
@@ -145,7 +145,7 @@ export default function HomePage() {
       </section>
 
       <footer className="relative z-10 border-t border-border/50 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-6 max-md:px-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
