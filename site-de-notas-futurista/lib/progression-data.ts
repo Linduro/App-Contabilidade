@@ -109,6 +109,22 @@ export function getTestCount(activities: Activity[]): number {
   return activities.filter((a) => a.category === "teste").length
 }
 
+/** Remove um teste específico e renumerar os demais (mínimo 1 teste). */
+export function removeTestActivity(activities: Activity[], testId: string): Activity[] {
+  const tests = activities.filter((a) => a.category === "teste")
+  if (tests.length <= 1) return activities
+
+  const nonTests = activities.filter((a) => a.category !== "teste")
+  const remaining = tests
+    .filter((t) => t.id !== testId)
+    .map((t, index) => ({
+      ...t,
+      name: `Teste ${String(index + 1).padStart(2, "0")}`,
+    }))
+
+  return [...remaining, ...nonTests]
+}
+
 export function normalizeDiscipline(discipline: Partial<Discipline>): Discipline {
   const gradeMode = discipline.gradeMode ?? "simple"
   const type = resolveDisciplineType(discipline.type)

@@ -5,6 +5,7 @@ import { AuthProvider } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeSync } from '@/components/theme-sync'
 import { FirebaseAnalytics } from '@/components/firebase-analytics'
+import { FloatingRadioPlayer } from '@/components/floating-radio-player'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -59,6 +60,7 @@ export default function RootLayout({
           <AuthProvider>
             <ThemeSync />
             {children}
+            <FloatingRadioPlayer />
           </AuthProvider>
         </ThemeProvider>
         <FirebaseAnalytics />

@@ -17,9 +17,6 @@ export function SiteFooter() {
             alt=""
             className="h-44 sm:h-56 md:h-64 lg:h-72 xl:h-80 w-auto object-contain object-top drop-shadow-lg opacity-95"
           />
-          <p className="text-xs font-bold text-muted-foreground/90 tracking-wide pr-1 -mt-1">
-            Dr Pitoco
-          </p>
         </div>
 
         {/* Mensagem — região esquerda (área circulada), à frente */}

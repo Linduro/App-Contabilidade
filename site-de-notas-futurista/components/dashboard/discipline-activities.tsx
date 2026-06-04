@@ -4,6 +4,7 @@ import { Minus, Plus, Trash2 } from "lucide-react"
 import {
   createActivity,
   getTestCount,
+  removeTestActivity,
   syncTestCount,
   type Activity,
   type ActivityCategory,
@@ -80,6 +81,14 @@ export function DisciplineActivities({
     onChange({
       ...discipline,
       activities: [...activities, createActivity(category, defaultName)],
+    })
+  }
+
+  const removeTest = (id: string) => {
+    if (testCount <= 1) return
+    onChange({
+      ...discipline,
+      activities: removeTestActivity(activities, id),
     })
   }
 
@@ -179,6 +188,16 @@ export function DisciplineActivities({
                     onChange={(e) => updateActivity(activity.id, { grade: e.target.value })}
                     className="w-14 h-8 px-1 bg-secondary/50 border border-border rounded-md text-center font-bold text-xs"
                   />
+                  {isTestCategory && testCount > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeTest(activity.id)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded-md"
+                      aria-label="Remover teste"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {!isTestCategory && items.length > 1 && (
                     <button
                       type="button"
