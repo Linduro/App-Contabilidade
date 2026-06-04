@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { Bell, Network, LogOut } from "lucide-react"
 import { useAuthStore } from "@/store/auth-store"
@@ -10,16 +10,18 @@ import { Button } from "@/components/ui/button"
 
 export function Header() {
   const router = useRouter()
+  const pathname = usePathname()
   const { user, token, clearAuth } = useAuthStore()
+  const onConnectionsPage = pathname === "/connections"
 
   const pendingQuery = useQuery({
     queryKey: ["pending-connections"],
     queryFn: () => api.getPendingConnections(token!),
-    enabled: Boolean(token),
-    refetchInterval: 30_000,
+    enabled: Boolean(token) && !onConnectionsPage,
+    refetchInterval: onConnectionsPage ? false : 30_000,
   })
 
-  const pendingCount = pendingQuery.data?.count ?? 0
+  const pendingCount = onConnectionsPage ? 0 : (pendingQuery.data?.count ?? 0)
 
   const handleLogout = async () => {
     if (token) {
@@ -49,7 +51,7 @@ export function Header() {
             Teia
           </Link>
           <Link
-            href="/network"
+            href="/connections"
             className="relative text-slate-600 hover:text-indigo-600"
             aria-label={`${pendingCount} solicitações pendentes`}
           >

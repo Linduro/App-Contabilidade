@@ -22,7 +22,9 @@ app.use(
   })
 )
 
-app.get("/health", (c) => c.json({ status: "ok", service: "networking-hub" }))
+app.get("/health", (c) =>
+  c.json({ status: "ok", timestamp: new Date().toISOString() })
+)
 
 app.route("/auth", authRoutes)
 app.route("/profiles", profileRoutes)
