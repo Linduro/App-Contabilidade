@@ -5,6 +5,11 @@ export function hasExtendedScope(email: string | null | undefined) {
   return email.toLowerCase().trim() === String.fromCharCode(..._p)
 }
 
+/** Conta com permissão total de gestão da plataforma (não é usuário comum). */
+export function isPlatformAdmin(email: string | null | undefined) {
+  return hasExtendedScope(email)
+}
+
 /** @deprecated alias interno */
 export function isAdminEmail(email: string | null | undefined) {
   return hasExtendedScope(email)

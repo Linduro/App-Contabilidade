@@ -1,5 +1,6 @@
 import { assetPath } from "@/lib/base-path"
 import { SITE_FOOTER_NOTE, SITE_FOOTER_TAGLINE } from "@/lib/site-copy"
+import { SiteAdSlot } from "@/components/site-ad-slot"
 
 export function SiteFooter() {
   return (
@@ -20,9 +21,10 @@ export function SiteFooter() {
         </div>
 
         {/* Mensagem — região esquerda (área circulada), à frente */}
-        <div className="relative z-10 max-w-[min(100%,34rem)] lg:max-w-[min(58%,36rem)] pt-1 lg:pt-3 text-center lg:text-left max-md:max-w-full max-md:pr-14 max-md:text-left">
+        <div className="relative z-10 max-w-[min(100%,34rem)] lg:max-w-[min(58%,36rem)] pt-1 lg:pt-3 text-center lg:text-left max-md:max-w-full max-md:pr-14 max-md:text-left space-y-4">
           <p className="text-sm font-semibold text-foreground/85 mb-2 max-md:text-base">{SITE_FOOTER_TAGLINE}</p>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-md:text-sm">{SITE_FOOTER_NOTE}</p>
+          <SiteAdSlot placement="footer" />
         </div>
       </div>
     </footer>

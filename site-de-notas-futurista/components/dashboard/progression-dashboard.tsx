@@ -7,9 +7,11 @@ import {
   Cloud,
   GripVertical,
   LogOut,
+  Megaphone,
   Moon,
   Plus,
   Search,
+  Shield,
   Sun,
 } from "lucide-react"
 import { auth } from "@/lib/firebase"
@@ -21,7 +23,8 @@ import { RemindersSection } from "@/components/dashboard/reminders-section"
 import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
-import { ScopeDataDrawer } from "@/components/dashboard/scope-data-drawer"
+import { AdminPanelDrawer } from "@/components/dashboard/admin-panel-drawer"
+import { SiteAdSlot } from "@/components/site-ad-slot"
 import { useExtendedScope } from "@/components/use-extended-scope"
 import { hasExtendedScope } from "@/lib/admin-access"
 import { DisciplineEmoji } from "@/components/discipline-emoji"
@@ -51,7 +54,8 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   const [draggedSemesterIndex, setDraggedSemesterIndex] = useState<number | null>(null)
   const [dragOverSemesterIndex, setDragOverSemesterIndex] = useState<number | null>(null)
   const [tourRestartKey, setTourRestartKey] = useState(0)
-  const [scopeOpen, setScopeOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [adminTab, setAdminTab] = useState<"users" | "ads">("users")
   const scopeClickCount = useRef(0)
   const scopeClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -148,7 +152,8 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       if (scopeClickCount.current >= 3) {
         scopeClickCount.current = 0
         if (scopeClickTimer.current) clearTimeout(scopeClickTimer.current)
-        setScopeOpen(true)
+        setAdminTab("users")
+        setAdminOpen(true)
         return
       }
 
@@ -290,6 +295,37 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                 </div>
               </div>
 
+              {adminAccess && (
+                <div className="flex flex-wrap items-center justify-end gap-2 max-md:w-full max-md:justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAdminTab("users")
+                      setAdminOpen(true)
+                    }}
+                    className="shrink-0 border-primary/40 text-primary hover:bg-primary/10 max-md:flex-1 max-md:min-h-11"
+                    title="Painel do administrador"
+                  >
+                    <Shield className="w-4 h-4 mr-2" />
+                    Painel admin
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAdminTab("ads")
+                      setAdminOpen(true)
+                    }}
+                    className="shrink-0 border-accent/50 text-accent hover:bg-accent/10 max-md:flex-1 max-md:min-h-11"
+                    title="Gerenciar anúncios"
+                  >
+                    <Megaphone className="w-4 h-4 mr-2" />
+                    Anúncios
+                  </Button>
+                </div>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -312,6 +348,8 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
             Organize suas disciplinas, notas e prioridades estratégicas.
           </p>
         </div>
+
+        <SiteAdSlot placement="dashboard" className="mb-8" />
 
         <div className="relative mb-6" data-tour="search">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -421,7 +459,11 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       )}
 
       {adminAccess && (
-        <ScopeDataDrawer open={scopeOpen} onClose={() => setScopeOpen(false)} />
+        <AdminPanelDrawer
+          open={adminOpen}
+          initialTab={adminTab}
+          onClose={() => setAdminOpen(false)}
+        />
       )}
     </main>
   )

@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Sparkles, BookOpen, Bell, Calendar, ArrowRight, GraduationCap } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { SiteAdSlot } from "@/components/site-ad-slot"
 import { AUTH_FOOTER_NOTE, SITE_FOOTER_NOTE } from "@/lib/site-copy"
 
 export default function HomePage() {
@@ -73,6 +74,10 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
+      </section>
+
+      <section className="relative z-10 max-w-3xl mx-auto px-6 max-md:px-4 pb-8">
+        <SiteAdSlot placement="home" />
       </section>
 
       <section className="relative z-10 max-w-7xl mx-auto px-6 max-md:px-4 py-24 max-md:py-16">
