@@ -1,40 +1,67 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
 import { HP12C_CALCULATOR_TITLE, HP12C_CALCULATOR_URL } from "@/lib/hp12c-calculator"
 
 const SOURCE_WIDTH = 900
 const SOURCE_HEIGHT = 700
-const COMPACT_SCALE = 0.36
+
+function Hp12cCompactFrame() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    const element = containerRef.current
+    if (!element) return
+
+    const updateScale = () => {
+      const width = element.clientWidth
+      if (width > 0) setScale(width / SOURCE_WIDTH)
+    }
+
+    updateScale()
+    const observer = new ResizeObserver(updateScale)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  const frameHeight = Math.round(SOURCE_HEIGHT * scale)
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <div
+        className="w-full overflow-hidden rounded-md border border-border bg-[#1a1a1a] shadow-inner"
+        style={{ height: frameHeight }}
+      >
+        <iframe
+          src={HP12C_CALCULATOR_URL}
+          title={HP12C_CALCULATOR_TITLE}
+          className="border-0 pointer-events-auto block"
+          style={{
+            width: SOURCE_WIDTH,
+            height: SOURCE_HEIGHT,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+          scrolling="no"
+          loading="lazy"
+          allow="fullscreen"
+        />
+      </div>
+    </div>
+  )
+}
 
 export function Hp12cCalculatorPanel({ compact = false }: { compact?: boolean }) {
-  const frameWidth = Math.round(SOURCE_WIDTH * COMPACT_SCALE)
-  const frameHeight = Math.round(SOURCE_HEIGHT * COMPACT_SCALE)
-
   if (compact) {
     return (
-      <div className="flex flex-col items-center gap-2 pt-1">
-        <div
-          className="overflow-hidden rounded-md border border-border bg-[#1a1a1a] shadow-inner"
-          style={{ width: frameWidth, height: frameHeight }}
-        >
-          <iframe
-            src={HP12C_CALCULATOR_URL}
-            title={HP12C_CALCULATOR_TITLE}
-            className="border-0 pointer-events-auto"
-            style={{
-              width: SOURCE_WIDTH,
-              height: SOURCE_HEIGHT,
-              transform: `scale(${COMPACT_SCALE})`,
-              transformOrigin: "top left",
-            }}
-            scrolling="no"
-            loading="lazy"
-            allow="fullscreen"
-          />
-        </div>
+      <div className="flex w-full flex-col gap-1.5">
+        <Hp12cCompactFrame />
         <a
           href={HP12C_CALCULATOR_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80"
+          className="text-[10px] sm:text-xs font-semibold text-primary hover:text-primary/80 text-center"
         >
           Abrir em tela cheia
         </a>

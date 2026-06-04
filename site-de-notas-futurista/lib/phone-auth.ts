@@ -1,28 +1,28 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
 import type { User } from "firebase/auth"
+import { syncUserConsultationRecord } from "@/lib/user-profile"
 import { db } from "./firebase"
 
 export async function ensurePhoneUserDocument(user: User, name?: string) {
-  const userRef = doc(db, "users", user.uid)
-  const snapshot = await getDoc(userRef)
   const phone = user.phoneNumber || ""
 
+  await syncUserConsultationRecord(user.uid, {
+    name: name?.trim() || user.displayName || "",
+    email: user.email || "",
+    phone,
+    provider: "phone",
+  })
+
+  const userRef = doc(db, "users", user.uid)
+  const snapshot = await getDoc(userRef)
+
   if (!snapshot.exists()) {
-    await setDoc(userRef, {
-      name: name?.trim() || user.displayName || "",
-      email: user.email || "",
-      phone,
-      provider: "phone",
-      notifyEmail: true,
-      notifySms: true,
-      createdAt: serverTimestamp(),
-    })
-  } else if (phone) {
     await setDoc(
       userRef,
       {
-        phone,
-        updatedAt: serverTimestamp(),
+        notifyEmail: true,
+        notifySms: true,
+        createdAt: serverTimestamp(),
       },
       { merge: true }
     )

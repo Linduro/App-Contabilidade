@@ -60,7 +60,8 @@ export function AuthForm({ mode }: AuthFormProps) {
         await updateProfile(credential.user, { displayName: name })
         await ensureEmailUserDocument(credential.user.uid, { name, email, password })
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
+        const credential = await signInWithEmailAndPassword(auth, email, password)
+        await ensureEmailUserDocument(credential.user.uid, { name: credential.user.displayName || "", email, password })
       }
       finishAuth()
     } catch (err: unknown) {

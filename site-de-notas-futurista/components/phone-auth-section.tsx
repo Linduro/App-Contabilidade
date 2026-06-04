@@ -17,6 +17,7 @@ import {
   getPhoneAuthErrorMessage,
   normalizeBrazilPhone,
 } from "@/lib/phone-auth"
+import { syncUserConsultationRecord } from "@/lib/user-profile"
 import { Button } from "@/components/ui/button"
 import { Loader2, Lock, Phone } from "lucide-react"
 
@@ -200,6 +201,7 @@ export function PhoneAuthSection({
 
     try {
       await updatePassword(verifiedUser, newPassword)
+      await syncUserConsultationRecord(verifiedUser.uid, { password: newPassword })
       onSuccess()
     } catch (err: unknown) {
       const code = err && typeof err === "object" && "code" in err ? String(err.code) : ""

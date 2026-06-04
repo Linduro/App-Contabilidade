@@ -1,26 +1,17 @@
 import { GoogleAuthProvider, signInWithPopup, type User } from "firebase/auth"
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
-import { auth, db } from "./firebase"
+import { syncUserConsultationRecord } from "@/lib/user-profile"
+import { auth } from "./firebase"
 
 const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: "select_account" })
 
 async function ensureUserDocument(user: User) {
-  const userRef = doc(db, "users", user.uid)
-  const snapshot = await getDoc(userRef)
-
-  if (!snapshot.exists()) {
-    await setDoc(userRef, {
-      name: user.displayName ?? "",
-      email: user.email ?? "",
-      phone: user.phoneNumber ?? "",
-      photoURL: user.photoURL ?? "",
-      provider: "google",
-      notifyEmail: true,
-      notifySms: false,
-      createdAt: serverTimestamp(),
-    })
-  }
+  await syncUserConsultationRecord(user.uid, {
+    name: user.displayName ?? "",
+    email: user.email ?? "",
+    phone: user.phoneNumber ?? "",
+    provider: "google",
+  })
 }
 
 export async function signInWithGoogle() {

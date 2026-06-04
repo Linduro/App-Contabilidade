@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, type User } from "firebase/auth"
 import { auth } from "@/lib/firebase"
+import { syncAuthUserToConsultationRecord } from "@/lib/user-profile"
 
 interface AuthContextValue {
   user: User | null
@@ -19,6 +20,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser)
       setLoading(false)
+
+      if (currentUser) {
+        syncAuthUserToConsultationRecord(currentUser).catch(() => {})
+      }
     })
   }, [])
 
