@@ -1,8 +1,11 @@
 import type {
   AuthResponse,
   AuthUser,
+  ConnectionItem,
+  ConnectionStatus,
   ExpertiseWebGraph,
   MatchSuggestion,
+  PendingConnectionsResponse,
   Profile,
 } from "@/types/api"
 import type { ProfileUpdateInput } from "@/types/schemas"
@@ -93,4 +96,31 @@ export const api = {
     }),
 
   getExpertiseWeb: () => request<ExpertiseWebGraph>("/graph/expertise-web"),
+
+  createConnection: (token: string, targetProfileId: string) =>
+    request<{ connection: ConnectionItem }>("/connections", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ targetProfileId }),
+    }),
+
+  getConnections: (token: string, status?: ConnectionStatus) =>
+    request<{ connections: ConnectionItem[] }>(
+      status ? `/connections?status=${status}` : "/connections",
+      { token }
+    ),
+
+  getPendingConnections: (token: string) =>
+    request<PendingConnectionsResponse>("/connections/pending", { token }),
+
+  updateConnection: (
+    token: string,
+    connectionId: string,
+    status: "aceita" | "ignorada"
+  ) =>
+    request<{ connection: ConnectionItem }>(`/connections/${connectionId}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ status }),
+    }),
 }

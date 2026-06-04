@@ -42,11 +42,7 @@ export default function NetworkPage() {
               </p>
             )}
             {matches.map((m) => (
-              <MatchCard
-                key={m.profile.id}
-                match={m}
-                onConnect={() => alert("Conexão em breve no backend.")}
-              />
+              <MatchCard key={m.profile.id} match={m} />
             ))}
           </CardContent>
         </Card>

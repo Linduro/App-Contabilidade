@@ -90,13 +90,7 @@ export default function DashboardPage() {
             )}
             <ErrorBoundary fallbackTitle="Erro ao exibir matches">
               {topMatches.map((m) => (
-                <MatchCard
-                  key={m.profile.id}
-                  match={m}
-                  onConnect={() =>
-                    alert("Solicitação de conexão em breve no backend.")
-                  }
-                />
+                <MatchCard key={m.profile.id} match={m} />
               ))}
             </ErrorBoundary>
           </CardContent>

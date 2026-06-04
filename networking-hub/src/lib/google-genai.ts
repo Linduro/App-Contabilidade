@@ -14,7 +14,7 @@ export function getGoogleGenAI(): GoogleGenAI {
 export const EMBEDDING_MODEL = "gemini-embedding-001" as const
 export const EMBEDDING_DIMENSIONS = 1536 as const
 
-export async function createEmbedding(text: string): Promise<number[]> {
+export async function createGoogleGenAIEmbedding(text: string): Promise<number[]> {
   const ai = getGoogleGenAI()
 
   const response = await ai.models.embedContent({

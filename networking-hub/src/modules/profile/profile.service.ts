@@ -10,7 +10,7 @@ export type PublicProfile = Omit<Profile, "embedding" | "userId"> & {
   embedding?: never
 }
 
-function toPublicProfile(profile: Profile): PublicProfile {
+export function toPublicProfile(profile: Profile): PublicProfile {
   const { embedding: _e, userId: _u, ...rest } = profile
   return rest
 }

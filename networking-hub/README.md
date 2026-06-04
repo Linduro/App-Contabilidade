@@ -8,7 +8,7 @@ Backend do hub de networking inteligente FIPECAFI — perfis profissionais, embe
 - **Drizzle ORM** + PostgreSQL 16 + **pgvector**
 - **Better Auth** (`better-auth/crypto` para hash de senha + sessões bearer)
 - **BullMQ** + Redis (embeddings em background)
-- **Google GenAI** `gemini-embedding-001` (1536 dims, `GOOGLE_GENAI_API_KEY`)
+- **Embeddings** via `EMBEDDING_PROVIDER` (`google` ou `openai`), 1536 dims
 - **Zod** + **Vitest**
 
 ## Setup local
@@ -24,9 +24,10 @@ cp .env.example .env
 ### 2. PostgreSQL + Redis
 
 ```bash
-docker run -d --name pg-hub -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=networking_hub -p 5432:5432 pgvector/pgvector:pg16
-docker run -d --name redis-hub -p 6379:6379 redis:7
+docker compose up -d
 ```
+
+Configure `.env` a partir de `.env.example` (`EMBEDDING_PROVIDER=google` + `GOOGLE_GENAI_API_KEY`, ou `openai` + `OPENAI_API_KEY`).
 
 ### 3. Extensões e schema
 
@@ -42,7 +43,16 @@ CREATE INDEX IF NOT EXISTS profiles_embedding_hnsw_idx
   ON profiles USING hnsw (embedding vector_cosine_ops);
 ```
 
-### 4. Rodar API + worker
+### 4. Seed (15 perfis fictícios + fila de embedding)
+
+```bash
+npm run seed
+npm run dev:worker
+```
+
+Senha dos usuários seed: `Seed@123456` (e-mails `*@seed.fipecafi.local`).
+
+### 5. Rodar API + worker
 
 Terminal 1:
 
@@ -70,6 +80,10 @@ npm run dev:worker
 | Matching | POST | `/matching/recalculate` (Bearer) |
 | Graph | GET | `/graph/expertise-web` |
 | Graph | GET | `/graph/profile/:id/network` |
+| Connections | POST | `/connections` (Bearer) `{ targetProfileId }` |
+| Connections | PATCH | `/connections/:id` (Bearer) `{ status: "aceita" \| "ignorada" }` |
+| Connections | GET | `/connections?status=pendente` (Bearer) |
+| Connections | GET | `/connections/pending` (Bearer) |
 
 ### Autenticação
 
@@ -92,4 +106,4 @@ npm test
 
 ## Estrutura
 
-Ver `src/` conforme especificação: `db/`, `modules/{auth,profile,matching,graph}/`, `lib/`, `middleware/`.
+Ver `src/`: `db/`, `modules/{auth,profile,matching,graph,connections}/`, `lib/`, `middleware/`.

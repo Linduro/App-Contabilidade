@@ -1,14 +1,37 @@
 import { z } from "zod"
 
-const envSchema = z.object({
-  DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")),
-  REDIS_URL: z.string().min(1),
-  GOOGLE_GENAI_API_KEY: z.string().min(1),
-  BETTER_AUTH_SECRET: z.string().min(32),
-  BETTER_AUTH_URL: z.string().url(),
-  PORT: z.coerce.number().int().positive().default(3000),
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-})
+const envSchema = z
+  .object({
+    DATABASE_URL: z.string().url().or(z.string().startsWith("postgresql://")),
+    REDIS_URL: z.string().min(1),
+    EMBEDDING_PROVIDER: z.enum(["openai", "google"]).default("google"),
+    OPENAI_API_KEY: z.string().optional(),
+    GOOGLE_GENAI_API_KEY: z.string().optional(),
+    BETTER_AUTH_SECRET: z.string().min(32),
+    BETTER_AUTH_URL: z.string().url(),
+    PORT: z.coerce.number().int().positive().default(3000),
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.EMBEDDING_PROVIDER === "openai") {
+      if (!data.OPENAI_API_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "OPENAI_API_KEY é obrigatória quando EMBEDDING_PROVIDER=openai",
+          path: ["OPENAI_API_KEY"],
+        })
+      }
+    }
+    if (data.EMBEDDING_PROVIDER === "google") {
+      if (!data.GOOGLE_GENAI_API_KEY?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "GOOGLE_GENAI_API_KEY é obrigatória quando EMBEDDING_PROVIDER=google",
+          path: ["GOOGLE_GENAI_API_KEY"],
+        })
+      }
+    }
+  })
 
 export type Env = z.infer<typeof envSchema>
 

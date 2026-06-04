@@ -8,6 +8,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js"
 import { profileRoutes } from "./modules/profile/profile.routes.js"
 import { matchingRoutes } from "./modules/matching/matching.routes.js"
 import { graphRoutes } from "./modules/graph/graph.routes.js"
+import { connectionsRoutes } from "./modules/connections/connections.routes.js"
 
 const app = new Hono()
 
@@ -17,7 +18,7 @@ app.use(
   cors({
     origin: "*",
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 )
 
@@ -27,6 +28,7 @@ app.route("/auth", authRoutes)
 app.route("/profiles", profileRoutes)
 app.route("/matching", matchingRoutes)
 app.route("/graph", graphRoutes)
+app.route("/connections", connectionsRoutes)
 
 app.onError(errorMiddleware)
 

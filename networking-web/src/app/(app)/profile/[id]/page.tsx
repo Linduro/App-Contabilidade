@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { motion } from "framer-motion"
 import { ExpertiseTag } from "@/components/profile/expertise-tag"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ConnectButton } from "@/components/connections/connect-button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { api } from "@/lib/api"
 
@@ -95,12 +95,10 @@ export default function PublicProfilePage() {
             </section>
           )}
 
-          <Button
+          <ConnectButton
+            targetProfileId={profile.id}
             className="w-full sm:w-auto"
-            onClick={() => alert("Endpoint de conexão em breve.")}
-          >
-            Solicitar Conexão
-          </Button>
+          />
         </CardContent>
       </Card>
     </motion.div>

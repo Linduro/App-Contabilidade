@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm/pg-core"
 
 export const connectionStatusEnum = pgEnum("connection_status", [
-  "sugerida",
+  "pendente",
   "aceita",
   "ignorada",
 ])
@@ -86,7 +86,7 @@ export const connections = pgTable(
     profileBId: uuid("profile_b_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
-    status: connectionStatusEnum("status").notNull().default("sugerida"),
+    status: connectionStatusEnum("status").notNull().default("pendente"),
     similarityScore: real("similarity_score").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -132,6 +132,21 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
   user: one(users, { fields: [profiles.userId], references: [users.id] }),
   matchResults: many(matchResults),
+  connectionsAsA: many(connections, { relationName: "profileA" }),
+  connectionsAsB: many(connections, { relationName: "profileB" }),
+}))
+
+export const connectionsRelations = relations(connections, ({ one }) => ({
+  profileA: one(profiles, {
+    fields: [connections.profileAId],
+    references: [profiles.id],
+    relationName: "profileA",
+  }),
+  profileB: one(profiles, {
+    fields: [connections.profileBId],
+    references: [profiles.id],
+    relationName: "profileB",
+  }),
 }))
 
 export type User = typeof users.$inferSelect

@@ -5,15 +5,10 @@ import { motion } from "framer-motion"
 import type { MatchSuggestion } from "@/types/api"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ConnectButton } from "@/components/connections/connect-button"
 import { ExpertiseTag } from "./expertise-tag"
 
-export function MatchCard({
-  match,
-  onConnect,
-}: {
-  match: MatchSuggestion
-  onConnect?: () => void
-}) {
+export function MatchCard({ match }: { match: MatchSuggestion }) {
   const scorePercent = Math.round(match.score * 100)
 
   return (
@@ -49,9 +44,7 @@ export function MatchCard({
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={onConnect}>
-              Conectar
-            </Button>
+            <ConnectButton targetProfileId={match.profile.id} />
             <Link href={`/profile/${match.profile.id}`}>
               <Button size="sm" variant="outline">
                 Ver perfil

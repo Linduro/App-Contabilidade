@@ -61,3 +61,19 @@ export interface ExpertiseWebGraph {
   nodes: GraphNode[]
   edges: GraphEdge[]
 }
+
+export type ConnectionStatus = "pendente" | "aceita" | "ignorada"
+
+export interface ConnectionItem {
+  id: string
+  status: ConnectionStatus
+  similarityScore: number
+  createdAt: string
+  direction: "sent" | "received"
+  otherProfile: Profile
+}
+
+export interface PendingConnectionsResponse {
+  connections: ConnectionItem[]
+  count: number
+}
