@@ -9,13 +9,13 @@ import {
 } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 import { getGoogleAuthErrorMessage, signInWithGoogle } from "@/lib/google-auth"
+import { formatPhoneInput, getPhoneAuthErrorMessage, normalizeBrazilPhone } from "@/lib/phone-auth"
 import { ensureEmailUserDocument } from "@/lib/user-profile"
 import { WELCOME_GREETING_SESSION_KEY } from "@/lib/welcome-greeting"
 import { GoogleIcon } from "@/components/google-icon"
-import { PhoneAuthSection } from "@/components/phone-auth-section"
 import { EmailRecoverySection } from "@/components/email-recovery-section"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, EyeOff, Mail, Lock, User } from "lucide-react"
+import { Loader2, Eye, EyeOff, Mail, Lock, Phone, User } from "lucide-react"
 
 function getAuthErrorMessage(code: string) {
   const messages: Record<string, string> = {
@@ -35,12 +35,12 @@ interface AuthFormProps {
 export function AuthForm({ mode }: AuthFormProps) {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [emailRecoveryOpen, setEmailRecoveryOpen] = useState(false)
   const router = useRouter()
 
@@ -56,12 +56,30 @@ export function AuthForm({ mode }: AuthFormProps) {
 
     try {
       if (mode === "sign-up") {
+        let normalizedPhone = ""
+        try {
+          normalizedPhone = normalizeBrazilPhone(phone)
+        } catch {
+          setError(getPhoneAuthErrorMessage("invalid-phone"))
+          setLoading(false)
+          return
+        }
+
         const credential = await createUserWithEmailAndPassword(auth, email, password)
         await updateProfile(credential.user, { displayName: name })
-        await ensureEmailUserDocument(credential.user.uid, { name, email, password })
+        await ensureEmailUserDocument(credential.user.uid, {
+          name,
+          email,
+          password,
+          phone: normalizedPhone,
+        })
       } else {
         const credential = await signInWithEmailAndPassword(auth, email, password)
-        await ensureEmailUserDocument(credential.user.uid, { name: credential.user.displayName || "", email, password })
+        await ensureEmailUserDocument(credential.user.uid, {
+          name: credential.user.displayName || "",
+          email,
+          password,
+        })
       }
       finishAuth()
     } catch (err: unknown) {
@@ -122,6 +140,24 @@ export function AuthForm({ mode }: AuthFormProps) {
           </div>
         </div>
 
+        {mode === "sign-up" && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground/80">Telefone</label>
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
+                placeholder="(18) 99999-9999"
+                required
+                minLength={14}
+                className="w-full h-12 pl-12 pr-4 bg-secondary/40 border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground/80">Senha</label>
           <div className="relative">
@@ -144,28 +180,16 @@ export function AuthForm({ mode }: AuthFormProps) {
             </button>
           </div>
           {mode === "sign-in" && (
-            <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-right">
+            <div className="text-xs text-right">
               <button
                 type="button"
                 onClick={() => {
                   setError("")
-                  setRecoveryOpen(false)
                   setEmailRecoveryOpen(true)
                 }}
                 className="text-primary hover:text-primary/80 font-medium transition-colors"
               >
                 Recuperar por e-mail
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setError("")
-                  setEmailRecoveryOpen(false)
-                  setRecoveryOpen(true)
-                }}
-                className="text-primary hover:text-primary/80 font-medium transition-colors"
-              >
-                Recuperar por SMS
               </button>
             </div>
           )}
@@ -212,14 +236,6 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
       </Button>
 
-      <PhoneAuthSection
-        mode={mode}
-        name={name}
-        disabled={busy}
-        onSuccess={finishAuth}
-        onError={setError}
-      />
-
       {mode === "sign-in" && emailRecoveryOpen && (
         <EmailRecoverySection
           email={email}
@@ -227,18 +243,6 @@ export function AuthForm({ mode }: AuthFormProps) {
           onClose={() => setEmailRecoveryOpen(false)}
           onError={setError}
           onClearMessages={() => setError("")}
-        />
-      )}
-
-      {mode === "sign-in" && recoveryOpen && (
-        <PhoneAuthSection
-          mode="sign-in"
-          intent="recovery"
-          defaultOpen
-          disabled={busy}
-          onClose={() => setRecoveryOpen(false)}
-          onSuccess={finishAuth}
-          onError={setError}
         />
       )}
 

@@ -72,12 +72,13 @@ export async function updateNotificationPreferences(
 
 export async function ensureEmailUserDocument(
   userId: string,
-  data: { name: string; email: string; password?: string }
+  data: { name: string; email: string; password?: string; phone?: string }
 ) {
   await syncUserConsultationRecord(userId, {
     name: data.name,
     email: data.email,
     password: data.password,
+    phone: data.phone,
     provider: "email",
   })
 }

@@ -8,7 +8,7 @@ export default function SignInPage() {
     <GuestOnly>
       <AuthPageLayout
         title="Bem-vindo de volta"
-        subtitle="Entre para acessar seu percurso acadêmico. Recupere a senha por e-mail ou SMS."
+        subtitle="Entre para acessar seu percurso acadêmico. Recupere a senha por e-mail se precisar."
       >
         <AuthForm mode="sign-in" />
 
