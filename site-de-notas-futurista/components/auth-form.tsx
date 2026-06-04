@@ -13,6 +13,7 @@ import { formatPhoneInput, getPhoneAuthErrorMessage, normalizeBrazilPhone } from
 import { ensureEmailUserDocument } from "@/lib/user-profile"
 import { WELCOME_GREETING_SESSION_KEY } from "@/lib/welcome-greeting"
 import { GoogleIcon } from "@/components/google-icon"
+import { PhoneAuthSection } from "@/components/phone-auth-section"
 import { EmailRecoverySection } from "@/components/email-recovery-section"
 import { Button } from "@/components/ui/button"
 import { Loader2, Eye, EyeOff, Mail, Lock, Phone, User } from "lucide-react"
@@ -42,6 +43,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [emailRecoveryOpen, setEmailRecoveryOpen] = useState(false)
+  const [smsRecoveryOpen, setSmsRecoveryOpen] = useState(false)
   const router = useRouter()
 
   const finishAuth = () => {
@@ -180,16 +182,28 @@ export function AuthForm({ mode }: AuthFormProps) {
             </button>
           </div>
           {mode === "sign-in" && (
-            <div className="text-xs text-right">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-1 sm:gap-4 text-xs text-right">
               <button
                 type="button"
                 onClick={() => {
                   setError("")
+                  setSmsRecoveryOpen(false)
                   setEmailRecoveryOpen(true)
                 }}
                 className="text-primary hover:text-primary/80 font-medium transition-colors"
               >
-                Recuperar por e-mail
+                Esqueci minha senha (e-mail)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setError("")
+                  setEmailRecoveryOpen(false)
+                  setSmsRecoveryOpen(true)
+                }}
+                className="text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                Recuperar senha por SMS
               </button>
             </div>
           )}
@@ -243,6 +257,18 @@ export function AuthForm({ mode }: AuthFormProps) {
           onClose={() => setEmailRecoveryOpen(false)}
           onError={setError}
           onClearMessages={() => setError("")}
+        />
+      )}
+
+      {mode === "sign-in" && smsRecoveryOpen && (
+        <PhoneAuthSection
+          mode="sign-in"
+          intent="recovery"
+          defaultOpen
+          disabled={busy}
+          onClose={() => setSmsRecoveryOpen(false)}
+          onSuccess={finishAuth}
+          onError={setError}
         />
       )}
 
