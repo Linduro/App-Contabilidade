@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, Megaphone, Shield, Users, X } from "lucide-react"
+import { useAdminImpersonation } from "@/components/admin-impersonation-provider"
 import { fetchAllUsersForAdmin, fetchUserProgressionForAdmin } from "@/lib/admin-data"
 import type { ProgressionData } from "@/lib/progression-data"
 import { AdminMessagePanel } from "@/components/dashboard/admin-message-panel"
@@ -21,6 +22,7 @@ export function AdminPanelDrawer({
   onClose,
   initialTab = "users",
 }: AdminPanelDrawerProps) {
+  const { startImpersonation } = useAdminImpersonation()
   const [tab, setTab] = useState<AdminTab>(initialTab)
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingProgression, setLoadingProgression] = useState(false)
@@ -80,6 +82,15 @@ export function AdminPanelDrawer({
     } finally {
       setLoadingProgression(false)
     }
+  }
+
+  const viewAsUser = (item: (typeof users)[number]) => {
+    startImpersonation({
+      userId: item.id,
+      email: item.email,
+      name: item.name,
+    })
+    onClose()
   }
 
   if (!open) return null
@@ -146,8 +157,11 @@ export function AdminPanelDrawer({
           ) : (
             <div className="grid lg:grid-cols-[280px_1fr] min-h-0">
               <div className="border-b lg:border-b-0 lg:border-r border-border/50 p-4 overflow-y-auto max-md:max-h-[40vh]">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
                   Contas ({users.length})
+                </p>
+                <p className="text-[10px] text-muted-foreground mb-3">
+                  Clique para resumo · duplo clique para abrir o painel do usuário
                 </p>
 
                 {loadingUsers ? (
@@ -163,6 +177,8 @@ export function AdminPanelDrawer({
                         key={item.id}
                         type="button"
                         onClick={() => loadProgression(item.id)}
+                        onDoubleClick={() => viewAsUser(item)}
+                        title="Duplo clique para ver o painel completo deste usuário"
                         className={`w-full text-left rounded-lg border px-3 py-2.5 transition-colors ${
                           selectedUserId === item.id
                             ? "border-primary/50 bg-primary/10"

@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Cloud,
+  Eye,
   GripVertical,
   LogOut,
   Moon,
   Plus,
   Search,
   Sun,
+  X,
 } from "lucide-react"
 import { auth } from "@/lib/firebase"
 import { useAuth } from "@/components/auth-provider"
+import { useAdminImpersonation } from "@/components/admin-impersonation-provider"
 import { useTheme } from "@/components/theme-provider"
 import { InstagramIcon, WhatsAppIcon } from "@/components/social-icons"
 import { Button } from "@/components/ui/button"
@@ -40,8 +43,11 @@ import { processDueReminders } from "@/lib/reminder-notifications"
 
 export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: boolean }) {
   const { user } = useAuth()
+  const { impersonation, stopImpersonation, hydrated: impersonationReady } = useAdminImpersonation()
   const canUseScope = useExtendedScope()
   const adminAccess = hasExtendedScope(user?.email) || canUseScope
+  const effectiveUserId = impersonation?.userId ?? user?.uid
+  const isViewingAsUser = Boolean(impersonation)
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const [data, setData] = useState<ProgressionData>(defaultProgression())
@@ -60,9 +66,14 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   const skipSave = useRef(true)
 
   useEffect(() => {
-    if (!user) return
+    if (!effectiveUserId) return
+
+    skipSave.current = true
+    setReady(false)
+    setLoading(true)
+
     const unsub = subscribeProgression(
-      user.uid,
+      effectiveUserId,
       (remote) => {
         setData(remote.semesters.length ? remote : defaultProgression())
         setLoading(false)
@@ -74,22 +85,22 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
       () => setLoading(false)
     )
     return unsub
-  }, [user])
+  }, [effectiveUserId])
 
   const persist = useCallback(
     (next: ProgressionData) => {
-      if (!user || skipSave.current) return
+      if (!effectiveUserId || skipSave.current) return
       setSaving(true)
       if (saveTimer.current) clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(async () => {
         try {
-          await saveProgression(user.uid, next)
+          await saveProgression(effectiveUserId, next)
         } finally {
           setSaving(false)
         }
       }, 600)
     },
-    [user]
+    [effectiveUserId]
   )
 
   const updateData = useCallback(
@@ -167,7 +178,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
   )
 
   useEffect(() => {
-    if (!user || !ready || data.reminders.length === 0) return
+    if (!user || !ready || data.reminders.length === 0 || isViewingAsUser) return
 
     let cancelled = false
 
@@ -186,11 +197,11 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
     return () => {
       cancelled = true
     }
-  }, [user, ready, data.reminders, updateData])
+  }, [user, ready, data.reminders, updateData, isViewingAsUser])
 
   const filteredCount = data.semesters.filter((s) => semesterMatchesSearch(s, searchQuery)).length
 
-  if (loading) {
+  if (loading || !impersonationReady) {
     return (
       <div className="min-h-screen flex items-center justify-center grid-pattern">
         <p className="text-muted-foreground">Carregando seu painel...</p>
@@ -200,6 +211,31 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
   return (
     <main className="min-h-screen grid-pattern relative overflow-hidden pb-24 max-md:pb-32">
+      {isViewingAsUser && impersonation && (
+        <div className="sticky top-0 z-[350] bg-primary text-primary-foreground px-4 py-2.5 shadow-md">
+          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Eye className="w-4 h-4 shrink-0" />
+              Visualizando como{" "}
+              <strong>{impersonation.name || impersonation.email || "usuário"}</strong>
+              {impersonation.email && impersonation.name ? (
+                <span className="opacity-80 font-normal">({impersonation.email})</span>
+              ) : null}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={stopImpersonation}
+              className="shrink-0 h-8 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/25 border-0"
+            >
+              <X className="w-4 h-4 mr-1.5" />
+              Voltar ao meu painel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-3xl" />
@@ -310,9 +346,13 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">Meu Percurso Acadêmico</h1>
+          <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">
+            {isViewingAsUser ? "Percurso Acadêmico do Usuário" : "Meu Percurso Acadêmico"}
+          </h1>
           <p className="text-muted-foreground">
-            Organize suas disciplinas, notas e prioridades estratégicas.
+            {isViewingAsUser
+              ? "Painel completo deste usuário — alterações são salvas na conta dele."
+              : "Organize suas disciplinas, notas e prioridades estratégicas."}
           </p>
         </div>
 
