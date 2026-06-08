@@ -1,6 +1,15 @@
 import scrapeLicitita from "../scrapers/licitita.js";
 import { classifyText } from "../lib/classifyText.js";
-import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabaseClient.js";
+import {
+  hashExists,
+  loadEspecialidadesBySlug,
+  getAdvogadosByEspecialidade,
+  insertLicitacao,
+  createMatch,
+  getUnnotifiedMatches,
+  markMatchesNotified,
+  isLicitacoesStoreConfigured,
+} from "../lib/licitacoesStore.js";
 import { sendMatchNotificationEmail } from "../services/email.js";
 
 /**
@@ -67,161 +76,6 @@ function mapScrapedToLicitacao(item) {
     hash_conteudo: item.hash,
     dados_brutos: item,
   };
-}
-
-/**
- * @param {string} hash
- * @returns {Promise<boolean>}
- */
-async function hashExists(hash) {
-  const db = getSupabaseClient();
-  const { data, error } = await db
-    .from("licitacoes")
-    .select("id")
-    .eq("hash_conteudo", hash)
-    .maybeSingle();
-
-  if (error) throw error;
-  return Boolean(data);
-}
-
-/**
- * @returns {Promise<Map<string, string>>}
- */
-async function loadEspecialidadesBySlug() {
-  const db = getSupabaseClient();
-  const { data, error } = await db
-    .from("especialidades_advogados")
-    .select("id, slug")
-    .eq("ativo", true);
-
-  if (error) throw error;
-
-  return new Map((data ?? []).map((row) => [row.slug, row.id]));
-}
-
-/**
- * @param {string} especialidadeId
- * @returns {Promise<Array<{ id: string, nome: string, email: string }>>}
- */
-async function getAdvogadosByEspecialidade(especialidadeId) {
-  const db = getSupabaseClient();
-
-  const { data, error } = await db
-    .from("advogados_especialidades")
-    .select(
-      `
-      advogado:advogados!inner(id, nome, email, ativo)
-    `,
-    )
-    .eq("especialidade_id", especialidadeId);
-
-  if (error) throw error;
-
-  return (data ?? [])
-    .map((row) => row.advogado)
-    .filter((adv) => adv?.ativo && adv.email);
-}
-
-/**
- * @param {Record<string, unknown>} licitacao
- * @returns {Promise<{ id: string }>}
- */
-async function insertLicitacao(licitacao) {
-  const db = getSupabaseClient();
-  const { data, error } = await db
-    .from("licitacoes")
-    .insert(licitacao)
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * @param {Object} params
- * @returns {Promise<boolean>}
- */
-async function createMatch({
-  licitacaoId,
-  advogadoId,
-  especialidadeId,
-  relevanciaScore,
-  motivo,
-}) {
-  const db = getSupabaseClient();
-
-  const { data, error } = await db.from("matches").insert(
-    {
-      licitacao_id: licitacaoId,
-      advogado_id: advogadoId,
-      especialidade_id: especialidadeId,
-      relevancia_score: relevanciaScore,
-      motivo,
-      notificado: false,
-      status: "novo",
-    },
-  ).select("id");
-
-  if (error) {
-    if (error.code === "23505") return false;
-    throw error;
-  }
-
-  return Boolean(data?.length);
-}
-
-/**
- * @returns {Promise<Array<Record<string, unknown>>>}
- */
-async function getUnnotifiedMatches() {
-  const db = getSupabaseClient();
-
-  const { data, error } = await db
-    .from("matches")
-    .select(
-      `
-      id,
-      relevancia_score,
-      advogado_id,
-      advogado:advogados!inner(id, nome, email, ativo),
-      licitacao:licitacoes!inner(
-        id,
-        titulo,
-        valor_estimado,
-        municipio,
-        uf,
-        data_encerramento,
-        url_fonte,
-        dados_brutos
-      ),
-      especialidade:especialidades_advogados(nome)
-    `,
-    )
-    .eq("notificado", false);
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-/**
- * @param {string[]} matchIds
- * @returns {Promise<void>}
- */
-async function markMatchesNotified(matchIds) {
-  if (matchIds.length === 0) return;
-
-  const db = getSupabaseClient();
-  const { error } = await db
-    .from("matches")
-    .update({
-      notificado: true,
-      notificado_em: new Date().toISOString(),
-    })
-    .in("id", matchIds);
-
-  if (error) throw error;
 }
 
 /**
@@ -371,9 +225,9 @@ export async function runCollectAndMatch() {
     erros: 0,
   };
 
-  if (!isSupabaseConfigured()) {
+  if (!isLicitacoesStoreConfigured()) {
     throw new Error(
-      "Supabase não configurado. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
+      "Firestore Admin não configurado. Defina GOOGLE_APPLICATION_CREDENTIALS ou FIREBASE_SERVICE_ACCOUNT_PATH.",
     );
   }
 

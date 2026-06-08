@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { jest } from "@jest/globals";
 import request from "supertest";
 import { parseLicititaHtml } from "../src/scrapers/licitita.js";
-import { createInMemorySupabase } from "./helpers/inMemoryDb.js";
+import { createInMemoryLicitacoesStore } from "./helpers/inMemoryLicitacoesStore.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_HTML = readFileSync(
@@ -120,33 +120,26 @@ describe("Pipeline E2E", () => {
   });
 
   describe("3. Matching", () => {
-    let mockDb;
+    let mockStore;
     let runMatchingForLicitacao;
 
     beforeEach(async () => {
-      mockDb = createInMemorySupabase({
-        especialidades_advogados: [
+      mockStore = createInMemoryLicitacoesStore({
+        especialidades: [
           {
-            id: "esp-banking",
+            id: "banking_law",
             slug: "banking_law",
             nome: "Direito Bancário",
             ativo: true,
           },
         ],
-        advogados: [
-          {
-            id: "adv-1",
-            nome: "Dr. Banking",
-            email: "banking@test.com",
-            ativo: true,
-          },
-        ],
-        advogados_especialidades: [
-          {
-            advogado_id: "adv-1",
-            especialidade_id: "esp-banking",
-          },
-        ],
+        owner: {
+          id: "owner",
+          nome: "Dr. Banking",
+          email: "banking@test.com",
+          ativo: true,
+          especialidades: [{ slug: "banking_law", nivel_experiencia: "especialista" }],
+        },
         licitacoes: [
           {
             id: "lic-1",
@@ -157,9 +150,9 @@ describe("Pipeline E2E", () => {
         matches: [],
       });
 
-      jest.unstable_mockModule("../src/lib/supabaseClient.js", () => ({
-        getSupabaseClient: () => mockDb,
-        isSupabaseConfigured: () => true,
+      jest.unstable_mockModule("../src/lib/licitacoesStore.js", () => ({
+        ...mockStore,
+        isLicitacoesStoreConfigured: () => true,
       }));
 
       jest.unstable_mockModule("../src/lib/classifyText.js", () => ({
@@ -192,7 +185,7 @@ describe("Pipeline E2E", () => {
         fonte: "licitita",
       };
 
-      const especialidadesBySlug = new Map([["banking_law", "esp-banking"]]);
+      const especialidadesBySlug = new Map([["banking_law", "banking_law"]]);
       const created = await runMatchingForLicitacao(
         scrapedItem,
         "lic-1",
@@ -200,30 +193,32 @@ describe("Pipeline E2E", () => {
       );
 
       expect(created).toBe(1);
-      expect(mockDb._tables.matches).toHaveLength(1);
+      expect(mockStore._state.matches).toHaveLength(1);
 
-      const match = mockDb._tables.matches[0];
-      expect(match.advogado_id).toBe("adv-1");
-      expect(match.especialidade_id).toBe("esp-banking");
+      const match = mockStore._state.matches[0];
+      expect(match.advogado_id).toBe("owner");
+      expect(match.especialidade_id).toBe("banking_law");
       expect(match.relevancia_score).toBeGreaterThan(0.5);
       expect(Math.round(match.relevancia_score * 100)).toBeGreaterThan(50);
     });
   });
 
   describe("4. Notificação", () => {
-    let mockDb;
+    let mockStore;
     let runNotifications;
     let sendMatchNotificationEmail;
 
     beforeEach(async () => {
-      mockDb = createInMemorySupabase({
-        advogados: [
-          {
-            id: "adv-1",
-            nome: "Dr. Notify",
-            email: "notify@test.com",
-            ativo: true,
-          },
+      mockStore = createInMemoryLicitacoesStore({
+        owner: {
+          id: "owner",
+          nome: "Dr. Notify",
+          email: "notify@test.com",
+          ativo: true,
+          especialidades: [{ slug: "banking_law", nivel_experiencia: "especialista" }],
+        },
+        especialidades: [
+          { id: "banking_law", slug: "banking_law", nome: "Direito Bancário", ativo: true },
         ],
         licitacoes: [
           {
@@ -237,26 +232,34 @@ describe("Pipeline E2E", () => {
             dados_brutos: { valor: "R$ 100.000,00", cidade: "Curitiba - PR" },
           },
         ],
-        especialidades_advogados: [
-          { id: "esp-1", nome: "Direito Bancário", slug: "banking_law" },
-        ],
         matches: [
           {
             id: "match-1",
             licitacao_id: "lic-1",
-            advogado_id: "adv-1",
-            especialidade_id: "esp-1",
+            advogado_id: "owner",
+            especialidade_id: "banking_law",
             relevancia_score: 0.8,
             notificado: false,
+            licitacao: {
+              id: "lic-1",
+              titulo: "Licitação teste",
+              valor_estimado: 100000,
+              municipio: "Curitiba",
+              uf: "PR",
+              data_encerramento: "2026-10-01",
+              url_fonte: "https://www.licitita.com.br/licitacoes/teste",
+              dados_brutos: { valor: "R$ 100.000,00", cidade: "Curitiba - PR" },
+            },
+            especialidade: { id: "banking_law", nome: "Direito Bancário", slug: "banking_law" },
           },
         ],
       });
 
       sendMatchNotificationEmail = jest.fn(async () => ({ id: "email-1" }));
 
-      jest.unstable_mockModule("../src/lib/supabaseClient.js", () => ({
-        getSupabaseClient: () => mockDb,
-        isSupabaseConfigured: () => true,
+      jest.unstable_mockModule("../src/lib/licitacoesStore.js", () => ({
+        ...mockStore,
+        isLicitacoesStoreConfigured: () => true,
       }));
 
       jest.unstable_mockModule("../src/services/email.js", () => ({
@@ -284,8 +287,8 @@ describe("Pipeline E2E", () => {
         }),
       );
 
-      expect(mockDb._tables.matches[0].notificado).toBe(true);
-      expect(mockDb._tables.matches[0].notificado_em).toBeDefined();
+      expect(mockStore._state.matches[0].notificado).toBe(true);
+      expect(mockStore._state.matches[0].notificado_em).toBeDefined();
     });
   });
 

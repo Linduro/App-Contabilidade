@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { hasExtendedScope } from "@/lib/admin-access"
-import { assetPath } from "@/lib/base-path"
 
 export function RequireOwner({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -14,11 +13,11 @@ export function RequireOwner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return
     if (!user) {
-      router.replace(assetPath("/sign-in/"))
+      router.replace("/sign-in/")
       return
     }
     if (!hasExtendedScope(user.email)) {
-      router.replace(assetPath("/dashboard/"))
+      router.replace("/dashboard/")
     }
   }, [user, loading, router])
 

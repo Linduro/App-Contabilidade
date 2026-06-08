@@ -339,7 +339,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   className="shrink-0 max-md:w-full max-md:min-h-11"
                   title="Licitações jurídicas (acesso privado)"
                 >
-                  <Link href={assetPath("/dashboard/licitacoes/")}>
+                  <Link href="/dashboard/licitacoes/">
                     <Scale className="w-4 h-4 mr-2" />
                     Licitações
                   </Link>

@@ -11,7 +11,6 @@ import { MatchFiltersBar } from "@/components/licitacoes/MatchFiltersBar"
 import { MatchesTable } from "@/components/licitacoes/MatchesTable"
 import { MatchDetailModal } from "@/components/licitacoes/MatchDetailModal"
 import { Button } from "@/components/ui/button"
-import { assetPath } from "@/lib/base-path"
 import type { Match } from "@/lib/licitacoes/types"
 
 function LicitacoesDashboardContent() {
@@ -89,7 +88,7 @@ function LicitacoesDashboardContent() {
               </p>
             </div>
             <Button variant="outline" size="sm" asChild>
-              <Link href={assetPath("/dashboard/")}>
+              <Link href="/dashboard/">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar ao painel
               </Link>

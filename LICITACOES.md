@@ -1,81 +1,82 @@
-# Licitações Advocacia — integração App-Contabilidade
+# Licitações Advocacia — Firestore (sem Blaze, sem Supabase)
 
-Módulo de licitações jurídicas integrado ao portal **site-de-notas-futurista**, com acesso **restrito ao proprietário** (`cartoonhq@gmail.com` via `hasExtendedScope`).
+Módulo integrado ao portal **site-de-notas-futurista**. Dados no **Firestore** (plano Spark gratuito), acesso **somente** para `cartoonhq@gmail.com`.
 
-## Estrutura
-
-```
-App-Contabilidade/
-├── licitacoes-advocacia/     # Backend, scraper, classificador, migrations Supabase
-└── site-de-notas-futurista/
-    ├── app/dashboard/licitacoes/   # Dashboard (GitHub Pages)
-    ├── components/licitacoes/      # UI do módulo
-    ├── lib/licitacoes/             # Client Firebase Callable + types
-    └── functions/licitacoes-api.js # Proxy seguro → Supabase
-```
-
-## URL de acesso
-
-Após deploy no GitHub Pages:
+## Arquitetura
 
 ```
-https://<seu-usuario>.github.io/App-Contabilidade/dashboard/licitacoes/
+GitHub Pages (/dashboard/licitacoes)
+    ↓ Firebase Auth + Firestore SDK (direto)
+Firestore (licitacoesMatches, licitacoes, …)
+    ↑
+Job local ou GitHub Actions (firebase-admin)
 ```
 
-Somente usuários logados com e-mail **cartoonhq@gmail.com** conseguem abrir a rota. Outros são redirecionados para `/dashboard/`.
+**Não usa:** Cloud Functions (Blaze), Supabase.
 
-## Configuração Supabase
+## Coleções Firestore
 
-1. Execute as migrations em `licitacoes-advocacia/database/` (incluindo `004_owner_cartoonhq.sql`)
-2. Configure secrets nas **Firebase Functions**:
+| Coleção | Conteúdo |
+|---------|----------|
+| `licitacoesConfig/owner` | Perfil owner + especialidades |
+| `licitacoesEspecialidades/{slug}` | Catálogo NLP |
+| `licitacoes/{id}` | Licitações coletadas |
+| `licitacoesMatches/{id}` | Matches (licitação + especialidade embutidos) |
 
-```bash
-firebase functions:config:set \
-  licitacoes.supabase_url="https://SEU-PROJETO.supabase.co" \
-  licitacoes.service_role_key="SUA_SERVICE_ROLE_KEY"
+Rules em `site-de-notas-futurista/firestore.rules` — `isAdmin()` = `cartoonhq@gmail.com`.
+
+## Setup inicial (uma vez)
+
+### 1. Deploy das Firestore Rules
+
+```powershell
+cd site-de-notas-futurista
+npx -y firebase-tools@latest deploy --only firestore:rules
 ```
 
-Ou variáveis de ambiente no Firebase Console:
+Funciona no **plano Spark** (grátis).
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+### 2. Seed no Firestore
 
-3. Deploy das functions:
+Baixe a **service account** em Firebase Console → Project Settings → Service accounts → Generate new private key.
 
-```bash
-cd site-de-notas-futurista/functions
-npm install
-firebase deploy --only functions:licitacoesApi
-```
-
-## Backend do pipeline (opcional — Railway)
-
-O job de scraping/classificação roda em `licitacoes-advocacia/backend`:
-
-```bash
+```powershell
 cd licitacoes-advocacia/backend
 npm install
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\caminho\contabilidade-ebed6-firebase-adminsdk.json"
+npm run seed:firestore
+```
+
+Isso cria especialidades + owner `cartoonhq@gmail.com`.
+
+### 3. Coleta de licitações (opcional)
+
+```powershell
+cd licitacoes-advocacia/backend
 npm run setup:python
+$env:GOOGLE_APPLICATION_CREDENTIALS="C:\caminho\service-account.json"
 npm run job:collect
 ```
 
-Deploy separado no Railway (ver `licitacoes-advocacia/railway.toml`).
+## URL
+
+https://linduro.github.io/App-Contabilidade/dashboard/licitacoes/
+
+Login com **cartoonhq@gmail.com** → botão **Licitações** no painel.
+
+## Variáveis (.env do backend)
+
+```env
+FIREBASE_PROJECT_ID=contabilidade-ebed6
+GOOGLE_APPLICATION_CREDENTIALS=C:\caminho\service-account.json
+RESEND_API_KEY=          # opcional — e-mails de alerta
+EMAIL_FROM=
+```
 
 ## Desenvolvimento local
 
-```bash
+```powershell
 cd site-de-notas-futurista
-npm install
 npm run dev
+# http://localhost:3000/dashboard/licitacoes/
 ```
-
-Acesse: `http://localhost:3000/dashboard/licitacoes/` (logado como cartoonhq@gmail.com).
-
-Use emulador Firebase Functions para testar a API localmente, ou deploy das functions em staging.
-
-## Segurança
-
-- **Frontend (GitHub Pages):** gate por Firebase Auth + `hasExtendedScope`
-- **Dados (Supabase):** acesso apenas via Cloud Function `licitacoesApi`, que valida o token Firebase e o e-mail owner antes de usar a service role key
-
-A service role key **nunca** vai para o frontend.

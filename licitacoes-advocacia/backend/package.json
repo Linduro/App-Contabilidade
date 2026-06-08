@@ -14,10 +14,11 @@
     "test:pipeline": "npm run build && node --experimental-vm-modules ../node_modules/jest/bin/jest.js tests/pipeline.test.js",
     "setup:python": "pip install -r requirements.txt && python -m spacy download pt_core_news_sm",
     "test:classifier": "python src/classifier/classifier.py",
-    "job:collect": "tsx scripts/run-collect-and-match.js"
+    "job:collect": "tsx scripts/run-collect-and-match.js",
+    "seed:firestore": "tsx scripts/seed-firestore.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.4",
+    "firebase-admin": "^13.0.2",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

@@ -1,6 +1,8 @@
 import { Router } from "express";
-import { getSupabase } from "../lib/supabase.js";
-import { isSupabaseConfigured } from "../config/env.js";
+import {
+  getFirestoreAdmin,
+  isFirestoreAdminConfigured,
+} from "../lib/firestoreAdmin.js";
 
 const router = Router();
 
@@ -8,10 +10,13 @@ router.get("/", async (_req, res) => {
   let database: "connected" | "disconnected" | "not_configured" =
     "not_configured";
 
-  if (isSupabaseConfigured()) {
-    const db = getSupabase();
-    const { error } = await db!.from("licitacoes").select("id").limit(1);
-    database = error ? "disconnected" : "connected";
+  if (isFirestoreAdminConfigured()) {
+    try {
+      await getFirestoreAdmin().collection("licitacoes").limit(1).get();
+      database = "connected";
+    } catch {
+      database = "disconnected";
+    }
   }
 
   res.json({

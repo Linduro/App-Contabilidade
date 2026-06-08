@@ -45,7 +45,7 @@ export function useLicitacoesDashboard(enabled: boolean) {
       const data = await fetchLicitacoesDashboard()
       if (!data.advogado) {
         throw new Error(
-          "Perfil de advogado não encontrado no Supabase. Cadastre cartoonhq@gmail.com na tabela advogados.",
+          "Perfil de licitações não encontrado no Firestore. Execute npm run seed:firestore no backend.",
         )
       }
 

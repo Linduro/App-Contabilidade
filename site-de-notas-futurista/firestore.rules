@@ -44,5 +44,21 @@ service cloud.firestore {
       allow read: if resource.data.active == true || isAdmin();
       allow create, update, delete: if isAdmin();
     }
+
+    match /licitacoesConfig/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /licitacoesEspecialidades/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /licitacoes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /licitacoesMatches/{docId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

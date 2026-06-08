@@ -2,7 +2,6 @@ const admin = require("firebase-admin")
 const functions = require("firebase-functions")
 const nodemailer = require("nodemailer")
 const twilio = require("twilio")
-const { licitacoesApiHandler } = require("./licitacoes-api")
 
 admin.initializeApp()
 
@@ -154,4 +153,3 @@ exports.dailyReminderScan = functions.pubsub
     return null
   })
 
-exports.licitacoesApi = functions.https.onCall(licitacoesApiHandler)

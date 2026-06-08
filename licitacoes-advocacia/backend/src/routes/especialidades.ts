@@ -1,28 +1,34 @@
 import { Router } from "express";
-import { getSupabase } from "../lib/supabase.js";
+import {
+  getFirestoreAdmin,
+  isFirestoreAdminConfigured,
+} from "../lib/firestoreAdmin.js";
 
 const router = Router();
 
 router.get("/", async (_req, res) => {
-  const db = getSupabase();
-
-  if (!db) {
+  if (!isFirestoreAdminConfigured()) {
     return res.status(503).json({
-      error: "Supabase não configurado. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
+      error:
+        "Firestore não configurado. Defina GOOGLE_APPLICATION_CREDENTIALS.",
     });
   }
 
-  const { data, error } = await db
-    .from("especialidades_advogados")
-    .select("*")
-    .eq("ativo", true)
-    .order("nome");
+  const snap = await getFirestoreAdmin()
+    .collection("licitacoesEspecialidades")
+    .get();
 
-  if (error) {
-    return res.status(500).json({ error: error.message });
-  }
+  const data = snap.docs
+    .map((doc: FirebaseFirestore.QueryDocumentSnapshot) => ({
+      id: doc.id,
+      ...doc.data(),
+    }))
+    .filter((row: Record<string, unknown>) => row.ativo !== false)
+    .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+      String(a.nome).localeCompare(String(b.nome)),
+    );
 
-  return res.json({ data, count: data?.length ?? 0 });
+  return res.json({ data, count: data.length });
 });
 
 export default router;
