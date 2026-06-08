@@ -27,10 +27,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            site-de-notas-futurista/package-lock.json
-            networking-web/package-lock.json
 
       - name: Install portal dependencies
         working-directory: site-de-notas-futurista
@@ -44,7 +40,9 @@ jobs:
 
       - name: Install networking-web dependencies
         working-directory: networking-web
-        run: npm ci
+        run: |
+          test -f package-lock.json || (echo "package-lock.json ausente em networking-web" && exit 1)
+          npm ci --no-audit --no-fund
 
       - name: Build networking (subpasta discreta no mesmo domínio)
         working-directory: networking-web
