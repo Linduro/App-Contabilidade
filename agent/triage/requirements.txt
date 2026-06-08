@@ -1,0 +1,1 @@
+# Triagem usa apenas biblioteca padrão Python 3.11+

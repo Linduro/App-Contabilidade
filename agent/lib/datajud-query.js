@@ -29,36 +29,10 @@ function daysAgoIso(days) {
 }
 
 /**
- * Monta body Elasticsearch com filtros em `filter` (sem afetar score).
- * @param {{ daysBack: number, size: number, classCodes?: number[], minValorCausa?: number }} opts
+ * Query ampla: apenas processos públicos no período (sem filtro de classe/valor).
+ * Critérios de negócio ficam na triagem Python pós-coleta.
  */
-function buildSearchBody({ daysBack, size, classCodes, minValorCausa }) {
-  const filter = [{ term: { nivelSigilo: 0 } }]
-
-  if (classCodes?.length) {
-    filter.push({
-      bool: {
-        should: [
-          { terms: { "classe.codigo": classCodes } },
-          { terms: { "classeProcessual.codigo": classCodes } },
-        ],
-        minimum_should_match: 1,
-      },
-    })
-  }
-
-  if (minValorCausa != null && minValorCausa > 0) {
-    filter.push({
-      bool: {
-        should: [
-          { range: { valorCausa: { gte: minValorCausa } } },
-          { range: { valor: { gte: minValorCausa } } },
-        ],
-        minimum_should_match: 1,
-      },
-    })
-  }
-
+function buildBroadSearchBody({ daysBack, size }) {
   return {
     size,
     _source: SOURCE_FIELDS,
@@ -66,10 +40,15 @@ function buildSearchBody({ daysBack, size, classCodes, minValorCausa }) {
     query: {
       bool: {
         must: [{ range: { dataAjuizamento: { gte: daysAgoIso(daysBack) } } }],
-        filter,
+        filter: [{ term: { nivelSigilo: 0 } }],
       },
     },
   }
+}
+
+/** @deprecated Use buildBroadSearchBody — mantido para compatibilidade interna. */
+function buildSearchBody(opts) {
+  return buildBroadSearchBody(opts)
 }
 
 function endpoint(alias) {
@@ -97,6 +76,36 @@ async function postSearch(url, body, apiKey, label) {
 
   const payload = await response.json()
   return payload.hits?.hits ?? []
+}
+
+/**
+ * Pagina resultados até esgotar hits ou atingir maxPages.
+ */
+async function fetchAllPages(url, baseBody, apiKey, label, maxPages = 20) {
+  const size = baseBody.size
+  const all = []
+
+  for (let page = 0; page < maxPages; page++) {
+    const body = { ...baseBody, from: page * size }
+    const hits = await postSearch(url, body, apiKey, label)
+    all.push(...hits)
+    if (hits.length < size) break
+  }
+
+  return all
+}
+
+function normalizeProcesso(num) {
+  return String(num || "").replace(/\D/g, "")
+}
+
+function extractAssuntosText(source) {
+  const assuntos = source.assuntos
+  if (!Array.isArray(assuntos)) return ""
+  return assuntos
+    .map((a) => a.nome || a.descricao || "")
+    .filter(Boolean)
+    .join("; ")
 }
 
 function extractClasse(source) {
@@ -150,6 +159,11 @@ function extractComarcaFromOrgao(orgao, fallback) {
   return fallback
 }
 
+function extractPartes(source) {
+  const raw = source.partes || source.dadosBasicos?.partes || []
+  return Array.isArray(raw) ? raw : []
+}
+
 function commonParseFields(source) {
   const { classe_codigo, classe_nome } = extractClasse(source)
   return {
@@ -160,6 +174,8 @@ function commonParseFields(source) {
     movimentos: extractMovimentos(source),
     ultima_movimentacao: extractUltimaMovimentacao(source),
     valor_causa: extractValor(source),
+    assuntos: extractAssuntosText(source),
+    partes: extractPartes(source),
   }
 }
 
@@ -169,14 +185,19 @@ module.exports = {
   CLASSES_TRT,
   CLASSES_EXECUCAO,
   ALTO_VALOR_MIN,
+  buildBroadSearchBody,
   buildSearchBody,
   endpoint,
   trtEndpoint,
   postSearch,
+  fetchAllPages,
+  normalizeProcesso,
   extractClasse,
   extractValor,
   extractMovimentos,
   extractUltimaMovimentacao,
   extractComarcaFromOrgao,
+  extractAssuntosText,
+  extractPartes,
   commonParseFields,
 }
