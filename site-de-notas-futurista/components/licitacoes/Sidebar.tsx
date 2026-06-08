@@ -3,17 +3,23 @@ import { useAuth } from "@/components/auth-provider"
 import { Badge } from "@/components/ui/badge"
 import { getNivelLabel } from "@/lib/licitacoes/formatters"
 import type { AdvogadoEspecialidade, DashboardStats } from "@/lib/licitacoes/types"
+import { RegionalFilterPanel } from "@/components/regional-filters/RegionalFilterPanel"
+import type { RegionalFilterState } from "@/lib/regional-filters/regioes"
 
 interface SidebarProps {
   especialidades: AdvogadoEspecialidade[]
   stats: DashboardStats
   advogadoOverride?: { nome: string; email: string }
+  regionalFilters: RegionalFilterState
+  onRegionalFiltersChange: (filters: RegionalFilterState) => void
 }
 
 export function Sidebar({
   especialidades,
   stats,
   advogadoOverride,
+  regionalFilters,
+  onRegionalFiltersChange,
 }: SidebarProps) {
   const { user } = useAuth()
   const nome = advogadoOverride?.nome ?? user?.displayName ?? "Advogado"
@@ -79,6 +85,11 @@ export function Sidebar({
             <p className="mt-2 text-2xl font-bold">{stats.inscricoesMes}</p>
           </div>
         </section>
+
+        <RegionalFilterPanel
+          filters={regionalFilters}
+          onChange={onRegionalFiltersChange}
+        />
       </div>
     </aside>
   )

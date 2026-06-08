@@ -1,9 +1,7 @@
 "use client"
 
-import { Loader2, Send } from "lucide-react"
 import type { Lead } from "@/lib/trabalhista-leads/types"
 import { LEAD_STATUS_LABELS } from "@/lib/trabalhista-leads/types"
-import { Button } from "@/components/ui/button"
 
 function formatCurrency(value: number | null) {
   if (value == null || value <= 0) return "—"
@@ -12,28 +10,21 @@ function formatCurrency(value: number | null) {
 
 interface LeadsTableProps {
   leads: Lead[]
-  dispatchingId: string | null
-  onDispatch: (leadId: string) => void
   onSelect: (lead: Lead) => void
 }
 
-export function LeadsTable({
-  leads,
-  dispatchingId,
-  onDispatch,
-  onSelect,
-}: LeadsTableProps) {
+export function LeadsTable({ leads, onSelect }: LeadsTableProps) {
   if (leads.length === 0) {
     return (
       <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-        Nenhum lead com os filtros atuais. O agente local popula esta lista via Datajud.
+        Nenhum lead com os filtros atuais. O worker na nuvem popula esta lista via Datajud.
       </div>
     )
   }
 
   return (
     <div className="overflow-x-auto rounded-xl border bg-card">
-      <table className="w-full min-w-[800px] text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th className="px-4 py-3">Empresa</th>
@@ -42,23 +33,17 @@ export function LeadsTable({
             <th className="px-4 py-3">Valor</th>
             <th className="px-4 py-3">Score</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Ações</th>
           </tr>
         </thead>
         <tbody>
           {leads.map((lead) => (
             <tr
               key={lead.id}
-              className="border-b last:border-0 hover:bg-muted/20"
+              className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
+              onClick={() => onSelect(lead)}
             >
               <td className="px-4 py-3">
-                <button
-                  type="button"
-                  className="font-medium text-left hover:text-primary"
-                  onClick={() => onSelect(lead)}
-                >
-                  {lead.empresa}
-                </button>
+                <span className="font-medium">{lead.empresa}</span>
                 {lead.responsavel && (
                   <p className="text-xs text-muted-foreground">{lead.responsavel}</p>
                 )}
@@ -82,21 +67,6 @@ export function LeadsTable({
               </td>
               <td className="px-4 py-3">
                 {LEAD_STATUS_LABELS[lead.status]}
-              </td>
-              <td className="px-4 py-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={dispatchingId === lead.id}
-                  onClick={() => onDispatch(lead.id)}
-                >
-                  {dispatchingId === lead.id ? (
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  ) : (
-                    <Send className="mr-1 h-3 w-3" />
-                  )}
-                  Disparar
-                </Button>
               </td>
             </tr>
           ))}

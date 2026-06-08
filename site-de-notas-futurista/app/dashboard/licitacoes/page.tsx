@@ -22,6 +22,8 @@ function LicitacoesDashboardContent() {
     stats,
     filters,
     setFilters,
+    regionalFilters,
+    setRegionalFilters,
     loading,
     collecting,
     collectMessage,
@@ -77,6 +79,8 @@ function LicitacoesDashboardContent() {
         especialidades={especialidades}
         stats={stats}
         advogadoOverride={{ nome: advogadoNome, email: advogadoEmail }}
+        regionalFilters={regionalFilters}
+        onRegionalFiltersChange={setRegionalFilters}
       />
 
       <main className="flex-1 overflow-auto">

@@ -1,8 +1,8 @@
-name: Trabalhista Leads — Coleta
+name: Execuções Rurais — Coleta
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 */8 * * *"
   workflow_dispatch:
 
 jobs:
@@ -20,9 +20,9 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: echo "$FIREBASE_SERVICE_ACCOUNT" > "${{ runner.temp }}/firebase-sa.json"
-      - name: Coleta trabalhista
+      - name: Coleta execuções rurais
         working-directory: agent
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
           DATAJUD_API_KEY: ${{ secrets.DATAJUD_API_KEY }}
-        run: npm run collect:trabalhista
+        run: npm run collect:execucoes

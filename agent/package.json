@@ -1,0 +1,16 @@
+{
+  "name": "app-contabilidade-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Worker cloud — trabalhista, execuções rurais",
+  "main": "worker.js",
+  "scripts": {
+    "collect:trabalhista": "node worker.js --module=trabalhista --task=collect",
+    "collect:execucoes": "node worker.js --module=execucoesRurais --task=collect"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "firebase-admin": "^13.0.2"
+  }
+}

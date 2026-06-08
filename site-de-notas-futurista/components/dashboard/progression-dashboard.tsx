@@ -11,6 +11,7 @@ import {
   LogOut,
   Moon,
   Plus,
+  Sprout,
   Scale,
   Briefcase,
   Search,
@@ -343,6 +344,21 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   <Link href="/dashboard/licitacoes/">
                     <Scale className="w-4 h-4 mr-2" />
                     Licitações
+                  </Link>
+                </Button>
+              )}
+
+              {adminAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="shrink-0 max-md:w-full max-md:min-h-11"
+                  title="Execuções rurais (acesso privado)"
+                >
+                  <Link href="/dashboard/execucoes-rurais/">
+                    <Sprout className="w-4 h-4 mr-2" />
+                    Exec. Rurais
                   </Link>
                 </Button>
               )}

@@ -1,12 +1,20 @@
 "use client"
 
 import type { TrabalhistaStats } from "@/lib/trabalhista-leads/types"
+import { RegionalFilterPanel } from "@/components/regional-filters/RegionalFilterPanel"
+import type { RegionalFilterState } from "@/lib/regional-filters/regioes"
 
 interface TrabalhistaSidebarProps {
   stats: TrabalhistaStats
+  regionalFilters: RegionalFilterState
+  onRegionalFiltersChange: (filters: RegionalFilterState) => void
 }
 
-export function TrabalhistaSidebar({ stats }: TrabalhistaSidebarProps) {
+export function TrabalhistaSidebar({
+  stats,
+  regionalFilters,
+  onRegionalFiltersChange,
+}: TrabalhistaSidebarProps) {
   return (
     <aside className="hidden w-64 shrink-0 border-r bg-card/30 p-6 lg:block">
       <h2 className="text-lg font-semibold">Leads TRT</h2>
@@ -21,7 +29,12 @@ export function TrabalhistaSidebar({ stats }: TrabalhistaSidebarProps) {
         <Stat label="Clientes" value={stats.clientes} />
         <Stat label="Score médio" value={stats.scoreMedio} />
       </dl>
-      <p className="mt-8 text-xs text-muted-foreground leading-relaxed">
+      <RegionalFilterPanel
+        filters={regionalFilters}
+        onChange={onRegionalFiltersChange}
+      />
+
+      <p className="mt-6 text-xs text-muted-foreground leading-relaxed">
         Worker na nuvem (GitHub Actions) lê a config em Firestore e executa
         coleta Datajud + disparos. Nada roda no seu PC.
       </p>

@@ -22,6 +22,14 @@ import {
   type LicititaItem,
 } from "@/lib/licitacoes/scraper-browser"
 import type { Especialidade } from "@/lib/licitacoes/types"
+import {
+  EMPTY_REGIONAL_FILTER,
+  fetchRegionalFilters,
+} from "@/lib/regional-filters/client"
+import {
+  matchesRegionalFilter,
+  type RegionalFilterState,
+} from "@/lib/regional-filters/regioes"
 
 export interface CollectStats {
   licitacoesColetadas: number
@@ -167,8 +175,11 @@ async function processItem(
   return { nova: true, matches }
 }
 
-/** Coleta licitações do Licitita e grava no Firestore (browser, owner logado). */
-export async function runCollectInBrowser(): Promise<CollectStats> {
+/** Coleta licitações PNCP e grava no Firestore (browser, owner logado). */
+export async function runCollectInBrowser(
+  userId?: string | null,
+  regionalFilters?: RegionalFilterState,
+): Promise<CollectStats> {
   const stats: CollectStats = {
     licitacoesColetadas: 0,
     licitacoesNovas: 0,
@@ -182,10 +193,18 @@ export async function runCollectInBrowser(): Promise<CollectStats> {
   }
 
   const catalog = catalogBySlug()
+  let regionFilter = regionalFilters ?? { ...EMPTY_REGIONAL_FILTER }
+  if (userId && !regionalFilters) {
+    regionFilter = await fetchRegionalFilters(userId, "licitacoes")
+  }
+
   let scraped: LicititaItem[] = []
 
   try {
     scraped = await fetchPncpLicitacoesJuridicas({ maxPagesPerTerm: 2, pageSize: 30 })
+    scraped = scraped.filter((item) =>
+      matchesRegionalFilter([item.cidade, item.descricao], regionFilter),
+    )
     stats.licitacoesColetadas = scraped.length
   } catch (error) {
     stats.erros += 1

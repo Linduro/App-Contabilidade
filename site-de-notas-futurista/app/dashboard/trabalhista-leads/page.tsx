@@ -11,7 +11,6 @@ import { LeadFiltersBar } from "@/components/trabalhista-leads/LeadFiltersBar"
 import { LeadsKanban } from "@/components/trabalhista-leads/LeadsKanban"
 import { LeadsTable } from "@/components/trabalhista-leads/LeadsTable"
 import { LeadDetailModal } from "@/components/trabalhista-leads/LeadDetailModal"
-import { ConfigPanel } from "@/components/trabalhista-leads/ConfigPanel"
 import { Button } from "@/components/ui/button"
 import type { Lead } from "@/lib/trabalhista-leads/types"
 
@@ -22,15 +21,11 @@ function TrabalhistaLeadsContent() {
     filters,
     setFilters,
     loading,
-    dispatchingId,
-    message,
     error,
     changeStatus,
-    dispatchManual,
     reload,
-    settings,
-    savingConfig,
-    saveConfig,
+    regionalFilters,
+    setRegionalFilters,
   } = useTrabalhistaLeadsDashboard(true)
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
@@ -43,7 +38,11 @@ function TrabalhistaLeadsContent() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      <TrabalhistaSidebar stats={stats} />
+      <TrabalhistaSidebar
+        stats={stats}
+        regionalFilters={regionalFilters}
+        onRegionalFiltersChange={setRegionalFilters}
+      />
 
       <main className="flex-1 overflow-auto">
         <div className="border-b bg-card px-6 py-6 lg:px-8">
@@ -77,18 +76,6 @@ function TrabalhistaLeadsContent() {
         </div>
 
         <div className="space-y-6 p-6 lg:p-8">
-          {message && (
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-              {message}
-            </div>
-          )}
-
-          <ConfigPanel
-            settings={settings}
-            saving={savingConfig}
-            onSave={saveConfig}
-          />
-
           <LeadFiltersBar filters={filters} onChange={setFilters} />
 
           {loading ? (
@@ -116,12 +103,7 @@ function TrabalhistaLeadsContent() {
                 <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Tabela
                 </h2>
-                <LeadsTable
-                  leads={filteredLeads}
-                  dispatchingId={dispatchingId}
-                  onDispatch={dispatchManual}
-                  onSelect={handleSelect}
-                />
+                <LeadsTable leads={filteredLeads} onSelect={handleSelect} />
               </section>
             </>
           )}

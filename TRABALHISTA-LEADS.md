@@ -1,88 +1,44 @@
-# Leads Trabalhistas (Justiça do Trabalho)
+# Leads Trabalhistas
 
-Módulo independente: monitora processos na JT, enriquece via CNPJ/QSA (BrasilAPI) e dispara contato (WhatsApp + e-mail).
-
-**Tudo online** — configuração no dashboard, execução via GitHub Actions. Nada roda no seu PC.
+Módulo de coleta de empresas processadas sem advogado via **Datajud (CNJ)**.
 
 ## Arquitetura
 
 ```
-Dashboard React                    GitHub Actions (cron)           Cloud Functions
-────────────────                   ─────────────────────           ───────────────
-Config → Firestore                 Datajud + BrasilAPI             scoreLeadOnWrite
-Kanban + disparo manual            Evolution + SMTP                FCM (score ≥ 70)
-        │                                  │                              │
-        └──────────── Firestore ───────────┴──────────────────────────────┘
-                      leads / outreachQueue / outreachLog / trabalhistaConfig
+GitHub Actions (agent/)  →  Datajud + BrasilAPI  →  Firestore (leads)
+Dashboard React          →  Firestore (leads + filtros regionais)
+Cloud Functions          →  scoreLeadOnWrite + FCM para score ≥ 70
 ```
 
-| Componente | Onde roda | HTTP externo |
-|------------|-----------|--------------|
-| Worker coleta/outreach | GitHub Actions | Sim (Datajud, BrasilAPI, Evolution, SMTP) |
-| Cloud Functions | Firebase | Não (só Firestore + FCM) |
-| Dashboard | GitHub Pages | Não (Firestore SDK) |
+| Componente | Onde roda | Secrets |
+|------------|-----------|---------|
+| Coleta | `trabalhista-leads-collect.yml` | `FIREBASE_SERVICE_ACCOUNT`, `DATAJUD_API_KEY` |
+| Scoring | Cloud Function | — |
+| Filtros regionais | Dashboard → `userSettings/{uid}/filters/trabalhista` | — |
 
-## Configuração online
+Configuração do worker via **variáveis de ambiente** (sem painel Firestore):
 
-1. Acesse `/dashboard/trabalhista-leads/`
-2. Expanda **Configuração online**
-3. Preencha Datajud, Evolution, SMTP, templates
-4. Marque **Módulo ativo** e **Salvar**
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `DATAJUD_API_KEY` | — | Obrigatória |
+| `DATAJUD_TRTS` | `1,2,3,15` | TRTs monitorados |
+| `DATAJUD_DAYS_BACK` | `7` | Janela retroativa |
+| `WORKER_ENABLED` | `true` | Liga/desliga coleta trabalhista |
+| `COLLECT_ENABLED` | `true` | Coleta Datajud |
+| `EXECUCOES_ENABLED` | `true` | Coleta execuções rurais |
+| `EXECUCOES_DAYS_BACK` | `14` | Janela execuções rurais |
 
-Dados salvos em `trabalhistaConfig/settings` (somente admin).
-
-### GitHub Secret (único setup fora do dashboard)
-
-No repositório GitHub → **Settings → Secrets → Actions**:
-
-| Secret | Conteúdo |
-|--------|----------|
-| `FIREBASE_SERVICE_ACCOUNT` | JSON completo da service account Firebase |
-
-Como obter: Firebase Console → Project Settings → Service accounts → Generate new private key.
-
-## Coleções Firestore
+## Firestore
 
 | Coleção | Uso |
 |---------|-----|
-| `trabalhistaConfig/settings` | Configuração online |
-| `leads` | Empresas/processos |
-| `outreachQueue` | Fila dias 0, 3, 7, 14 + manual |
-| `outreachLog` | Histórico de contatos |
+| `leads` | Leads trabalhistas |
+| `userSettings/{uid}/filters/trabalhista` | Filtros regionais independentes |
 
-## Cron na nuvem
+## Dashboard
 
-| Workflow | Frequência | Ação |
-|----------|------------|------|
-| `trabalhista-leads-collect.yml` | A cada 6 h | Varredura Datajud |
-| `trabalhista-leads-outreach.yml` | A cada 15 min | Processa fila |
+Rota: `/dashboard/trabalhista-leads/` (somente admin).
 
-Disparo manual também pelo botão **Disparar** no dashboard.
-
-## Deploy
-
-### Portal (automático)
-Push em `main` → GitHub Pages.
-
-### Firestore
-```powershell
-cd site-de-notas-futurista
-npx firebase-tools deploy --only firestore:rules,firestore:indexes
-```
-
-### Cloud Functions (Blaze)
-```powershell
-npx firebase-tools deploy --only functions:scoreLeadOnWrite,functions:normalizeManualOutreach
-```
-
-## URLs
-
-- Dashboard: https://linduro.github.io/App-Contabilidade/dashboard/trabalhista-leads/
-- Acesso: `cartoonhq@gmail.com`
-
-## Primeiro uso
-
-1. Adicionar secret `FIREBASE_SERVICE_ACCOUNT` no GitHub
-2. Deploy rules + portal
-3. Abrir dashboard → configurar APIs → ativar módulo
-4. Actions → rodar manualmente **Trabalhista Leads — Coleta** para testar
+- Kanban + tabela com score, comarca, valor
+- Filtros regionais na sidebar (independentes dos outros módulos)
+- Status manual: novo → contatado → respondeu → cliente

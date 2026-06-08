@@ -25,18 +25,6 @@ export interface Lead {
   updated_at: string
 }
 
-export interface OutreachLogEntry {
-  id: string
-  lead_id: string
-  dia: number | null
-  tipo: string
-  channels: string[]
-  results: Record<string, boolean>
-  empresa: string
-  processo: string
-  created_at: string
-}
-
 export interface LeadFilters {
   comarca: string
   valorMin: string
@@ -51,29 +39,6 @@ export interface TrabalhistaStats {
   respondeu: number
   clientes: number
   scoreMedio: number
-}
-
-export interface TrabalhistaSettings {
-  enabled: boolean
-  collect_enabled: boolean
-  outreach_enabled: boolean
-  datajud_api_key: string
-  datajud_trts: string
-  datajud_days_back: number
-  datajud_page_size: number
-  evolution_api_url: string
-  evolution_api_key: string
-  evolution_instance: string
-  smtp_host: string
-  smtp_port: number
-  smtp_user: string
-  smtp_pass: string
-  smtp_from: string
-  whatsapp_template: string
-  email_subject: string
-  email_template: string
-  min_score_for_outreach: number
-  updated_at?: string
 }
 
 export const LEAD_STATUSES: LeadStatus[] = [

@@ -65,15 +65,19 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    match /outreachQueue/{docId} {
+    match /execucoesRurais/{docId} {
       allow read, write: if isAdmin();
     }
 
-    match /outreachLog/{docId} {
-      allow read, write: if isAdmin();
+    match /userSettings/{userId} {
+      allow read, write: if isAdmin() && request.auth.uid == userId;
+
+      match /filters/{moduleId} {
+        allow read, write: if isAdmin() && request.auth.uid == userId;
+      }
     }
 
-    match /trabalhistaConfig/{docId} {
+    match /systemConfig/{docId} {
       allow read, write: if isAdmin();
     }
   }

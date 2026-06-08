@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   fetchLicitacoesDashboard,
   seedLicitacoesFirestore,
@@ -10,6 +10,8 @@ import {
   runCollectInBrowser,
   type CollectStats,
 } from "@/lib/licitacoes/collect-client"
+import { useRegionalFilters } from "@/hooks/use-regional-filters"
+import { matchesRegionalFilter } from "@/lib/regional-filters/regioes"
 import type {
   AdvogadoEspecialidade,
   DashboardStats,
@@ -41,6 +43,22 @@ export function useLicitacoesDashboard(enabled: boolean) {
   const [collecting, setCollecting] = useState(false)
   const [collectMessage, setCollectMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const {
+    filters: regionalFilters,
+    updateFilters: setRegionalFilters,
+    userId,
+  } = useRegionalFilters("licitacoes")
+
+  const regionalMatches = useMemo(
+    () =>
+      matches.filter((m) =>
+        matchesRegionalFilter(
+          [m.licitacao.municipio, m.licitacao.uf, filters.cidade],
+          regionalFilters,
+        ),
+      ),
+    [matches, regionalFilters, filters.cidade],
+  )
 
   const loadData = useCallback(async () => {
     if (!enabled) return
@@ -84,7 +102,7 @@ export function useLicitacoesDashboard(enabled: boolean) {
     setError(null)
 
     try {
-      const stats = await runCollectInBrowser()
+      const stats = await runCollectInBrowser(userId, regionalFilters)
       setCollectMessage(stats.mensagem ?? "Coleta concluída.")
       await loadData()
       return stats
@@ -130,7 +148,10 @@ export function useLicitacoesDashboard(enabled: boolean) {
   return {
     advogadoNome,
     advogadoEmail,
-    matches,
+    matches: regionalMatches,
+    allMatches: matches,
+    regionalFilters,
+    setRegionalFilters,
     especialidades,
     stats,
     filters,

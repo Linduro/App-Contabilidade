@@ -4,8 +4,8 @@ const nodemailer = require("nodemailer")
 const twilio = require("twilio")
 const {
   scoreLeadOnWrite,
-  normalizeManualOutreach,
 } = require("./leads-trabalhista")
+const { scoreExecucaoRuralOnWrite } = require("./execucoes-rurais-scoring")
 
 admin.initializeApp()
 
@@ -161,7 +161,7 @@ exports.scoreLeadOnWrite = functions.firestore
   .document("leads/{leadId}")
   .onWrite(scoreLeadOnWrite)
 
-exports.normalizeManualOutreach = functions.firestore
-  .document("outreachQueue/{queueId}")
-  .onCreate(normalizeManualOutreach)
+exports.scoreExecucaoRuralOnWrite = functions.firestore
+  .document("execucoesRurais/{execucaoId}")
+  .onWrite(scoreExecucaoRuralOnWrite)
 

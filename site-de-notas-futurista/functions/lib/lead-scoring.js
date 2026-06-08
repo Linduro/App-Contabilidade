@@ -79,13 +79,4 @@ function computeLeadScore(lead) {
   }
 }
 
-function outreachScheduleFromNow() {
-  const now = Date.now()
-  const dayMs = 86400000
-  return [0, 3, 7, 14].map((dia) => ({
-    dia,
-    scheduled_at: new Date(now + dia * dayMs).toISOString(),
-  }))
-}
-
-module.exports = { computeLeadScore, outreachScheduleFromNow, daysSince }
+module.exports = { computeLeadScore, daysSince }
