@@ -1,0 +1,27 @@
+{
+  "name": "licitacoes-advocacia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rastreador de licitações públicas para serviços jurídicos",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "build:frontend": "npm run build -w frontend",
+    "build:backend": "npm run build -w backend",
+    "start:backend": "npm run start -w backend",
+    "test:pipeline": "npm run test:pipeline -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

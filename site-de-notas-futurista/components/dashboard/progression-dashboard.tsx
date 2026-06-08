@@ -1,6 +1,7 @@
 "use client"
 
 import { signOut } from "firebase/auth"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
@@ -10,6 +11,7 @@ import {
   LogOut,
   Moon,
   Plus,
+  Scale,
   Search,
   Sun,
   X,
@@ -328,6 +330,21 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   </Button>
                 </div>
               </div>
+
+              {adminAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="shrink-0 max-md:w-full max-md:min-h-11"
+                  title="Licitações jurídicas (acesso privado)"
+                >
+                  <Link href={assetPath("/dashboard/licitacoes/")}>
+                    <Scale className="w-4 h-4 mr-2" />
+                    Licitações
+                  </Link>
+                </Button>
+              )}
 
               <Button
                 variant="outline"

@@ -1,0 +1,110 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import {
+  fetchLicitacoesDashboard,
+  updateLicitacaoMatchStatus,
+} from "@/lib/licitacoes/client"
+import type {
+  AdvogadoEspecialidade,
+  DashboardStats,
+  Match,
+  MatchFilters,
+  MatchStatus,
+} from "@/lib/licitacoes/types"
+
+const DEFAULT_FILTERS: MatchFilters = {
+  especialidadeId: "all",
+  valorMin: "",
+  valorMax: "",
+  cidade: "",
+}
+
+export function useLicitacoesDashboard(enabled: boolean) {
+  const [advogadoNome, setAdvogadoNome] = useState("")
+  const [advogadoEmail, setAdvogadoEmail] = useState("")
+  const [matches, setMatches] = useState<Match[]>([])
+  const [especialidades, setEspecialidades] = useState<AdvogadoEspecialidade[]>(
+    [],
+  )
+  const [stats, setStats] = useState<DashboardStats>({
+    abertasMes: 0,
+    inscricoesMes: 0,
+  })
+  const [filters, setFilters] = useState<MatchFilters>(DEFAULT_FILTERS)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadData = useCallback(async () => {
+    if (!enabled) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const data = await fetchLicitacoesDashboard()
+      if (!data.advogado) {
+        throw new Error(
+          "Perfil de advogado não encontrado no Supabase. Cadastre cartoonhq@gmail.com na tabela advogados.",
+        )
+      }
+
+      setAdvogadoNome(data.advogado.nome)
+      setAdvogadoEmail(data.advogado.email)
+      setMatches(data.matches)
+      setEspecialidades(data.especialidades)
+      setStats(data.stats)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao carregar licitações.")
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const updateMatchStatus = async (matchId: string, status: MatchStatus) => {
+    await updateLicitacaoMatchStatus(matchId, status)
+    const now = new Date().toISOString()
+
+    if (status === "arquivado") {
+      setMatches((prev) => prev.filter((m) => m.id !== matchId))
+    } else {
+      setMatches((prev) =>
+        prev.map((m) =>
+          m.id === matchId
+            ? {
+                ...m,
+                status,
+                visto_em: status === "visto" ? now : m.visto_em,
+                inscrito_em: status === "inscrito" ? now : m.inscrito_em,
+              }
+            : m,
+        ),
+      )
+
+      if (status === "inscrito") {
+        setStats((prev) => ({
+          ...prev,
+          inscricoesMes: prev.inscricoesMes + 1,
+        }))
+      }
+    }
+  }
+
+  return {
+    advogadoNome,
+    advogadoEmail,
+    matches,
+    especialidades,
+    stats,
+    filters,
+    setFilters,
+    loading,
+    error,
+    reload: loadData,
+    updateMatchStatus,
+  }
+}
