@@ -14,6 +14,7 @@ import {
   classifyTextBrowser,
 } from "@/lib/licitacoes/classifier-browser"
 import { isLegitimateLegalTender } from "@/lib/licitacoes/legal-relevance"
+import { isOpenByDeadline } from "@/lib/licitacoes/date-filter"
 import { fetchPncpLicitacoesJuridicas } from "@/lib/licitacoes/pncp-client"
 import { ESPECIALIDADES_CATALOG } from "@/lib/licitacoes/seed-data"
 import {
@@ -120,6 +121,9 @@ async function processItem(
 
   const texto = [item.titulo, item.descricao].filter(Boolean).join(" ")
   if (!isLegitimateLegalTender(texto)) {
+    return { nova: false, matches: 0 }
+  }
+  if (!isOpenByDeadline(item.deadline)) {
     return { nova: false, matches: 0 }
   }
 

@@ -1,4 +1,5 @@
 import type { LicititaItem } from "@/lib/licitacoes/scraper-browser"
+import { isOnOrAfterToday } from "@/lib/licitacoes/date-filter"
 import { isLegitimateLegalTender } from "@/lib/licitacoes/legal-relevance"
 
 const PNCP_SEARCH = "https://pncp.gov.br/api/search/"
@@ -41,6 +42,18 @@ interface PncpSearchItem {
 interface PncpSearchResponse {
   items: PncpSearchItem[]
   total: number
+}
+
+function isWithinDateWindow(row: PncpSearchItem): boolean {
+  // Prazo de encerramento: só hoje ou futuro (nunca edital já encerrado).
+  if (row.data_fim_vigencia && !isOnOrAfterToday(row.data_fim_vigencia)) {
+    return false
+  }
+  // Publicação: só dia atual ou posterior (descarta editais antigos na busca).
+  if (row.data_publicacao_pncp && !isOnOrAfterToday(row.data_publicacao_pncp)) {
+    return false
+  }
+  return true
 }
 
 function buildSearchText(row: PncpSearchItem): string {
@@ -137,6 +150,7 @@ export async function fetchPncpLicitacoesJuridicas(
 
       for (const row of rows) {
         if (row.cancelado) continue
+        if (!isWithinDateWindow(row)) continue
 
         const texto = buildSearchText(row)
         if (!isLegitimateLegalTender(texto)) continue
