@@ -7,12 +7,6 @@ import { Bell, Network, LogOut } from "lucide-react"
 import { useAuthStore } from "@/store/auth-store"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import dynamic from "next/dynamic"
-
-const WalletNav = dynamic(
-  () => import("@/components/web3/wallet-nav").then((m) => m.WalletNav),
-  { ssr: false }
-)
 
 export function Header() {
   const router = useRouter()
@@ -68,7 +62,6 @@ export function Header() {
               </span>
             )}
           </Link>
-          <WalletNav />
           <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
             <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
               {user?.nome?.charAt(0) ?? "?"}

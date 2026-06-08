@@ -47,9 +47,7 @@ jobs:
       - name: Build networking (subpasta discreta no mesmo domínio)
         working-directory: networking-web
         env:
-          NODE_ENV: development
           GITHUB_PAGES: "true"
-          NEXT_PUBLIC_WEB3_ENABLED: "false"
           NEXT_PUBLIC_API_URL: ${{ vars.NETWORKING_API_URL || '' }}
         run: npm run build
 

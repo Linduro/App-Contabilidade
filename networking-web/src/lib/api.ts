@@ -123,42 +123,4 @@ export const api = {
       token,
       body: JSON.stringify({ status }),
     }),
-
-  getReputation: (walletAddress: string) =>
-    request<{
-      reputation: {
-        averageScaled: number
-        total: number
-        stars: number
-        configured: boolean
-      }
-    }>(`/web3/reputation/${walletAddress}`),
-
-  getCredentials: (walletAddress: string) =>
-    request<{
-      credentials: OnChainCredential[]
-      configured: boolean
-    }>(`/web3/credentials/${walletAddress}`),
-
-  linkWallet: (token: string, walletAddress: string) =>
-    request<{ profile: { id: string; walletAddress: string }; message: string }>(
-      "/web3/profile/link-wallet",
-      {
-        method: "POST",
-        token,
-        body: JSON.stringify({ walletAddress }),
-      }
-    ),
-}
-
-export interface OnChainCredential {
-  tokenId: number
-  credentialType: string
-  institution: string
-  title: string
-  issueDate: number
-  expiryDate: number
-  metadataURI: string
-  revoked: boolean
-  isValid: boolean
 }
