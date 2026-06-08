@@ -25,6 +25,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       "Vídeos passo a passo sobre pagamentos, serviços diversos e declaração de matrícula. Clique para assistir.",
   },
   {
+    id: "matematica-financeira",
+    title: "Matemática Financeira",
+    description:
+      "Menu expansível com gravações das aulas do 1º semestre de 2026 e download dos PDFs de cada aula.",
+  },
+  {
     id: "hp12c",
     title: "Calculadora HP-12C",
     description:
@@ -69,7 +75,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
 ]
 
-export const HEADER_TOUR_STEP_IDS = new Set(["contact", "portal-links", "video-tutorials", "hp12c"])
+export const HEADER_TOUR_STEP_IDS = new Set([
+  "contact",
+  "portal-links",
+  "video-tutorials",
+  "matematica-financeira",
+  "hp12c",
+])
 export const FOOTER_TOUR_STEP_IDS = new Set(["dr-pitoco"])
 
 export function onboardingStorageKey(userId: string) {
