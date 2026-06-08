@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import {
   fetchLicitacoesDashboard,
+  seedLicitacoesFirestore,
   updateLicitacaoMatchStatus,
 } from "@/lib/licitacoes/client"
 import type {
@@ -42,10 +43,16 @@ export function useLicitacoesDashboard(enabled: boolean) {
     setError(null)
 
     try {
-      const data = await fetchLicitacoesDashboard()
+      let data = await fetchLicitacoesDashboard()
+
+      if (!data.advogado) {
+        await seedLicitacoesFirestore()
+        data = await fetchLicitacoesDashboard()
+      }
+
       if (!data.advogado) {
         throw new Error(
-          "Perfil de licitações não encontrado no Firestore. Execute npm run seed:firestore no backend.",
+          "Não foi possível criar o perfil de licitações. Verifique se está logado como cartoonhq@gmail.com.",
         )
       }
 

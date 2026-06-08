@@ -6,8 +6,10 @@ import {
   orderBy,
   query,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { ESPECIALIDADES_CATALOG, OWNER_CONFIG } from "@/lib/licitacoes/seed-data"
 import type {
   AdvogadoEspecialidade,
   DashboardStats,
@@ -127,6 +129,36 @@ export async function fetchLicitacoesDashboard(): Promise<DashboardPayload> {
   }
 
   return { advogado, matches, especialidades, stats }
+}
+
+/** Cria catálogo + perfil owner (requer login como cartoonhq@gmail.com). */
+export async function seedLicitacoesFirestore(): Promise<void> {
+  const batch = writeBatch(db)
+  const now = new Date().toISOString()
+
+  for (const esp of ESPECIALIDADES_CATALOG) {
+    batch.set(
+      doc(db, "licitacoesEspecialidades", esp.slug),
+      {
+        ...esp,
+        id: esp.slug,
+        ativo: true,
+        updated_at: now,
+      },
+      { merge: true },
+    )
+  }
+
+  batch.set(
+    doc(db, "licitacoesConfig", "owner"),
+    {
+      ...OWNER_CONFIG,
+      updated_at: now,
+    },
+    { merge: true },
+  )
+
+  await batch.commit()
 }
 
 export async function updateLicitacaoMatchStatus(
