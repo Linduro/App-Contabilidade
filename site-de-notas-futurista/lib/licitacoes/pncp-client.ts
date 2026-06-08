@@ -2,11 +2,16 @@ import type { LicititaItem } from "@/lib/licitacoes/scraper-browser"
 
 const PNCP_BASE = "https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao"
 
-/** Modalidades comuns no PNCP (pregão, concorrência, dispensa…). */
-const MODALIDADES = [4, 5, 6, 7, 8, 9]
+/** Modalidades PNCP (pregão, concorrência, dispensa, inexigibilidade, etc.). */
+const MODALIDADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-const JURIDICO_RE =
-  /jur[ií]d|advocac|assessoria jur|parecer jur|consultoria jur|contencioso|servi[cç]os jur[ií]d|due diligence|media[cç][aã]o|arbitragem/i
+/** Match forte — objeto claramente jurídico. */
+const JURIDICO_FORTE =
+  /jur[ií]dic|advocac|defensoria|procuradoria|escrit[oó]rio de advocacia|oab\b|contencioso|due diligence|arbitragem|media[cç][aã]o|notifica[cç][aã]o extrajudicial|cobran[cç]a judicial|parecer jur|consultoria jur|assessoria jur|servi[cç]os jur[ií]d/i
+
+/** Match amplo — serviços profissionais / compliance / áreas correlatas. */
+const JURIDICO_AMPLo =
+  /assessoria|consultoria|parecer|audit|compliance|cont[aá]bil|fiscal|tribut|previd|inss|per[ií]cia|regulat|contrato|licita|preg[aã]o|concorr[eê]ncia|dispensa|administrativ|contencios|legal\b|notarial|registro de im[oó]ve|cart[oó]rio|certid[aã]o|due.dilig|governan[cç]a|lgpd|prote[cç][aã]o de dados|seguro|sinistro|responsabil|indeniz|financeir|banc[aá]ri|cr[eé]dito|hipoteca|execu[cç][aã]o fiscal|d[ií]vida ativa|honor[aá]ri/i
 
 interface PncpContratacao {
   numeroControlePNCP: string
@@ -23,6 +28,7 @@ interface PncpContratacao {
     nomeUnidade?: string
   }
   modalidadeNome?: string
+  amparoLegal?: { descricao?: string; nome?: string }
 }
 
 interface PncpResponse {
@@ -37,8 +43,30 @@ function formatDate(d: Date): string {
   return `${y}${m}${day}`
 }
 
-function isJuridico(texto: string): boolean {
-  return JURIDICO_RE.test(texto.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+function normalize(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+}
+
+function buildSearchText(row: PncpContratacao): string {
+  return [
+    row.objetoCompra,
+    row.informacaoComplementar,
+    row.amparoLegal?.descricao,
+    row.amparoLegal?.nome,
+    row.orgaoEntidade?.razaoSocial,
+    row.unidadeOrgao?.nomeUnidade,
+    row.modalidadeNome,
+  ]
+    .filter(Boolean)
+    .join(" ")
+}
+
+export function isRelevantContratacao(texto: string): boolean {
+  const t = normalize(texto)
+  return JURIDICO_FORTE.test(t) || JURIDICO_AMPLo.test(t)
 }
 
 function buildPncpUrl(item: PncpContratacao): string {
@@ -62,14 +90,7 @@ function mapPncpItem(item: PncpContratacao): LicititaItem {
         })
       : null
 
-  const descricao = [
-    item.objetoCompra,
-    item.informacaoComplementar,
-    item.orgaoEntidade?.razaoSocial,
-    item.modalidadeNome,
-  ]
-    .filter(Boolean)
-    .join(" — ")
+  const descricao = buildSearchText(item)
 
   return {
     titulo: item.objetoCompra.slice(0, 300),
@@ -108,11 +129,24 @@ async function fetchPncpPage(
   return response.json() as Promise<PncpResponse>
 }
 
-/** Busca licitações jurídicas no PNCP (API gov.br, funciona no browser). */
+export interface PncpFetchOptions {
+  daysBack?: number
+  maxPagesPerModality?: number
+}
+
+/** Busca licitações relevantes no PNCP (API gov.br). */
 export async function fetchPncpLicitacoesJuridicas(
-  daysBack = 30,
-  maxPagesPerModality = 3,
+  daysBackOrOptions: number | PncpFetchOptions = 90,
+  maxPagesLegacy = 8,
 ): Promise<LicititaItem[]> {
+  const opts: PncpFetchOptions =
+    typeof daysBackOrOptions === "number"
+      ? { daysBack: daysBackOrOptions, maxPagesPerModality: maxPagesLegacy }
+      : daysBackOrOptions
+
+  const daysBack = opts.daysBack ?? 90
+  const maxPagesPerModality = opts.maxPagesPerModality ?? 8
+
   const end = new Date()
   const start = new Date()
   start.setDate(start.getDate() - daysBack)
@@ -127,10 +161,7 @@ export async function fetchPncpLicitacoesJuridicas(
       let payload: PncpResponse
       try {
         payload = await fetchPncpPage(dataInicial, dataFinal, modalidade, pagina)
-      } catch (error) {
-        if (pagina === 1) {
-          console.warn(`[pncp] Modalidade ${modalidade} indisponível:`, error)
-        }
+      } catch {
         break
       }
 
@@ -138,10 +169,8 @@ export async function fetchPncpLicitacoesJuridicas(
       if (rows.length === 0) break
 
       for (const row of rows) {
-        const texto = [row.objetoCompra, row.informacaoComplementar]
-          .filter(Boolean)
-          .join(" ")
-        if (!isJuridico(texto)) continue
+        const texto = buildSearchText(row)
+        if (!isRelevantContratacao(texto)) continue
 
         const mapped = mapPncpItem(row)
         if (!byUrl.has(mapped.url)) {
@@ -156,7 +185,7 @@ export async function fetchPncpLicitacoesJuridicas(
   const items = [...byUrl.values()]
   if (items.length === 0) {
     throw new Error(
-      "Nenhuma licitação jurídica encontrada no PNCP nos últimos 30 dias. Tente de novo mais tarde.",
+      `Nenhuma licitação relevante no PNCP nos últimos ${daysBack} dias. Tente de novo mais tarde.`,
     )
   }
 

@@ -123,11 +123,18 @@ async function processItem(
   })
 
   const texto = [item.titulo, item.descricao].filter(Boolean).join(" ")
-  const classificacoes = classifyTextBrowser(texto)
+  const classificacoes = classifyTextBrowser(texto, 0.25)
   let matches = 0
 
-  const best = classificacoes.find((c) => ownerSlugs.has(c.especialidade))
-  if (best) {
+  const best =
+    classificacoes.find((c) => ownerSlugs.has(c.especialidade)) ??
+    (ownerSlugs.has("administrativo")
+      ? { especialidade: "administrativo", score: 0.42 }
+      : classificacoes[0]
+        ? { especialidade: classificacoes[0].especialidade, score: classificacoes[0].score }
+        : null)
+
+  if (best && ownerSlugs.has(best.especialidade)) {
     const dup = await matchExists(licRef.id, "owner")
     if (!dup) {
       const esp = catalog.get(best.especialidade)
@@ -167,7 +174,7 @@ export async function runCollectInBrowser(): Promise<CollectStats> {
   let scraped: LicititaItem[] = []
 
   try {
-    scraped = await fetchPncpLicitacoesJuridicas(30, 3)
+    scraped = await fetchPncpLicitacoesJuridicas({ daysBack: 90, maxPagesPerModality: 8 })
     stats.licitacoesColetadas = scraped.length
   } catch (error) {
     stats.erros += 1
@@ -187,8 +194,8 @@ export async function runCollectInBrowser(): Promise<CollectStats> {
 
   stats.mensagem =
     stats.licitacoesNovas > 0
-      ? `${stats.licitacoesNovas} nova(s), ${stats.matchesCriados} match(es).`
-      : "Nenhuma licitação nova — tudo já estava no banco."
+      ? `${stats.licitacoesColetadas} analisada(s), ${stats.licitacoesNovas} nova(s), ${stats.matchesCriados} match(es).`
+      : `${stats.licitacoesColetadas} analisada(s) — nenhuma licitação nova (já estavam no banco).`
 
   return stats
 }

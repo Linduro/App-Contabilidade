@@ -26,6 +26,10 @@ const KEYWORDS: Record<string, string[]> = {
     "declaração",
     "declaracao",
     "fiscal",
+    "execução fiscal",
+    "execucao fiscal",
+    "dívida ativa",
+    "divida ativa",
   ],
   administrativo: [
     "contrato",
@@ -37,6 +41,12 @@ const KEYWORDS: Record<string, string[]> = {
     "administrativo",
     "contratação pública",
     "contratacao publica",
+    "consultoria",
+    "assessoria",
+    "parecer",
+    "compliance",
+    "governança",
+    "governanca",
   ],
   security: [
     "inss",
@@ -64,7 +74,7 @@ export interface Classificacao {
 
 export function classifyTextBrowser(
   texto: string,
-  minConfidence = 0.3,
+  minConfidence = 0.25,
 ): Classificacao[] {
   const normalized = normalize(texto)
   const results: Classificacao[] = []
