@@ -4,6 +4,7 @@ const MODULE_KEYS = {
   licitacoes: "licitacoes",
   trabalhista: "trabalhista",
   execucoesRurais: "execucoesRurais",
+  execucoesAltoValor: "execucoesAltoValor",
 }
 
 async function resolveFilterUserId(db) {

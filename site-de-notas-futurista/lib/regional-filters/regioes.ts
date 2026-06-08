@@ -1,4 +1,8 @@
-export type ModuleFilterKey = "licitacoes" | "trabalhista" | "execucoesRurais"
+export type ModuleFilterKey =
+  | "licitacoes"
+  | "trabalhista"
+  | "execucoesRurais"
+  | "execucoesAltoValor"
 
 export interface RegionalFilterState {
   regioes: string[]

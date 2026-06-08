@@ -6,6 +6,7 @@ const {
   scoreLeadOnWrite,
 } = require("./leads-trabalhista")
 const { scoreExecucaoRuralOnWrite } = require("./execucoes-rurais-scoring")
+const { scoreExecucaoAltoValorOnWrite } = require("./execucoes-alto-valor-scoring")
 
 admin.initializeApp()
 
@@ -164,4 +165,8 @@ exports.scoreLeadOnWrite = functions.firestore
 exports.scoreExecucaoRuralOnWrite = functions.firestore
   .document("execucoesRurais/{execucaoId}")
   .onWrite(scoreExecucaoRuralOnWrite)
+
+exports.scoreExecucaoAltoValorOnWrite = functions.firestore
+  .document("execucoesAltoValor/{docId}")
+  .onWrite(scoreExecucaoAltoValorOnWrite)
 

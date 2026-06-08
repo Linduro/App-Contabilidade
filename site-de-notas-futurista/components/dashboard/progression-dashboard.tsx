@@ -12,6 +12,7 @@ import {
   Moon,
   Plus,
   Sprout,
+  Landmark,
   Scale,
   Briefcase,
   Search,
@@ -359,6 +360,21 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   <Link href="/dashboard/execucoes-rurais/">
                     <Sprout className="w-4 h-4 mr-2" />
                     Exec. Rurais
+                  </Link>
+                </Button>
+              )}
+
+              {adminAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="shrink-0 max-md:w-full max-md:min-h-11"
+                  title="Execuções acima de R$ 500k (acesso privado)"
+                >
+                  <Link href="/dashboard/execucoes-alto-valor/">
+                    <Landmark className="w-4 h-4 mr-2" />
+                    Exec. +500k
                   </Link>
                 </Button>
               )}

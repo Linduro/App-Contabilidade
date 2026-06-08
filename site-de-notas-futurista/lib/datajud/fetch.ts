@@ -4,6 +4,7 @@ import { buildAjuizamentoRange, type DatajudSearchRange } from "@/lib/datajud/da
 export interface DatajudSearchParams extends DatajudSearchRange {
   size?: number
   classCodes?: number[]
+  minValorCausa?: number
 }
 
 async function datajudFetch(url: string, body: unknown): Promise<Response> {
@@ -41,6 +42,10 @@ export function buildSearchBody(params: DatajudSearchParams) {
         minimum_should_match: 1,
       },
     })
+  }
+
+  if (params.minValorCausa != null && params.minValorCausa > 0) {
+    must.push({ range: { valorCausa: { gte: params.minValorCausa } } })
   }
 
   return {

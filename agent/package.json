@@ -6,7 +6,8 @@
   "main": "worker.js",
   "scripts": {
     "collect:trabalhista": "node worker.js --module=trabalhista --task=collect",
-    "collect:execucoes": "node worker.js --module=execucoesRurais --task=collect"
+    "collect:execucoes": "node worker.js --module=execucoesRurais --task=collect",
+    "collect:alto-valor": "node worker.js --module=execucoesAltoValor --task=collect"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

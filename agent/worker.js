@@ -34,6 +34,15 @@ async function main() {
     }
   }
 
+  if ((moduleName === "execucoesAltoValor" || moduleName === "all") && task === "collect") {
+    if (config.altoValorEnabled) {
+      const { runCollectExecucoesAltoValor } = require("./modules/execucoes-alto-valor/collect")
+      await runCollectExecucoesAltoValor()
+    } else {
+      console.log("[worker] coleta alto valor desabilitada (ALTO_VALOR_ENABLED=false)")
+    }
+  }
+
   console.log("[worker] concluído")
 }
 
