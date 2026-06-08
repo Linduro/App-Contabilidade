@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2, Radar } from "lucide-react"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireOwner } from "@/components/require-owner"
 import { useLicitacoesDashboard } from "@/hooks/use-licitacoes-dashboard"
@@ -23,7 +23,10 @@ function LicitacoesDashboardContent() {
     filters,
     setFilters,
     loading,
+    collecting,
+    collectMessage,
     error,
+    collectNow,
     updateMatchStatus,
   } = useLicitacoesDashboard(true)
 
@@ -87,16 +90,37 @@ function LicitacoesDashboardContent() {
                 Matches privados — apenas sua conta
               </p>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard/">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar ao painel
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                disabled={collecting || loading}
+                onClick={() => collectNow().catch(() => undefined)}
+              >
+                {collecting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Radar className="mr-2 h-4 w-4" />
+                )}
+                {collecting ? "Caçando…" : "Caçar agora"}
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard/">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar ao painel
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="space-y-6 p-8">
+          {collectMessage && !error && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+              {collectMessage}
+            </div>
+          )}
+
           <MatchFiltersBar
             filters={filters}
             onChange={setFilters}

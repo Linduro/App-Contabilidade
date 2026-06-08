@@ -6,6 +6,10 @@ import {
   seedLicitacoesFirestore,
   updateLicitacaoMatchStatus,
 } from "@/lib/licitacoes/client"
+import {
+  runCollectInBrowser,
+  type CollectStats,
+} from "@/lib/licitacoes/collect-client"
 import type {
   AdvogadoEspecialidade,
   DashboardStats,
@@ -34,6 +38,8 @@ export function useLicitacoesDashboard(enabled: boolean) {
   })
   const [filters, setFilters] = useState<MatchFilters>(DEFAULT_FILTERS)
   const [loading, setLoading] = useState(true)
+  const [collecting, setCollecting] = useState(false)
+  const [collectMessage, setCollectMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
@@ -71,6 +77,26 @@ export function useLicitacoesDashboard(enabled: boolean) {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const collectNow = async (): Promise<CollectStats> => {
+    setCollecting(true)
+    setCollectMessage(null)
+    setError(null)
+
+    try {
+      const stats = await runCollectInBrowser()
+      setCollectMessage(stats.mensagem ?? "Coleta concluída.")
+      await loadData()
+      return stats
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao caçar licitações."
+      setError(message)
+      throw err
+    } finally {
+      setCollecting(false)
+    }
+  }
 
   const updateMatchStatus = async (matchId: string, status: MatchStatus) => {
     await updateLicitacaoMatchStatus(matchId, status)
@@ -110,8 +136,11 @@ export function useLicitacoesDashboard(enabled: boolean) {
     filters,
     setFilters,
     loading,
+    collecting,
+    collectMessage,
     error,
     reload: loadData,
+    collectNow,
     updateMatchStatus,
   }
 }
