@@ -52,5 +52,6 @@ export function subscribeRegionalFilters(
         cidades: Array.isArray(data.cidades) ? data.cidades : [],
       })
     },
+    () => onChange({ ...EMPTY_REGIONAL_FILTER }),
   )
 }
