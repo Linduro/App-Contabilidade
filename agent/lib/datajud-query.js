@@ -1,3 +1,8 @@
+const {
+  DATAJUD_SEARCH_DAYS,
+  buildAjuizamentoRange,
+} = require("./datajud-dates")
+
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br"
 
 /** Campos solicitados explicitamente na busca Elasticsearch. */
@@ -29,17 +34,16 @@ function daysAgoIso(days) {
 }
 
 /**
- * Query ampla: apenas processos públicos no período (sem filtro de classe/valor).
- * Critérios de negócio ficam na triagem Python pós-coleta.
+ * Query ampla: processos públicos nos últimos N dias (formato compacto CNJ).
  */
-function buildBroadSearchBody({ daysBack, size }) {
+function buildBroadSearchBody({ daysBack, size, dataDe, dataAte }) {
   return {
     size,
     _source: SOURCE_FIELDS,
     sort: [{ dataAjuizamento: { order: "desc" } }],
     query: {
       bool: {
-        must: [{ range: { dataAjuizamento: { gte: daysAgoIso(daysBack) } } }],
+        must: [buildAjuizamentoRange({ daysBack: daysBack ?? DATAJUD_SEARCH_DAYS, dataDe, dataAte })],
         filter: [{ term: { nivelSigilo: 0 } }],
       },
     },
@@ -182,6 +186,7 @@ function commonParseFields(source) {
 module.exports = {
   DATAJUD_BASE,
   SOURCE_FIELDS,
+  DATAJUD_SEARCH_DAYS,
   CLASSES_TRT,
   CLASSES_EXECUCAO,
   ALTO_VALOR_MIN,

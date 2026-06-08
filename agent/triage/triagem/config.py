@@ -47,5 +47,7 @@ MODULOS_VALIDOS: frozenset[str] = frozenset(
     {"trabalhista", "execucoesRurais", "execucoesAltoValor"}
 )
 
+SEARCH_DAYS = 60
+
 CAPA_EMPRESA = "Réu a identificar (capa Datajud)"
 CAPA_EXECUTADO = "Executado a identificar (capa Datajud)"

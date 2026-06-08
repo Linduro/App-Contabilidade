@@ -7,6 +7,7 @@ import {
   updateLeadStatus,
 } from "@/lib/trabalhista-leads/client"
 import { runTrabalhistaCollectInBrowser } from "@/lib/trabalhista-leads/collect-client"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
 import { useRegionalFilters } from "@/hooks/use-regional-filters"
 import { matchesRegionalFilter } from "@/lib/regional-filters/regioes"
 import {
@@ -79,7 +80,7 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
         {
           dataDe: filters.dataDe || undefined,
           dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : 30,
+          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
           natureza: filters.natureza,
         },
         regionalFilters,

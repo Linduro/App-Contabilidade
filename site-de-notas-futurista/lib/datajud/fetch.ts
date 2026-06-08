@@ -1,11 +1,34 @@
 import { DATAJUD_BASE, DATAJUD_PUBLIC_API_KEY } from "@/lib/datajud/config"
-import { buildAjuizamentoRange, type DatajudSearchRange } from "@/lib/datajud/date-range"
+import {
+  buildAjuizamentoRange,
+  type DatajudSearchRange,
+} from "@/lib/datajud/date-range"
 
 export interface DatajudSearchParams extends DatajudSearchRange {
   size?: number
-  classCodes?: number[]
-  minValorCausa?: number
 }
+
+const SOURCE_FIELDS = [
+  "numeroProcesso",
+  "tribunal",
+  "grau",
+  "classe",
+  "classeProcessual",
+  "dataAjuizamento",
+  "dataHoraUltimaAtualizacao",
+  "valorCausa",
+  "valor",
+  "orgaoJulgador",
+  "assuntos",
+  "movimentos",
+  "partes",
+  "nivelSigilo",
+]
+
+const PROXY_PREFIXES = [
+  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+]
 
 async function datajudFetch(url: string, body: unknown): Promise<Response> {
   const headers = {
@@ -13,45 +36,50 @@ async function datajudFetch(url: string, body: unknown): Promise<Response> {
     "Content-Type": "application/json",
     Accept: "application/json",
   }
+  const payload = JSON.stringify(body)
 
   try {
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) })
+    const res = await fetch(url, { method: "POST", headers, body: payload })
     if (res.ok) return res
-  } catch {
-    // CORS — tenta proxy público
+    if (res.status !== 0) {
+      const text = await res.text()
+      throw new Error(`Datajud HTTP ${res.status}: ${text.slice(0, 200)}`)
+    }
+  } catch (err) {
+    const isNetwork =
+      err instanceof TypeError ||
+      (err instanceof Error && /failed to fetch|cors|network/i.test(err.message))
+    if (!isNetwork) throw err
   }
 
-  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`
-  return fetch(proxyUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  })
+  let lastError = "Falha de rede ao acessar o Datajud."
+  for (const toProxy of PROXY_PREFIXES) {
+    try {
+      const res = await fetch(toProxy(url), { method: "POST", headers, body: payload })
+      if (res.ok) return res
+      lastError = `Proxy HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : lastError
+    }
+  }
+
+  throw new Error(
+    `${lastError} Tente novamente ou use a coleta automática (GitHub Actions).`,
+  )
 }
 
+/** Query ampla: últimos N dias (compacto) + processos públicos. Triagem no app. */
 export function buildSearchBody(params: DatajudSearchParams) {
-  const must: object[] = [buildAjuizamentoRange(params)]
-
-  if (params.classCodes?.length) {
-    must.push({
-      bool: {
-        should: [
-          { terms: { "classe.codigo": params.classCodes } },
-          { terms: { "classeProcessual.codigo": params.classCodes } },
-        ],
-        minimum_should_match: 1,
-      },
-    })
-  }
-
-  if (params.minValorCausa != null && params.minValorCausa > 0) {
-    must.push({ range: { valorCausa: { gte: params.minValorCausa } } })
-  }
-
   return {
-    size: params.size ?? 50,
+    size: params.size ?? 100,
+    _source: SOURCE_FIELDS,
     sort: [{ dataAjuizamento: { order: "desc" } }],
-    query: { bool: { must } },
+    query: {
+      bool: {
+        must: [buildAjuizamentoRange(params)],
+        filter: [{ term: { nivelSigilo: 0 } }],
+      },
+    },
   }
 }
 

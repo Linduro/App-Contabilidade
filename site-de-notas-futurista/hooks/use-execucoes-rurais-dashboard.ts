@@ -7,6 +7,7 @@ import {
   updateExecucaoStatus,
 } from "@/lib/execucoes-rurais/client"
 import { runExecucoesCollectInBrowser } from "@/lib/execucoes-rurais/collect-client"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
 import type { ExecucaoFilters, ExecucaoRural, ExecucaoStatus } from "@/lib/execucoes-rurais/types"
 import { DEFAULT_EXECUCAO_FILTERS } from "@/lib/execucoes-rurais/types"
 import { useRegionalFilters } from "@/hooks/use-regional-filters"
@@ -62,7 +63,7 @@ export function useExecucoesRuraisDashboard(enabled: boolean) {
         {
           dataDe: filters.dataDe || undefined,
           dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : 14,
+          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
           natureza: filters.natureza,
         },
         regionalFilters,

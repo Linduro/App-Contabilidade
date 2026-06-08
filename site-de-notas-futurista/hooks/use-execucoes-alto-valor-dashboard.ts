@@ -7,6 +7,7 @@ import {
   updateAltoValorStatus,
 } from "@/lib/execucoes-alto-valor/client"
 import { runAltoValorCollectInBrowser } from "@/lib/execucoes-alto-valor/collect-client"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
 import {
   DEFAULT_ALTO_VALOR_FILTERS,
   type ExecucaoAltoValor,
@@ -63,7 +64,7 @@ export function useExecucoesAltoValorDashboard(enabled: boolean) {
         {
           dataDe: filters.dataDe || undefined,
           dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : 30,
+          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
         },
         regionalFilters,
       )

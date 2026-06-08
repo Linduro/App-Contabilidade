@@ -11,6 +11,7 @@ from ..utils import (
     has_advogado_passivo,
     is_polo_passivo,
     is_rural_producer,
+    is_within_search_window,
     reu_passivo,
     tem_partes,
     texto_rural,
@@ -78,6 +79,10 @@ def triar(records: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str
     for rec in records:
         if not rec.get("numero_processo"):
             motivos["sem_numero_processo"] = motivos.get("sem_numero_processo", 0) + 1
+            continue
+
+        if not is_within_search_window(rec):
+            motivos["fora_janela_2_meses"] = motivos.get("fora_janela_2_meses", 0) + 1
             continue
 
         motivo = _motivo_rejeicao(rec)

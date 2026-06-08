@@ -5,7 +5,29 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .config import RURAL_KEYWORDS
+from datetime import datetime, timedelta
+
+from .config import RURAL_KEYWORDS, SEARCH_DAYS
+
+
+def ajuizamento_ymd(record: dict[str, Any]) -> str | None:
+    raw = (
+        record.get("data_ajuizamento")
+        or record.get("dataAjuizamento")
+        or _datajud(record).get("dataAjuizamento")
+    )
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", str(raw))
+    return digits[:8] if len(digits) >= 8 else None
+
+
+def is_within_search_window(record: dict[str, Any], days: int = SEARCH_DAYS) -> bool:
+    ymd = ajuizamento_ymd(record)
+    if not ymd:
+        return True
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y%m%d")
+    return ymd >= cutoff
 
 
 def _datajud(record: dict[str, Any]) -> dict[str, Any]:

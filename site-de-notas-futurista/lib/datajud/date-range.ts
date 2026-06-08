@@ -1,4 +1,13 @@
 import { toYmd, todayLocalYmd } from "@/lib/licitacoes/date-filter"
+import {
+  DATAJUD_SEARCH_DAYS,
+  daysAgoCompact,
+  todayCompactEnd,
+  ymdToCompactEnd,
+  ymdToCompactStart,
+} from "@/lib/datajud/compact-date"
+
+export { DATAJUD_SEARCH_DAYS }
 
 export function daysAgoYmd(days: number): string {
   const d = new Date()
@@ -25,8 +34,11 @@ export interface DatajudSearchRange {
 }
 
 export function buildAjuizamentoRange(params: DatajudSearchRange) {
-  const gte = params.dataDe || daysAgoYmd(params.daysBack ?? 30)
-  const range: { gte: string; lte?: string } = { gte }
-  if (params.dataAte) range.lte = params.dataAte
+  const days = params.daysBack ?? DATAJUD_SEARCH_DAYS
+  const gte = params.dataDe ? ymdToCompactStart(params.dataDe) : daysAgoCompact(days)
+  const range: { gte: string; lte: string } = {
+    gte,
+    lte: params.dataAte ? ymdToCompactEnd(params.dataAte) : todayCompactEnd(),
+  }
   return { range: { dataAjuizamento: range } }
 }
