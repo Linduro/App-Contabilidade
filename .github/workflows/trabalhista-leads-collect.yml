@@ -24,5 +24,4 @@ jobs:
         working-directory: agent
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
-          DATAJUD_API_KEY: ${{ secrets.DATAJUD_API_KEY }}
         run: npm run collect:trabalhista

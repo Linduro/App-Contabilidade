@@ -12,7 +12,7 @@ Cloud Functions          →  scoreLeadOnWrite + FCM para score ≥ 70
 
 | Componente | Onde roda | Secrets |
 |------------|-----------|---------|
-| Coleta | `trabalhista-leads-collect.yml` | `FIREBASE_SERVICE_ACCOUNT`, `DATAJUD_API_KEY` |
+| Coleta | `trabalhista-leads-collect.yml` | `FIREBASE_SERVICE_ACCOUNT` |
 | Scoring | Cloud Function | — |
 | Filtros regionais | Dashboard → `userSettings/{uid}/filters/trabalhista` | — |
 
@@ -20,7 +20,7 @@ Configuração do worker via **variáveis de ambiente** (sem painel Firestore):
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `DATAJUD_API_KEY` | — | Obrigatória |
+| `DATAJUD_API_KEY` | *(padrão: chave pública CNJ em `agent/config/datajud.js`)* | Opcional — sobrescreve a key pública |
 | `DATAJUD_TRTS` | `1,2,3,15` | TRTs monitorados |
 | `DATAJUD_DAYS_BACK` | `7` | Janela retroativa |
 | `WORKER_ENABLED` | `true` | Liga/desliga coleta trabalhista |

@@ -1,5 +1,7 @@
 require("dotenv").config()
 
+const { DATAJUD_PUBLIC_API_KEY } = require("../config/datajud")
+
 let activeConfig = null
 
 function parseTrts(raw) {
@@ -13,7 +15,9 @@ function initConfig() {
   activeConfig = {
     enabled: process.env.WORKER_ENABLED !== "false",
     collect_enabled: process.env.COLLECT_ENABLED !== "false",
-    datajudApiKey: String(process.env.DATAJUD_API_KEY || "").trim(),
+    datajudApiKey: String(
+      process.env.DATAJUD_API_KEY || DATAJUD_PUBLIC_API_KEY,
+    ).trim(),
     datajudTrts: parseTrts(process.env.DATAJUD_TRTS || "1,2,3,15"),
     collectDaysBack: Number(process.env.DATAJUD_DAYS_BACK) || 7,
     collectPageSize: Number(process.env.DATAJUD_PAGE_SIZE) || 50,
