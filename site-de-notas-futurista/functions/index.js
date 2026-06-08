@@ -2,6 +2,10 @@ const admin = require("firebase-admin")
 const functions = require("firebase-functions")
 const nodemailer = require("nodemailer")
 const twilio = require("twilio")
+const {
+  scoreLeadOnWrite,
+  normalizeManualOutreach,
+} = require("./leads-trabalhista")
 
 admin.initializeApp()
 
@@ -152,4 +156,12 @@ exports.dailyReminderScan = functions.pubsub
 
     return null
   })
+
+exports.scoreLeadOnWrite = functions.firestore
+  .document("leads/{leadId}")
+  .onWrite(scoreLeadOnWrite)
+
+exports.normalizeManualOutreach = functions.firestore
+  .document("outreachQueue/{queueId}")
+  .onCreate(normalizeManualOutreach)
 

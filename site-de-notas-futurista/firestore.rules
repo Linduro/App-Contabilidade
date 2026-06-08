@@ -60,5 +60,21 @@ service cloud.firestore {
     match /licitacoesMatches/{docId} {
       allow read, write: if isAdmin();
     }
+
+    match /leads/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /outreachQueue/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /outreachLog/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /trabalhistaConfig/{docId} {
+      allow read, write: if isAdmin();
+    }
   }
 }

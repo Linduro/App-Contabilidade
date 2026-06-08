@@ -24,6 +24,30 @@
         { "fieldPath": "placement", "order": "ASCENDING" },
         { "fieldPath": "sortOrder", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outreachQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "scheduled_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outreachLog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lead_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

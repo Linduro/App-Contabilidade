@@ -1,0 +1,21 @@
+{
+  "name": "trabalhista-leads-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agente local — Datajud, BrasilAPI, Evolution API, Firestore",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js --once=both",
+    "collect": "node agent.js --once=collect",
+    "outreach": "node agent.js --once=outreach",
+    "worker": "node agent.js --once=both"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "firebase-admin": "^13.0.2",
+    "nodemailer": "^6.10.0"
+  }
+}
