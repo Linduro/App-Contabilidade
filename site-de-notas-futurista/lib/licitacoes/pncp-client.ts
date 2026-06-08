@@ -89,6 +89,7 @@ function mapSearchItem(item: PncpSearchItem): LicititaItem {
     valor,
     cidade,
     deadline: item.data_fim_vigencia?.slice(0, 10) ?? null,
+    publicadoEm: item.data_publicacao_pncp?.slice(0, 10) ?? null,
     url: buildPncpUrl(item),
     tipo: "licitacao",
     area: "direito",

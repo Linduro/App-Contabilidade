@@ -9,11 +9,13 @@ import {
   writeBatch,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { isLicitacaoOnOrAfterToday } from "@/lib/licitacoes/date-filter"
 import { ESPECIALIDADES_CATALOG, OWNER_CONFIG } from "@/lib/licitacoes/seed-data"
 import type {
   AdvogadoEspecialidade,
   DashboardStats,
   Especialidade,
+  Licitacao,
   Match,
   MatchStatus,
 } from "@/lib/licitacoes/types"
@@ -57,9 +59,27 @@ function mapMatch(id: string, data: Record<string, unknown>): Match {
     inscrito_em: (data.inscrito_em as string | null) ?? null,
     arquivado_em: (data.arquivado_em as string | null) ?? null,
     created_at: String(data.created_at ?? new Date().toISOString()),
-    licitacao: data.licitacao as Match["licitacao"],
+    licitacao: data.licitacao as Licitacao,
     especialidade: data.especialidade as Match["especialidade"],
   }
+}
+
+async function archiveExpiredMatches(matches: Match[]): Promise<number> {
+  const now = new Date().toISOString()
+  const expired = matches.filter(
+    (m) => m.status !== "arquivado" && !isLicitacaoOnOrAfterToday(m.licitacao),
+  )
+  if (expired.length === 0) return 0
+
+  const batch = writeBatch(db)
+  for (const match of expired.slice(0, 450)) {
+    batch.update(doc(db, "licitacoesMatches", match.id), {
+      status: "arquivado",
+      arquivado_em: now,
+    })
+  }
+  await batch.commit()
+  return expired.length
 }
 
 export async function fetchLicitacoesDashboard(): Promise<DashboardPayload> {
@@ -110,13 +130,19 @@ export async function fetchLicitacoesDashboard(): Promise<DashboardPayload> {
   )
 
   const monthStart = startOfCurrentMonth()
-  const matches: Match[] = []
+  const allMatches: Match[] = []
 
   for (const matchDoc of matchesSnap.docs) {
     const match = mapMatch(matchDoc.id, matchDoc.data())
     if (match.status === "arquivado") continue
-    matches.push(match)
+    allMatches.push(match)
   }
+
+  await archiveExpiredMatches(allMatches)
+
+  const matches = allMatches.filter((m) =>
+    isLicitacaoOnOrAfterToday(m.licitacao),
+  )
 
   const stats: DashboardStats = {
     abertasMes: matches.filter((m) => m.created_at >= monthStart).length,

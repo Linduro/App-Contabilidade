@@ -5,6 +5,7 @@ export interface LicititaItem {
   valor: string | null
   cidade: string | null
   deadline: string | null
+  publicadoEm?: string | null
   url: string
   tipo: string
   area: string
@@ -196,6 +197,9 @@ export function mapScrapedToLicitacao(item: LicititaItem) {
     valor_estimado: parseValorEstimado(item.valor),
     data_encerramento: item.deadline
       ? new Date(item.deadline).toISOString()
+      : null,
+    data_publicacao: item.publicadoEm
+      ? new Date(item.publicadoEm).toISOString()
       : null,
     url_fonte: item.url,
     fonte: item.fonte,
