@@ -9,11 +9,9 @@ function formatDate(ts: number) {
 }
 
 export function CredentialCard({ credential }: { credential: OnChainCredential }) {
-  const scanUrl =
-    credential.polygonscanUrl ??
-    (credential.tokenId
-      ? `https://amoy.polygonscan.com/token/${credential.tokenId}`
-      : undefined)
+  const scanUrl = credential.tokenId
+    ? `https://amoy.polygonscan.com/token/${credential.tokenId}`
+    : undefined
 
   return (
     <Card className="border-indigo-100 bg-indigo-50/40">
