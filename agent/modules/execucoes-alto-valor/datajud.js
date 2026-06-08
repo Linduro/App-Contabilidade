@@ -1,5 +1,14 @@
-const ALTO_VALOR_MIN = 500_000
-const CLASSES = new Set([877, 1116, 40])
+const {
+  ALTO_VALOR_MIN,
+  CLASSES_EXECUCAO,
+  buildSearchBody,
+  endpoint,
+  postSearch,
+  extractComarcaFromOrgao,
+  commonParseFields,
+} = require("../../lib/datajud-query")
+
+const CLASSES = new Set(CLASSES_EXECUCAO)
 
 const TRIBUNAIS = [
   { alias: "tjsp", label: "TJSP" },
@@ -11,18 +20,6 @@ const TRIBUNAIS = [
   { alias: "tjsc", label: "TJSC" },
   { alias: "tjba", label: "TJBA" },
 ]
-
-function daysAgoIso(days) {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
-
-function extractClasse(source) {
-  const c = source.classe || source.classeProcessual || {}
-  const codigo = c.codigo ?? c.code ?? c.numero ?? null
-  return codigo != null ? Number(codigo) : null
-}
 
 function isPoloPassivo(parte) {
   const polo = String(parte.polo || parte.tipoParticipacao || "").toUpperCase()
@@ -43,14 +40,50 @@ function extractDoc(parte) {
   return null
 }
 
-function parseHit(source, tribunalLabel) {
-  const classe = extractClasse(source)
+function parseHit(hit, tribunalLabel) {
+  const source = hit._source || {}
+  const common = commonParseFields(source)
+  const classe = common.classe_codigo
   if (classe == null || !CLASSES.has(classe)) return null
 
-  const valor = parseFloat(source.valorCausa || source.valor || 0)
-  if (!Number.isFinite(valor) || valor < ALTO_VALOR_MIN) return null
-
   const partes = source.partes || []
+  const orgao = source.orgaoJulgador || {}
+  const vara = orgao.nome || orgao.nomeOrgao || tribunalLabel
+  const comarca = extractComarcaFromOrgao(orgao, vara)
+  const numeroProcesso = String(source.numeroProcesso || "").replace(/\D/g, "")
+  if (!numeroProcesso) return null
+
+  const valorCausa = common.valor_causa
+
+  if (!partes.length) {
+    return {
+      numeroProcesso,
+      processo: String(source.numeroProcesso || numeroProcesso),
+      tribunal: tribunalLabel,
+      vara,
+      comarca,
+      valorCausa,
+      exequente: null,
+      executado: "Executado a identificar (capa Datajud)",
+      cnpjCpf: "",
+      tipoExecutado: "PF",
+      dataAjuizamento: source.dataAjuizamento || null,
+      ultimoMovimento: common.ultima_movimentacao,
+      temAdvogado: false,
+      comarcaInterior: true,
+      cnaeRural: false,
+      capaDatajud: true,
+      grau: common.grau,
+      nivelSigilo: common.nivel_sigilo,
+      classeCodigo: common.classe_codigo,
+      classeNome: common.classe_nome,
+      movimentos: common.movimentos,
+      dadosBrutos: source,
+    }
+  }
+
+  if (valorCausa > 0 && valorCausa < ALTO_VALOR_MIN) return null
+
   const executadoParte = partes.find(isPoloPassivo)
   if (!executadoParte || !semAdvogado(executadoParte)) return null
 
@@ -61,75 +94,43 @@ function parseHit(source, tribunalLabel) {
   const exequenteParte = partes.find((p) => !isPoloPassivo(p))
   const executado = String(executadoParte.nome || "Executado não identificado").trim()
   const cnpjCpf = extractDoc(executadoParte) || ""
-  const orgao = source.orgaoJulgador || {}
-  const numeroProcesso = String(source.numeroProcesso || "").replace(/\D/g, "")
 
   return {
     numeroProcesso,
     processo: String(source.numeroProcesso || numeroProcesso),
     tribunal: tribunalLabel,
-    vara: orgao.nome || orgao.nomeOrgao || tribunalLabel,
-    comarca: orgao.municipioNome || orgao.nomeMunicipio || orgao.nome || "—",
-    valorCausa: valor,
+    vara,
+    comarca,
+    valorCausa,
     exequente: exequenteParte?.nome || null,
     executado,
     cnpjCpf,
     tipoExecutado: cnpjCpf.length === 14 || /ltda|s\.?a|me\b|eireli/i.test(executado) ? "PJ" : "PF",
     dataAjuizamento: source.dataAjuizamento || null,
-    ultimoMovimento:
-      source.dataUltimaAtualizacao ||
-      source.dataHoraUltimaAtualizacao ||
-      source.dataAjuizamento ||
-      null,
+    ultimoMovimento: common.ultima_movimentacao,
     temAdvogado: false,
     comarcaInterior: true,
     cnaeRural: false,
+    capaDatajud: false,
+    grau: common.grau,
+    nivelSigilo: common.nivel_sigilo,
+    classeCodigo: common.classe_codigo,
+    classeNome: common.classe_nome,
+    movimentos: common.movimentos,
     dadosBrutos: source,
   }
 }
 
 async function fetchTribunal(alias, label, daysBack, size, apiKey) {
-  const body = {
+  const body = buildSearchBody({
+    daysBack,
     size,
-    sort: [{ dataAjuizamento: { order: "desc" } }],
-    query: {
-      bool: {
-        must: [
-          { range: { dataAjuizamento: { gte: daysAgoIso(daysBack) } } },
-          { range: { valorCausa: { gte: ALTO_VALOR_MIN } } },
-          {
-            bool: {
-              should: [
-                { terms: { "classe.codigo": [877, 1116, 40] } },
-                { terms: { "classeProcessual.codigo": [877, 1116, 40] } },
-              ],
-              minimum_should_match: 1,
-            },
-          },
-        ],
-      },
-    },
-  }
-
-  const url = `https://api-publica.datajud.cnj.jus.br/api_publica_${alias}/_search`
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `APIKey ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    classCodes: CLASSES_EXECUCAO,
+    minValorCausa: ALTO_VALOR_MIN,
   })
 
-  if (!response.ok) {
-    const t = await response.text()
-    throw new Error(`${label} HTTP ${response.status}: ${t.slice(0, 150)}`)
-  }
-
-  const payload = await response.json()
-  return (payload.hits?.hits ?? [])
-    .map((h) => parseHit(h._source || {}, label))
-    .filter(Boolean)
+  const hits = await postSearch(endpoint(alias), body, apiKey, label)
+  return hits.map((h) => parseHit(h, label)).filter(Boolean)
 }
 
 async function collectAllAltoValor() {

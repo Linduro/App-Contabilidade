@@ -1,27 +1,19 @@
 const { getConfig } = require("../../lib/config-loader")
+const {
+  CLASSES_EXECUCAO,
+  buildSearchBody,
+  endpoint,
+  postSearch,
+  extractComarcaFromOrgao,
+  commonParseFields,
+} = require("../../lib/datajud-query")
 
-const BASE = "https://api-publica.datajud.cnj.jus.br"
-const CLASSES_EXECUCAO = new Set([1116, 877, 40, "1116", "877", "40"])
+const CLASSES_SET = new Set([...CLASSES_EXECUCAO, ...CLASSES_EXECUCAO.map(String)])
 
 const TRIBUNAIS = [
   { alias: "tjsp", label: "TJSP" },
   { alias: "trf3", label: "TRF3" },
 ]
-
-function daysAgoIso(days) {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
-
-function endpoint(alias) {
-  return `${BASE}/api_publica_${alias}/_search`
-}
-
-function extractClasse(source) {
-  const c = source.classe || source.classeProcessual || {}
-  return c.codigo ?? c.code ?? c.numero ?? null
-}
 
 function hasAdvogadoPassivo(source) {
   const partes = source.partes || []
@@ -41,25 +33,69 @@ function isPoloPassivo(parte) {
 
 function parseHit(hit, tribunalLabel) {
   const source = hit._source || {}
-  const classe = extractClasse(source)
-  if (classe != null && !CLASSES_EXECUCAO.has(classe)) return null
+  const common = commonParseFields(source)
+  const classe = common.classe_codigo
+  if (classe != null && !CLASSES_SET.has(classe) && !CLASSES_SET.has(String(classe))) return null
+
+  const orgao = source.orgaoJulgador || {}
+  const vara = orgao.nome || orgao.nomeOrgao || tribunalLabel
+  const comarca = extractComarcaFromOrgao(orgao, vara)
+  const assuntos = (source.assuntos || [])
+    .map((a) => a.nome || a.descricao || "")
+    .filter(Boolean)
+    .join("; ")
+  const partes = source.partes || []
+  const { isRuralProducer } = require("../../lib/enrichment")
+
+  if (!partes.length) {
+    const textoCapa = [assuntos, vara, source.objeto || source.assunto || ""].join(" ")
+    const isExecClass = classe != null && CLASSES_SET.has(classe)
+    if (!isExecClass && !isRuralProducer(textoCapa, null)) return null
+
+    return {
+      nome_reu: "Réu a identificar (capa Datajud)",
+      cpf_cnpj: null,
+      tipo_reu: "PF",
+      numero_processo: String(source.numeroProcesso || "").replace(/\D/g, ""),
+      numero_processo_formatado: source.numeroProcesso,
+      tribunal: tribunalLabel,
+      vara,
+      comarca,
+      valor_execucao: common.valor_causa,
+      credor_exequente: null,
+      data_ajuizamento: source.dataAjuizamento || null,
+      tem_advogado: false,
+      imoveis_rurais: [],
+      nirf: null,
+      car_numero: null,
+      area_hectares: null,
+      municipio_imovel: comarca,
+      classe_codigo: common.classe_codigo,
+      classe_nome: common.classe_nome,
+      assuntos: assuntos || null,
+      texto_rural: textoCapa,
+      grau: common.grau,
+      nivel_sigilo: common.nivel_sigilo,
+      movimentos: common.movimentos,
+      ultima_movimentacao: common.ultima_movimentacao,
+      capa_datajud: true,
+      dados_brutos: { datajud: source, tribunal: tribunalLabel },
+    }
+  }
+
   if (hasAdvogadoPassivo(source)) return null
 
-  const partes = source.partes || []
   const reu = partes.find(isPoloPassivo) || partes[0]
   if (!reu) return null
 
   const nomeReu = String(reu.nome || "Réu não identificado").trim()
-  const texto = [nomeReu, source.objeto || source.assunto || "", JSON.stringify(source.assuntos || [])].join(" ")
+  const texto = [nomeReu, source.objeto || source.assunto || "", JSON.stringify(source.assuntos || [])].join(
+    " ",
+  )
 
-  const { isRuralProducer } = require("../../lib/enrichment")
   if (!isRuralProducer(texto, null)) return null
 
-  const orgao = source.orgaoJulgador || {}
-  const valor = parseFloat(source.valorCausa || source.valor || 0) || 0
-
   const credor = partes.find((p) => !isPoloPassivo(p))
-  const assuntos = (source.assuntos || []).map((a) => a.nome || a.descricao || "").join("; ")
 
   return {
     nome_reu: nomeReu,
@@ -68,9 +104,9 @@ function parseHit(hit, tribunalLabel) {
     numero_processo: String(source.numeroProcesso || "").replace(/\D/g, ""),
     numero_processo_formatado: source.numeroProcesso,
     tribunal: tribunalLabel,
-    vara: orgao.nome || orgao.nomeOrgao || tribunalLabel,
-    comarca: orgao.municipioNome || orgao.nomeMunicipio || null,
-    valor_execucao: valor,
+    vara,
+    comarca,
+    valor_execucao: common.valor_causa,
     credor_exequente: credor?.nome || null,
     data_ajuizamento: source.dataAjuizamento || null,
     tem_advogado: false,
@@ -78,49 +114,35 @@ function parseHit(hit, tribunalLabel) {
     nirf: null,
     car_numero: null,
     area_hectares: null,
-    municipio_imovel: orgao.municipioNome || null,
-    classe_codigo: classe != null ? Number(classe) : null,
-    classe_nome: (source.classe?.nome || source.classeProcessual?.nome || null),
+    municipio_imovel: comarca,
+    classe_codigo: common.classe_codigo,
+    classe_nome: common.classe_nome,
     assuntos: assuntos || null,
     texto_rural: texto,
+    grau: common.grau,
+    nivel_sigilo: common.nivel_sigilo,
+    movimentos: common.movimentos,
+    ultima_movimentacao: common.ultima_movimentacao,
+    capa_datajud: false,
     dados_brutos: { datajud: source, tribunal: tribunalLabel },
   }
 }
 
-async function fetchExecucoesTribunal(alias, label, daysBack, size) {
-  const config = getConfig()
-  if (!config.datajudApiKey) throw new Error("datajud_api_key ausente")
-
-  const body = {
+async function fetchExecucoesTribunal(alias, label, daysBack, size, apiKey) {
+  const body = buildSearchBody({
+    daysBack,
     size,
-    sort: [{ dataAjuizamento: { order: "desc" } }],
-    query: {
-      bool: {
-        must: [{ range: { dataAjuizamento: { gte: daysAgoIso(daysBack) } } }],
-      },
-    },
-  }
-
-  const response = await fetch(endpoint(alias), {
-    method: "POST",
-    headers: {
-      Authorization: `APIKey ${config.datajudApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    classCodes: CLASSES_EXECUCAO,
   })
 
-  if (!response.ok) {
-    const t = await response.text()
-    throw new Error(`${label} HTTP ${response.status}: ${t.slice(0, 150)}`)
-  }
-
-  const payload = await response.json()
-  return (payload.hits?.hits ?? []).map((h) => parseHit(h, label)).filter(Boolean)
+  const hits = await postSearch(endpoint(alias), body, apiKey, label)
+  return hits.map((h) => parseHit(h, label)).filter(Boolean)
 }
 
 async function collectAllExecucoes() {
   const config = getConfig()
+  if (!config.datajudApiKey) throw new Error("DATAJUD_API_KEY ausente")
+
   const results = []
   for (const t of TRIBUNAIS) {
     try {
@@ -129,6 +151,7 @@ async function collectAllExecucoes() {
         t.label,
         config.execucoesDaysBack,
         config.collectPageSize,
+        config.datajudApiKey,
       )
       results.push(...rows)
       console.log(`[execucoes] ${t.label}: ${rows.length} candidato(s)`)

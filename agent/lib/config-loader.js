@@ -20,11 +20,11 @@ function initConfig() {
     ).trim(),
     datajudTrts: parseTrts(process.env.DATAJUD_TRTS || "1,2,3,15"),
     collectDaysBack: Number(process.env.DATAJUD_DAYS_BACK) || 7,
-    collectPageSize: Number(process.env.DATAJUD_PAGE_SIZE) || 50,
-    execucoesDaysBack: Number(process.env.EXECUCOES_DAYS_BACK) || 14,
+    collectPageSize: Number(process.env.DATAJUD_PAGE_SIZE) || 100,
+    execucoesDaysBack: Number(process.env.EXECUCOES_DAYS_BACK) || 30,
     execucoesEnabled: process.env.EXECUCOES_ENABLED !== "false",
     altoValorEnabled: process.env.ALTO_VALOR_ENABLED !== "false",
-    altoValorDaysBack: Number(process.env.ALTO_VALOR_DAYS_BACK) || 30,
+    altoValorDaysBack: Number(process.env.ALTO_VALOR_DAYS_BACK) || 60,
   }
   return activeConfig
 }

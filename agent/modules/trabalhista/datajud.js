@@ -1,49 +1,22 @@
 const { getConfig } = require("../../lib/config-loader")
+const {
+  CLASSES_TRT,
+  buildSearchBody,
+  trtEndpoint,
+  postSearch,
+  extractComarcaFromOrgao,
+  commonParseFields,
+} = require("../../lib/datajud-query")
 
-const BASE = "https://api-publica.datajud.cnj.jus.br"
-
-function trtEndpoint(trt) {
-  return `${BASE}/api_publica_trt${trt}/_search`
-}
-
-function daysAgoIso(days) {
-  const d = new Date()
-  d.setDate(d.getDate() - days)
-  return d.toISOString().slice(0, 10)
-}
-
-async function fetchRecentLaborCases(trt, daysBack = 7, size = 50) {
-  const config = getConfig()
-  if (!config.datajudApiKey) {
-    throw new Error("DATAJUD_API_KEY não configurada.")
-  }
-
-  const body = {
+async function fetchRecentLaborCases(trt, daysBack, size, apiKey) {
+  const body = buildSearchBody({
+    daysBack,
     size,
-    sort: [{ dataAjuizamento: { order: "desc" } }],
-    query: {
-      bool: {
-        must: [{ range: { dataAjuizamento: { gte: daysAgoIso(daysBack) } } }],
-      },
-    },
-  }
-
-  const response = await fetch(trtEndpoint(trt), {
-    method: "POST",
-    headers: {
-      Authorization: `APIKey ${config.datajudApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    classCodes: CLASSES_TRT,
   })
 
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Datajud TRT${trt} HTTP ${response.status}: ${text.slice(0, 200)}`)
-  }
-
-  const payload = await response.json()
-  return (payload.hits?.hits ?? []).map((hit) => parseDatajudHit(hit, trt)).filter(Boolean)
+  const hits = await postSearch(trtEndpoint(trt), body, apiKey, `TRT-${trt}`)
+  return hits.map((hit) => parseDatajudHit(hit, trt)).filter(Boolean)
 }
 
 function normalizeProcesso(num) {
@@ -84,21 +57,51 @@ function hasAdvogadoConstituido(source) {
 function parseDatajudHit(hit, trt) {
   const source = hit._source || hit.source || {}
   const numeroProcesso = normalizeProcesso(source.numeroProcesso)
-  if (!numeroProcesso || hasAdvogadoConstituido(source)) return null
+  if (!numeroProcesso) return null
 
+  const orgao = source.orgaoJulgador || {}
+  const vara = orgao.nome || orgao.nomeOrgao || `TRT-${trt}`
+  const comarca = extractComarcaFromOrgao(orgao, vara)
+  const assuntos = (source.assuntos || [])
+    .map((a) => a.nome || a.descricao || "")
+    .filter(Boolean)
+    .join("; ")
   const partes = source.partes || source.dadosBasicos?.partes || []
+  const common = commonParseFields(source)
+
+  if (!partes.length) {
+    return {
+      numero_processo: numeroProcesso,
+      numero_processo_formatado: source.numeroProcesso || numeroProcesso,
+      empresa: "Réu a identificar (capa Datajud)",
+      cnpj: null,
+      vara,
+      comarca,
+      tribunal: `TRT-${trt}`,
+      valor_causa: common.valor_causa,
+      data_ajuizamento: source.dataAjuizamento || source.dataHoraAjuizamento || null,
+      ultima_movimentacao: common.ultima_movimentacao,
+      sem_movimentacao_posterior: true,
+      setor: /agro|fazenda|pecu/i.test(assuntos) ? "agro" : "outros",
+      comarca_interior: true,
+      classe_codigo: common.classe_codigo,
+      classe_nome: common.classe_nome,
+      assuntos: assuntos || null,
+      grau: common.grau,
+      nivel_sigilo: common.nivel_sigilo,
+      movimentos: common.movimentos,
+      capa_datajud: true,
+      dados_brutos: { datajud: source, trt },
+    }
+  }
+
+  if (hasAdvogadoConstituido(source)) return null
+
   const reusPj = partes.filter((p) => isPoloPassivo(p) && isPessoaJuridica(p))
   if (!reusPj.length) return null
 
   const reu = reusPj[0]
-  const orgao = source.orgaoJulgador || {}
-  const vara = orgao.nome || orgao.nomeOrgao || `TRT-${trt}`
-  const comarca = orgao.municipioNome || orgao.nomeMunicipio || vara
-  const assuntos = (source.assuntos || []).map((a) => a.nome || a.descricao || "").join(" ")
   const empresa = String(reu.nome || "Empresa não identificada").trim()
-  const classe = source.classe || source.classeProcessual || {}
-  const classe_codigo = classe.codigo ?? classe.code ?? null
-  const classe_nome = classe.nome || classe.descricao || null
 
   return {
     numero_processo: numeroProcesso,
@@ -108,25 +111,38 @@ function parseDatajudHit(hit, trt) {
     vara,
     comarca,
     tribunal: `TRT-${trt}`,
-    valor_causa: parseFloat(source.valorCausa || source.valor || 0) || 0,
+    valor_causa: common.valor_causa,
     data_ajuizamento: source.dataAjuizamento || source.dataHoraAjuizamento || null,
-    ultima_movimentacao: null,
+    ultima_movimentacao: common.ultima_movimentacao,
     sem_movimentacao_posterior: true,
     setor: /agro|fazenda|pecu/i.test(`${empresa} ${assuntos}`) ? "agro" : "outros",
     comarca_interior: true,
-    classe_codigo: classe_codigo != null ? Number(classe_codigo) : null,
-    classe_nome: classe_nome ? String(classe_nome) : null,
+    classe_codigo: common.classe_codigo,
+    classe_nome: common.classe_nome,
     assuntos: assuntos || null,
+    grau: common.grau,
+    nivel_sigilo: common.nivel_sigilo,
+    movimentos: common.movimentos,
+    capa_datajud: false,
     dados_brutos: { datajud: source, trt },
   }
 }
 
 async function collectAllTrts() {
   const config = getConfig()
+  if (!config.datajudApiKey) {
+    throw new Error("DATAJUD_API_KEY não configurada.")
+  }
+
   const results = []
   for (const trt of config.datajudTrts) {
     try {
-      const cases = await fetchRecentLaborCases(trt, config.collectDaysBack, config.collectPageSize)
+      const cases = await fetchRecentLaborCases(
+        trt,
+        config.collectDaysBack,
+        config.collectPageSize,
+        config.datajudApiKey,
+      )
       results.push(...cases)
       console.log(`[datajud] TRT-${trt}: ${cases.length} candidato(s)`)
     } catch (error) {
