@@ -1,70 +1,48 @@
+import { normalizeLegalText } from "@/lib/licitacoes/legal-relevance"
+
 const KEYWORDS: Record<string, string[]> = {
   responsabilidade_civil: [
-    "indenização",
     "indenizacao",
-    "danos",
+    "danos morais",
+    "danos materiais",
     "sinistro",
     "responsabilidade civil",
   ],
   banking_law: [
-    "banco",
-    "bancário",
-    "bancario",
-    "financeira",
-    "crédito",
+    "direito bancario",
+    "contrato bancario",
+    "instituicao financeira",
     "credito",
     "hipoteca",
     "financiamento",
   ],
   tributario: [
+    "direito tributario",
+    "consultoria tributaria",
     "imposto",
-    "tributo",
-    "tributário",
-    "tributario",
     "icms",
     "iss",
-    "declaração",
-    "declaracao",
-    "fiscal",
-    "execução fiscal",
     "execucao fiscal",
-    "dívida ativa",
     "divida ativa",
+    "fiscal tributario",
   ],
   administrativo: [
-    "contrato",
-    "edital",
-    "licitação",
+    "direito administrativo",
     "licitacao",
-    "pregão",
-    "pregao",
-    "administrativo",
-    "contratação pública",
     "contratacao publica",
-    "consultoria",
-    "assessoria",
-    "parecer",
-    "compliance",
-    "governança",
-    "governanca",
+    "edital",
+    "pregao",
+    "inexigibilidade",
+    "dispensa",
   ],
   security: [
+    "direito previdenciario",
     "inss",
-    "benefício",
-    "beneficio",
-    "perícia",
-    "pericia",
+    "beneficio previdenciario",
+    "pericia medica",
     "aposentadoria",
-    "previdenciário",
     "previdenciario",
   ],
-}
-
-function normalize(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
 }
 
 export interface Classificacao {
@@ -72,25 +50,57 @@ export interface Classificacao {
   score: number
 }
 
+function includesKeyword(text: string, keyword: string): boolean {
+  const k = normalizeLegalText(keyword)
+  if (k.includes(" ")) {
+    return text.includes(k)
+  }
+  const re = new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i")
+  return re.test(text)
+}
+
 export function classifyTextBrowser(
   texto: string,
-  minConfidence = 0.25,
+  minConfidence = 0.5,
 ): Classificacao[] {
-  const normalized = normalize(texto)
+  const normalized = normalizeLegalText(texto)
   const results: Classificacao[] = []
 
   for (const [slug, keywords] of Object.entries(KEYWORDS)) {
     let hits = 0
     for (const kw of keywords) {
-      if (normalized.includes(normalize(kw))) hits += 1
+      if (includesKeyword(normalized, kw)) hits += 1
     }
     if (hits === 0) continue
 
-    const score = Math.min(0.35 + hits * 0.2, 0.95)
+    const score = Math.min(0.4 + hits * 0.2, 0.95)
     if (score >= minConfidence) {
       results.push({ especialidade: slug, score })
     }
   }
 
   return results.sort((a, b) => b.score - a.score)
+}
+
+/** Classifica licitação jurídica genérica quando não há match de especialidade. */
+export function classifyLegalTenderFallback(texto: string): Classificacao | null {
+  const normalized = normalizeLegalText(texto)
+  const legalHits = [
+    "advocacia",
+    "advocaticio",
+    "advogado",
+    "assessoria juridica",
+    "consultoria juridica",
+    "procuradoria",
+    "defensoria",
+    "contencioso",
+    "honorarios advocaticios",
+  ].filter((kw) => normalized.includes(kw)).length
+
+  if (legalHits === 0) return null
+
+  return {
+    especialidade: "administrativo",
+    score: Math.min(0.55 + legalHits * 0.1, 0.85),
+  }
 }

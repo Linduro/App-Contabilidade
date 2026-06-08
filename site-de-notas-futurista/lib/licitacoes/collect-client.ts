@@ -9,7 +9,11 @@ import {
   where,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { classifyTextBrowser } from "@/lib/licitacoes/classifier-browser"
+import {
+  classifyLegalTenderFallback,
+  classifyTextBrowser,
+} from "@/lib/licitacoes/classifier-browser"
+import { isLegitimateLegalTender } from "@/lib/licitacoes/legal-relevance"
 import { fetchPncpLicitacoesJuridicas } from "@/lib/licitacoes/pncp-client"
 import { ESPECIALIDADES_CATALOG } from "@/lib/licitacoes/seed-data"
 import {
@@ -114,6 +118,11 @@ async function processItem(
   const exists = await urlExists(item.url)
   if (exists) return { nova: false, matches: 0 }
 
+  const texto = [item.titulo, item.descricao].filter(Boolean).join(" ")
+  if (!isLegitimateLegalTender(texto)) {
+    return { nova: false, matches: 0 }
+  }
+
   const licitacaoData = mapScrapedToLicitacao(item)
   const now = new Date().toISOString()
   const licRef = await addDoc(collection(db, "licitacoes"), {
@@ -122,17 +131,15 @@ async function processItem(
     updated_at: now,
   })
 
-  const texto = [item.titulo, item.descricao].filter(Boolean).join(" ")
-  const classificacoes = classifyTextBrowser(texto, 0.25)
+  const classificacoes = classifyTextBrowser(texto, 0.5)
   let matches = 0
 
   const best =
     classificacoes.find((c) => ownerSlugs.has(c.especialidade)) ??
-    (ownerSlugs.has("administrativo")
-      ? { especialidade: "administrativo", score: 0.42 }
-      : classificacoes[0]
-        ? { especialidade: classificacoes[0].especialidade, score: classificacoes[0].score }
-        : null)
+    (() => {
+      const fallback = classifyLegalTenderFallback(texto)
+      return fallback && ownerSlugs.has(fallback.especialidade) ? fallback : null
+    })()
 
   if (best && ownerSlugs.has(best.especialidade)) {
     const dup = await matchExists(licRef.id, "owner")
@@ -174,7 +181,7 @@ export async function runCollectInBrowser(): Promise<CollectStats> {
   let scraped: LicititaItem[] = []
 
   try {
-    scraped = await fetchPncpLicitacoesJuridicas({ daysBack: 90, maxPagesPerModality: 8 })
+    scraped = await fetchPncpLicitacoesJuridicas({ maxPagesPerTerm: 2, pageSize: 30 })
     stats.licitacoesColetadas = scraped.length
   } catch (error) {
     stats.erros += 1
