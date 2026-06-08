@@ -87,7 +87,7 @@ function LicitacoesDashboardContent() {
                 Licitações jurídicas
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Matches privados — apenas sua conta
+                Fonte PNCP (gov.br) — matches privados
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

@@ -10,10 +10,10 @@ import {
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { classifyTextBrowser } from "@/lib/licitacoes/classifier-browser"
+import { fetchPncpLicitacoesJuridicas } from "@/lib/licitacoes/pncp-client"
 import { ESPECIALIDADES_CATALOG } from "@/lib/licitacoes/seed-data"
 import {
   mapScrapedToLicitacao,
-  scrapeLicititaBrowser,
   type LicititaItem,
 } from "@/lib/licitacoes/scraper-browser"
 import type { Especialidade } from "@/lib/licitacoes/types"
@@ -167,11 +167,12 @@ export async function runCollectInBrowser(): Promise<CollectStats> {
   let scraped: LicititaItem[] = []
 
   try {
-    scraped = await scrapeLicititaBrowser()
+    scraped = await fetchPncpLicitacoesJuridicas(30, 3)
     stats.licitacoesColetadas = scraped.length
   } catch (error) {
     stats.erros += 1
-    throw error
+    const msg = error instanceof Error ? error.message : "Erro ao consultar PNCP."
+    throw new Error(msg)
   }
 
   for (const item of scraped) {
