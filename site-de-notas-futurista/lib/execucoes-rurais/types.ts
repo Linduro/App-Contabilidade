@@ -19,6 +19,9 @@ export interface ExecucaoRural {
   valor_execucao: number | null
   credor_exequente: string | null
   data_ajuizamento: string | null
+  classe_codigo: number | null
+  classe_nome: string | null
+  assuntos: string | null
   tem_advogado: boolean
   area_hectares: number | null
   municipio_imovel: string | null
@@ -35,6 +38,18 @@ export interface ExecucaoFilters {
   valorMin: string
   valorMax: string
   status: ExecucaoStatus | "all"
+  dataDe: string
+  dataAte: string
+  natureza: string
+}
+
+export interface ExecucaoCollectParams {
+  dataDe?: string
+  dataAte?: string
+  daysBack?: number
+  natureza: string
+  tribunais?: string[]
+  pageSize?: number
 }
 
 export const EXECUCAO_STATUS_LABELS: Record<ExecucaoStatus, string> = {
@@ -42,4 +57,14 @@ export const EXECUCAO_STATUS_LABELS: Record<ExecucaoStatus, string> = {
   contatado: "Contatado",
   respondeu: "Respondeu",
   cliente: "Cliente",
+}
+
+export const DEFAULT_EXECUCAO_FILTERS: ExecucaoFilters = {
+  comarca: "",
+  valorMin: "",
+  valorMax: "",
+  status: "all",
+  dataDe: "",
+  dataAte: "",
+  natureza: "all",
 }

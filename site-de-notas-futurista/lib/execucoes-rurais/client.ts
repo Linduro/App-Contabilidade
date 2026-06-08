@@ -1,5 +1,7 @@
 import { collection, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { matchesDataRange } from "@/lib/datajud/date-range"
+import { matchesNaturezaCodigo, NATUREZAS_EXECUCAO } from "@/lib/datajud/naturezas"
 import type { ExecucaoFilters, ExecucaoRural, ExecucaoStatus } from "@/lib/execucoes-rurais/types"
 
 function mapDoc(id: string, data: Record<string, unknown>): ExecucaoRural {
@@ -16,6 +18,9 @@ function mapDoc(id: string, data: Record<string, unknown>): ExecucaoRural {
     valor_execucao: data.valor_execucao != null ? Number(data.valor_execucao) : null,
     credor_exequente: (data.credor_exequente as string) ?? null,
     data_ajuizamento: (data.data_ajuizamento as string) ?? null,
+    classe_codigo: data.classe_codigo != null ? Number(data.classe_codigo) : null,
+    classe_nome: (data.classe_nome as string) ?? null,
+    assuntos: (data.assuntos as string) ?? null,
     tem_advogado: Boolean(data.tem_advogado),
     area_hectares: data.area_hectares != null ? Number(data.area_hectares) : null,
     municipio_imovel: (data.municipio_imovel as string) ?? null,
@@ -31,6 +36,18 @@ function mapDoc(id: string, data: Record<string, unknown>): ExecucaoRural {
 export function filterExecucoes(items: ExecucaoRural[], filters: ExecucaoFilters): ExecucaoRural[] {
   return items.filter((item) => {
     if (filters.status !== "all" && item.status !== filters.status) return false
+    if (!matchesDataRange(item.data_ajuizamento, filters.dataDe, filters.dataAte)) {
+      return false
+    }
+    if (
+      !matchesNaturezaCodigo(
+        item.classe_codigo,
+        filters.natureza,
+        NATUREZAS_EXECUCAO,
+      )
+    ) {
+      return false
+    }
     if (filters.comarca.trim()) {
       const q = filters.comarca.toLowerCase()
       const hay = `${item.comarca ?? ""} ${item.municipio_imovel ?? ""}`.toLowerCase()

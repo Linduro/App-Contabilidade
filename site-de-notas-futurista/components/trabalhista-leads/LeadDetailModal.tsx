@@ -45,6 +45,8 @@ export function LeadDetailModal({
             }
           />
           <Row label="Responsável (QSA)" value={lead.responsavel} />
+          <Row label="Natureza" value={lead.classe_nome} />
+          <Row label="Assuntos" value={lead.assuntos} />
           <Row label="Telefone" value={lead.telefone} />
           <Row label="E-mail" value={lead.email} />
           <Row label="Score" value={String(lead.score)} />

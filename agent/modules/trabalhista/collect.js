@@ -94,6 +94,9 @@ async function runCollectTrabalhista() {
       enriquecido_em: enrichment.enriquecidoEm,
       camada_maxima_atingida: enrichment.camadaMaximaAtingida,
       enriquecimento_parcial: enrichment.enriquecimento_parcial,
+      classe_codigo: lead.classe_codigo,
+      classe_nome: lead.classe_nome,
+      assuntos: lead.assuntos,
       dados_brutos: lead.dados_brutos,
     })
 

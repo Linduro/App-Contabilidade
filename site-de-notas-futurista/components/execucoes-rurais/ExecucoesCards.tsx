@@ -35,6 +35,11 @@ export function ExecucoesCards({ items, onStatusChange }: Props) {
                 {item.credor_exequente}
               </span>
             )}
+            {item.classe_nome && (
+              <span className="rounded bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-800 dark:text-blue-300">
+                {item.classe_nome}
+              </span>
+            )}
             <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
               Score {item.score}
             </span>

@@ -7,6 +7,8 @@ import {
   doc,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { matchesDataRange } from "@/lib/datajud/date-range"
+import { matchesNaturezaCodigo, NATUREZAS_TRABALHISTA } from "@/lib/datajud/naturezas"
 import type {
   Lead,
   LeadFilters,
@@ -28,6 +30,9 @@ function mapLead(id: string, data: Record<string, unknown>): Lead {
     valor_causa:
       data.valor_causa != null ? Number(data.valor_causa) : null,
     data_ajuizamento: (data.data_ajuizamento as string) ?? null,
+    classe_codigo: data.classe_codigo != null ? Number(data.classe_codigo) : null,
+    classe_nome: (data.classe_nome as string) ?? null,
+    assuntos: (data.assuntos as string) ?? null,
     responsavel: (data.responsavel as string) ?? null,
     telefone: (data.telefone as string) ?? null,
     email: (data.email as string) ?? null,
@@ -61,6 +66,18 @@ function computeStats(leads: Lead[]): TrabalhistaStats {
 export function filterLeads(leads: Lead[], filters: LeadFilters): Lead[] {
   return leads.filter((lead) => {
     if (filters.status !== "all" && lead.status !== filters.status) {
+      return false
+    }
+    if (!matchesDataRange(lead.data_ajuizamento, filters.dataDe, filters.dataAte)) {
+      return false
+    }
+    if (
+      !matchesNaturezaCodigo(
+        lead.classe_codigo,
+        filters.natureza,
+        NATUREZAS_TRABALHISTA,
+      )
+    ) {
       return false
     }
     if (filters.comarca.trim()) {

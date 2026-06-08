@@ -6,21 +6,16 @@ import {
   filterLeads,
   updateLeadStatus,
 } from "@/lib/trabalhista-leads/client"
+import { runTrabalhistaCollectInBrowser } from "@/lib/trabalhista-leads/collect-client"
 import { useRegionalFilters } from "@/hooks/use-regional-filters"
 import { matchesRegionalFilter } from "@/lib/regional-filters/regioes"
-import type {
-  Lead,
-  LeadFilters,
-  LeadStatus,
-  TrabalhistaStats,
+import {
+  DEFAULT_LEAD_FILTERS,
+  type Lead,
+  type LeadFilters,
+  type LeadStatus,
+  type TrabalhistaStats,
 } from "@/lib/trabalhista-leads/types"
-
-const DEFAULT_FILTERS: LeadFilters = {
-  comarca: "",
-  valorMin: "",
-  valorMax: "",
-  status: "all",
-}
 
 export function useTrabalhistaLeadsDashboard(enabled: boolean) {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -32,12 +27,15 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
     clientes: 0,
     scoreMedio: 0,
   })
-  const [filters, setFilters] = useState<LeadFilters>(DEFAULT_FILTERS)
+  const [filters, setFilters] = useState<LeadFilters>(DEFAULT_LEAD_FILTERS)
   const [loading, setLoading] = useState(true)
+  const [collecting, setCollecting] = useState(false)
+  const [collectMessage, setCollectMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const {
     filters: regionalFilters,
     updateFilters: setRegionalFilters,
+    userId,
   } = useRegionalFilters("trabalhista")
 
   const filteredLeads = useMemo(() => {
@@ -71,6 +69,31 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
     loadData()
   }, [loadData])
 
+  const collectNow = useCallback(async () => {
+    setCollecting(true)
+    setCollectMessage(null)
+    setError(null)
+    try {
+      const result = await runTrabalhistaCollectInBrowser(
+        userId,
+        {
+          dataDe: filters.dataDe || undefined,
+          dataAte: filters.dataAte || undefined,
+          daysBack: filters.dataDe ? undefined : 30,
+          natureza: filters.natureza,
+        },
+        regionalFilters,
+      )
+      setCollectMessage(result.mensagem ?? "Busca concluída.")
+      await loadData()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro na busca Datajud.")
+      throw err
+    } finally {
+      setCollecting(false)
+    }
+  }, [userId, filters, regionalFilters, loadData])
+
   const changeStatus = useCallback(
     async (leadId: string, status: LeadStatus) => {
       await updateLeadStatus(leadId, status)
@@ -88,8 +111,11 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
     filters,
     setFilters,
     loading,
+    collecting,
+    collectMessage,
     error,
     changeStatus,
+    collectNow,
     reload: loadData,
     regionalFilters,
     setRegionalFilters,

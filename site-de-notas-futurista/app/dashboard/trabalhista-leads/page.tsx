@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import { ArrowLeft, Loader2, Radar, RefreshCw } from "lucide-react"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireOwner } from "@/components/require-owner"
 import { useTrabalhistaLeadsDashboard } from "@/hooks/use-trabalhista-leads-dashboard"
@@ -21,8 +21,11 @@ function TrabalhistaLeadsContent() {
     filters,
     setFilters,
     loading,
+    collecting,
+    collectMessage,
     error,
     changeStatus,
+    collectNow,
     reload,
     regionalFilters,
     setRegionalFilters,
@@ -52,10 +55,23 @@ function TrabalhistaLeadsContent() {
                 Leads Trabalhistas
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Empresas processadas sem advogado — worker na nuvem (GitHub Actions)
+                Datajud (CNJ) — réu PJ sem advogado constituído
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                disabled={collecting || loading}
+                onClick={() => collectNow().catch(() => undefined)}
+              >
+                {collecting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Radar className="mr-2 h-4 w-4" />
+                )}
+                {collecting ? "Buscando…" : "Buscar agora"}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -76,6 +92,12 @@ function TrabalhistaLeadsContent() {
         </div>
 
         <div className="space-y-6 p-6 lg:p-8">
+          {collectMessage && !error && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+              {collectMessage}
+            </div>
+          )}
+
           <LeadFiltersBar filters={filters} onChange={setFilters} />
 
           {loading ? (

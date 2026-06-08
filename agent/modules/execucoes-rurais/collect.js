@@ -61,7 +61,10 @@ async function runCollectExecucoesRurais() {
       enriquecimento_parcial: enrichment.enriquecimento_parcial,
       created_at: now,
       updated_at: now,
-      dados_brutos: c.dados_brutos,
+      classe_codigo: c.classe_codigo,
+    classe_nome: c.classe_nome,
+    assuntos: c.assuntos,
+    dados_brutos: c.dados_brutos,
     })
     novos += 1
     console.log(`[execucoes] novo: ${c.nome_reu} — ${c.numero_processo_formatado}`)

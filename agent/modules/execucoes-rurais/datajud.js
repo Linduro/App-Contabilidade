@@ -59,6 +59,7 @@ function parseHit(hit, tribunalLabel) {
   const valor = parseFloat(source.valorCausa || source.valor || 0) || 0
 
   const credor = partes.find((p) => !isPoloPassivo(p))
+  const assuntos = (source.assuntos || []).map((a) => a.nome || a.descricao || "").join("; ")
 
   return {
     nome_reu: nomeReu,
@@ -78,6 +79,9 @@ function parseHit(hit, tribunalLabel) {
     car_numero: null,
     area_hectares: null,
     municipio_imovel: orgao.municipioNome || null,
+    classe_codigo: classe != null ? Number(classe) : null,
+    classe_nome: (source.classe?.nome || source.classeProcessual?.nome || null),
+    assuntos: assuntos || null,
     texto_rural: texto,
     dados_brutos: { datajud: source, tribunal: tribunalLabel },
   }

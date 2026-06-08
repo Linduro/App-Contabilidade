@@ -11,6 +11,9 @@ export interface Lead {
   tribunal: string | null
   valor_causa: number | null
   data_ajuizamento: string | null
+  classe_codigo: number | null
+  classe_nome: string | null
+  assuntos: string | null
   responsavel: string | null
   telefone: string | null
   email: string | null
@@ -30,6 +33,18 @@ export interface LeadFilters {
   valorMin: string
   valorMax: string
   status: LeadStatus | "all"
+  dataDe: string
+  dataAte: string
+  natureza: string
+}
+
+export interface TrabalhistaCollectParams {
+  dataDe?: string
+  dataAte?: string
+  daysBack?: number
+  natureza: string
+  trts?: number[]
+  pageSize?: number
 }
 
 export interface TrabalhistaStats {
@@ -53,4 +68,14 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   contatado: "Contatado",
   respondeu: "Respondeu",
   cliente: "Cliente",
+}
+
+export const DEFAULT_LEAD_FILTERS: LeadFilters = {
+  comarca: "",
+  valorMin: "",
+  valorMax: "",
+  status: "all",
+  dataDe: "",
+  dataAte: "",
+  natureza: "all",
 }

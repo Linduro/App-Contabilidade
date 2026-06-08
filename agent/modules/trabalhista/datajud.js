@@ -96,6 +96,9 @@ function parseDatajudHit(hit, trt) {
   const comarca = orgao.municipioNome || orgao.nomeMunicipio || vara
   const assuntos = (source.assuntos || []).map((a) => a.nome || a.descricao || "").join(" ")
   const empresa = String(reu.nome || "Empresa não identificada").trim()
+  const classe = source.classe || source.classeProcessual || {}
+  const classe_codigo = classe.codigo ?? classe.code ?? null
+  const classe_nome = classe.nome || classe.descricao || null
 
   return {
     numero_processo: numeroProcesso,
@@ -111,6 +114,9 @@ function parseDatajudHit(hit, trt) {
     sem_movimentacao_posterior: true,
     setor: /agro|fazenda|pecu/i.test(`${empresa} ${assuntos}`) ? "agro" : "outros",
     comarca_interior: true,
+    classe_codigo: classe_codigo != null ? Number(classe_codigo) : null,
+    classe_nome: classe_nome ? String(classe_nome) : null,
+    assuntos: assuntos || null,
     dados_brutos: { datajud: source, trt },
   }
 }

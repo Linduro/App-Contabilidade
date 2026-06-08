@@ -1,15 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import { ArrowLeft, Loader2, Radar, RefreshCw } from "lucide-react"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireOwner } from "@/components/require-owner"
 import { useExecucoesRuraisDashboard } from "@/hooks/use-execucoes-rurais-dashboard"
 import { ExecucoesSidebar } from "@/components/execucoes-rurais/ExecucoesSidebar"
 import { ExecucoesCards } from "@/components/execucoes-rurais/ExecucoesCards"
+import { ExecucoesFiltersBar } from "@/components/execucoes-rurais/ExecucoesFiltersBar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 function Content() {
   const {
@@ -19,8 +18,11 @@ function Content() {
     regionalFilters,
     setRegionalFilters,
     loading,
+    collecting,
+    collectMessage,
     error,
     reload,
+    collectNow,
     changeStatus,
   } = useExecucoesRuraisDashboard(true)
 
@@ -36,10 +38,23 @@ function Content() {
           <div>
             <h1 className="text-2xl font-bold">Execuções contra produtores rurais</h1>
             <p className="text-sm text-muted-foreground">
-              Crédito rural / penhora — filtros independentes dos outros módulos
+              TJSP / TRF3 — produtor rural sem advogado
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              disabled={collecting || loading}
+              onClick={() => collectNow().catch(() => undefined)}
+            >
+              {collecting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Radar className="mr-2 h-4 w-4" />
+              )}
+              {collecting ? "Buscando…" : "Buscar agora"}
+            </Button>
             <Button variant="outline" size="sm" disabled={loading} onClick={() => reload()}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Atualizar
@@ -53,30 +68,14 @@ function Content() {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-3">
-          <div>
-            <Label>Comarca</Label>
-            <Input
-              value={filters.comarca}
-              onChange={(e) => setFilters({ ...filters, comarca: e.target.value })}
-            />
+        {collectMessage && !error && (
+          <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+            {collectMessage}
           </div>
-          <div>
-            <Label>Valor mín.</Label>
-            <Input
-              type="number"
-              value={filters.valorMin}
-              onChange={(e) => setFilters({ ...filters, valorMin: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label>Valor máx.</Label>
-            <Input
-              type="number"
-              value={filters.valorMax}
-              onChange={(e) => setFilters({ ...filters, valorMax: e.target.value })}
-            />
-          </div>
+        )}
+
+        <div className="mb-6">
+          <ExecucoesFiltersBar filters={filters} onChange={setFilters} />
         </div>
 
         {loading ? (
