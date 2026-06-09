@@ -7,6 +7,7 @@ const {
 } = require("./leads-trabalhista")
 const { scoreExecucaoRuralOnWrite } = require("./execucoes-rurais-scoring")
 const { scoreExecucaoAltoValorOnWrite } = require("./execucoes-alto-valor-scoring")
+const { datajudSearch } = require("./datajud-proxy")
 
 admin.initializeApp()
 
@@ -170,3 +171,4 @@ exports.scoreExecucaoAltoValorOnWrite = functions.firestore
   .document("execucoesAltoValor/{docId}")
   .onWrite(scoreExecucaoAltoValorOnWrite)
 
+exports.datajudSearch = datajudSearch

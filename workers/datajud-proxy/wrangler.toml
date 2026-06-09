@@ -1,0 +1,6 @@
+name = "datajud-proxy"
+main = "src/index.js"
+compatibility_date = "2024-06-01"
+
+[vars]
+# Sobrescreva com wrangler secret put DATAJUD_API_KEY se quiser

@@ -36,6 +36,7 @@ jobs:
         working-directory: site-de-notas-futurista
         env:
           GITHUB_PAGES: "true"
+          NEXT_PUBLIC_DATAJUD_PROXY_URL: ${{ vars.DATAJUD_PROXY_URL || '' }}
         run: npm run build
 
       - name: Install networking-web dependencies

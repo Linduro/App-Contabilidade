@@ -1,4 +1,8 @@
-import { DATAJUD_BASE, DATAJUD_PUBLIC_API_KEY } from "@/lib/datajud/config"
+import {
+  DATAJUD_BASE,
+  DATAJUD_PUBLIC_API_KEY,
+  DATAJUD_PROXY_URLS,
+} from "@/lib/datajud/config"
 import {
   buildAjuizamentoRange,
   type DatajudSearchRange,
@@ -25,50 +29,73 @@ const SOURCE_FIELDS = [
   "nivelSigilo",
 ]
 
-const PROXY_PREFIXES = [
-  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-]
+async function fetchViaProxy(
+  proxyUrl: string,
+  endpointPath: string,
+  body: unknown,
+): Promise<Response> {
+  return fetch(proxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ endpoint: endpointPath, query: body }),
+  })
+}
 
-async function datajudFetch(url: string, body: unknown): Promise<Response> {
+async function fetchViaCloudProxies(
+  endpointPath: string,
+  body: unknown,
+): Promise<Response | null> {
+  let lastStatus = 0
+  for (const proxyUrl of DATAJUD_PROXY_URLS) {
+    try {
+      const res = await fetchViaProxy(proxyUrl, endpointPath, body)
+      if (res.ok) return res
+      lastStatus = res.status
+      if (res.status === 404 || res.status === 503) continue
+    } catch {
+      continue
+    }
+  }
+  if (lastStatus) return null
+  return null
+}
+
+async function datajudFetchDirect(url: string, body: unknown): Promise<Response | null> {
   const headers = {
     Authorization: `APIKey ${DATAJUD_PUBLIC_API_KEY}`,
     "Content-Type": "application/json",
     Accept: "application/json",
   }
-  const payload = JSON.stringify(body)
-
   try {
-    const res = await fetch(url, { method: "POST", headers, body: payload })
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    })
     if (res.ok) return res
-    if (res.status !== 0) {
-      const text = await res.text()
-      throw new Error(`Datajud HTTP ${res.status}: ${text.slice(0, 200)}`)
-    }
-  } catch (err) {
-    const isNetwork =
-      err instanceof TypeError ||
-      (err instanceof Error && /failed to fetch|cors|network/i.test(err.message))
-    if (!isNetwork) throw err
+  } catch {
+    /* CORS no browser */
   }
+  return null
+}
 
-  let lastError = "Falha de rede ao acessar o Datajud."
-  for (const toProxy of PROXY_PREFIXES) {
-    try {
-      const res = await fetch(toProxy(url), { method: "POST", headers, body: payload })
-      if (res.ok) return res
-      lastError = `Proxy HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : lastError
-    }
-  }
+async function datajudFetch(endpointPath: string, body: unknown): Promise<Response> {
+  const proxyRes = await fetchViaCloudProxies(endpointPath, body)
+  if (proxyRes?.ok) return proxyRes
+
+  const directUrl = `${DATAJUD_BASE}/${endpointPath}/_search`
+  const directRes = await datajudFetchDirect(directUrl, body)
+  if (directRes?.ok) return directRes
 
   throw new Error(
-    `${lastError} Tente novamente ou use a coleta automática (GitHub Actions).`,
+    "Não foi possível consultar o Datajud pelo navegador (bloqueio CORS). " +
+      "Ative o proxy Cloudflare (secret CLOUDFLARE_API_TOKEN no GitHub) ou upgrade Firebase para Blaze " +
+      "e rode: firebase deploy --only functions:datajudSearch. " +
+      "A coleta automática via GitHub Actions continua funcionando.",
   )
 }
 
-/** Query ampla: últimos N dias (compacto) + processos públicos. Triagem no app. */
+/** Query ampla: últimos 2 meses (compacto) + processos públicos. Triagem no app. */
 export function buildSearchBody(params: DatajudSearchParams) {
   return {
     size: params.size ?? 100,
@@ -87,8 +114,8 @@ export async function searchDatajudEndpoint(
   endpointPath: string,
   params: DatajudSearchParams,
 ): Promise<Record<string, unknown>[]> {
-  const url = `${DATAJUD_BASE}/${endpointPath}/_search`
-  const response = await datajudFetch(url, buildSearchBody(params))
+  const body = buildSearchBody(params)
+  const response = await datajudFetch(endpointPath, body)
 
   if (!response.ok) {
     const text = await response.text()
