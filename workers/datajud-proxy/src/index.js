@@ -1,26 +1,28 @@
 /**
  * Proxy Datajud — contorna CORS no browser (GitHub Pages).
- * Deploy: npx wrangler deploy (conta Cloudflare gratuita).
  */
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br"
 const API_KEY =
   "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
 
-const ALLOWED = [
-  "https://linduro.github.io",
-  "https://contabilidade-ebed6.web.app",
-  "https://contabilidade-ebed6.firebaseapp.com",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-]
-
 function corsHeaders(request) {
   const origin = request.headers.get("Origin") || ""
-  const allow = ALLOWED.includes(origin) ? origin : ALLOWED[0]
+  let allow = "https://linduro.github.io"
+  if (origin) {
+    if (
+      origin.endsWith(".github.io") ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("firebaseapp.com") ||
+      origin.includes("web.app")
+    ) {
+      allow = origin
+    }
+  }
   return {
     "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+    "Access-Control-Allow-Headers": "Content-Type, Accept",
     "Access-Control-Max-Age": "86400",
   }
 }
@@ -35,6 +37,13 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers })
+    }
+
+    if (request.method === "GET") {
+      return Response.json(
+        { ok: true, service: "datajud-proxy", version: 2 },
+        { headers },
+      )
     }
 
     if (request.method !== "POST") {

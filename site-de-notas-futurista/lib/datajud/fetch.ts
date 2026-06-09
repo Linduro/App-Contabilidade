@@ -1,8 +1,4 @@
-import {
-  DATAJUD_BASE,
-  DATAJUD_PUBLIC_API_KEY,
-  DATAJUD_PROXY_URLS,
-} from "@/lib/datajud/config"
+import { DATAJUD_PROXY_URL } from "@/lib/datajud/config"
 import {
   buildAjuizamentoRange,
   type DatajudSearchRange,
@@ -29,69 +25,29 @@ const SOURCE_FIELDS = [
   "nivelSigilo",
 ]
 
-async function fetchViaProxy(
-  proxyUrl: string,
-  endpointPath: string,
-  body: unknown,
-): Promise<Response> {
-  return fetch(proxyUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ endpoint: endpointPath, query: body }),
-  })
-}
-
-async function fetchViaCloudProxies(
-  endpointPath: string,
-  body: unknown,
-): Promise<Response | null> {
-  let lastStatus = 0
-  for (const proxyUrl of DATAJUD_PROXY_URLS) {
-    try {
-      const res = await fetchViaProxy(proxyUrl, endpointPath, body)
-      if (res.ok) return res
-      lastStatus = res.status
-      if (res.status === 404 || res.status === 503) continue
-    } catch {
-      continue
-    }
-  }
-  if (lastStatus) return null
-  return null
-}
-
-async function datajudFetchDirect(url: string, body: unknown): Promise<Response | null> {
-  const headers = {
-    Authorization: `APIKey ${DATAJUD_PUBLIC_API_KEY}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  }
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    })
-    if (res.ok) return res
-  } catch {
-    /* CORS no browser */
-  }
-  return null
-}
-
 async function datajudFetch(endpointPath: string, body: unknown): Promise<Response> {
-  const proxyRes = await fetchViaCloudProxies(endpointPath, body)
-  if (proxyRes?.ok) return proxyRes
+  let lastError = "sem resposta"
 
-  const directUrl = `${DATAJUD_BASE}/${endpointPath}/_search`
-  const directRes = await datajudFetchDirect(directUrl, body)
-  if (directRes?.ok) return directRes
+  try {
+    const res = await fetch(DATAJUD_PROXY_URL, {
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ endpoint: endpointPath, query: body }),
+    })
+
+    if (res.ok) return res
+
+    const text = await res.text()
+    lastError = `Proxy HTTP ${res.status}: ${text.slice(0, 160)}`
+  } catch (err) {
+    lastError = err instanceof Error ? err.message : String(err)
+  }
 
   throw new Error(
-    "Não foi possível consultar o Datajud pelo navegador (bloqueio CORS). " +
-      "Ative o proxy Cloudflare (secret CLOUDFLARE_API_TOKEN no GitHub) ou upgrade Firebase para Blaze " +
-      "e rode: firebase deploy --only functions:datajudSearch. " +
-      "A coleta automática via GitHub Actions continua funcionando.",
+    `Falha ao consultar Datajud via proxy (${DATAJUD_PROXY_URL}): ${lastError}. ` +
+      "Faça Ctrl+F5 para recarregar o site. Se persistir, a coleta automática (GitHub Actions) continua ativa.",
   )
 }
 
@@ -116,11 +72,6 @@ export async function searchDatajudEndpoint(
 ): Promise<Record<string, unknown>[]> {
   const body = buildSearchBody(params)
   const response = await datajudFetch(endpointPath, body)
-
-  if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Datajud HTTP ${response.status}: ${text.slice(0, 180)}`)
-  }
 
   const payload = (await response.json()) as {
     hits?: { hits?: Array<{ _source?: Record<string, unknown> }> }
