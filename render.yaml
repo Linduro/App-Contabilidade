@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: afs-valuation
+    runtime: docker
+    rootDir: afs-valuation
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true

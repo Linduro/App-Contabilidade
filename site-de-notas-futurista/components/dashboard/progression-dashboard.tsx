@@ -15,6 +15,7 @@ import {
   Landmark,
   Scale,
   Briefcase,
+  Building2,
   Search,
   Sun,
   X,
@@ -375,6 +376,21 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   <Link href="/dashboard/execucoes-alto-valor/">
                     <Landmark className="w-4 h-4 mr-2" />
                     Exec. +500k
+                  </Link>
+                </Button>
+              )}
+
+              {adminAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="shrink-0 max-md:w-full max-md:min-h-11"
+                  title="Asset Solutions Valuation (acesso privado)"
+                >
+                  <Link href="/dashboard/afs-valuation/">
+                    <Building2 className="w-4 h-4 mr-2" />
+                    AFS Valuation
                   </Link>
                 </Button>
               )}
