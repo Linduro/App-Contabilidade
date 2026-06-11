@@ -2,39 +2,41 @@ const admin = require("firebase-admin")
 const { computeLeadScore } = require("./lib/lead-scoring")
 
 const MIN_SCORE_FCM = 70
-const ADMIN_EMAIL = "cartoonhq@gmail.com"
+const ADMIN_EMAILS = ["cartoonhq@gmail.com", "gabrieldouran@gmail.com"]
 
 async function sendLeadFcm(db, leadId, leadData) {
-  const usersSnap = await db
-    .collection("users")
-    .where("email", "==", ADMIN_EMAIL)
-    .limit(1)
-    .get()
+  for (const adminEmail of ADMIN_EMAILS) {
+    const usersSnap = await db
+      .collection("users")
+      .where("email", "==", adminEmail)
+      .limit(1)
+      .get()
 
-  if (usersSnap.empty) {
-    console.log("[leads] admin sem doc users — FCM ignorado")
-    return
+    if (usersSnap.empty) {
+      console.log(`[leads] admin ${adminEmail} sem doc users — FCM ignorado`)
+      continue
+    }
+
+    const userDoc = usersSnap.docs[0]
+    const token = userDoc.data().fcmToken
+    if (!token) {
+      console.log(`[leads] fcmToken ausente no perfil ${adminEmail}`)
+      continue
+    }
+
+    const title = "Lead trabalhista prioritário"
+    const body = `${leadData.empresa} — score ${leadData.score} — ${leadData.vara || "TRT"}`
+
+    await admin.messaging().send({
+      token,
+      notification: { title, body },
+      data: {
+        type: "trabalhista_lead",
+        leadId,
+        score: String(leadData.score ?? 0),
+      },
+    })
   }
-
-  const userDoc = usersSnap.docs[0]
-  const token = userDoc.data().fcmToken
-  if (!token) {
-    console.log("[leads] fcmToken ausente no perfil admin")
-    return
-  }
-
-  const title = "Lead trabalhista prioritário"
-  const body = `${leadData.empresa} — score ${leadData.score} — ${leadData.vara || "TRT"}`
-
-  await admin.messaging().send({
-    token,
-    notification: { title, body },
-    data: {
-      type: "trabalhista_lead",
-      leadId,
-      score: String(leadData.score ?? 0),
-    },
-  })
 }
 
 async function handleLeadScoring(change, context) {
