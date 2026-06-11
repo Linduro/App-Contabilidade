@@ -24,8 +24,9 @@ function buildIndexHtml() {
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
-        if (params.has("apiBase")) {
-          window.__AFS_API_BASE__ = params.get("apiBase") || "";
+        var fromQuery = params.get("apiBase");
+        if (fromQuery) {
+          window.__AFS_API_BASE__ = fromQuery.replace(/\\/$/, "");
           return;
         }
         var match = window.location.pathname.match(/^(.*)\\/afs-valuation(?:\\/|$)/);

@@ -1,16 +1,17 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireOwner } from "@/components/require-owner"
 import { Button } from "@/components/ui/button"
-import { getAfsApiBase, getAfsAppPath, isAfsApiConfigured } from "@/lib/afs-config"
+import { assetPath } from "@/lib/base-path"
 
 function AfsValuationContent() {
-  const apiBase = getAfsApiBase()
-  const iframeSrc = `${getAfsAppPath()}?apiBase=${encodeURIComponent(apiBase)}`
-  const apiReady = isAfsApiConfigured()
+  useEffect(() => {
+    window.location.replace(assetPath("/afs-valuation/index.html"))
+  }, [])
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -27,20 +28,18 @@ function AfsValuationContent() {
           </div>
           <div className="w-[120px]" aria-hidden />
         </div>
-        {!apiReady && (
-          <div className="px-4 py-2 text-xs text-center bg-amber-500/10 text-amber-800 dark:text-amber-200 border-t border-amber-500/20">
-            API não configurada no deploy. Defina a variável <code>AFS_API_URL</code> no GitHub
-            (Settings → Secrets and variables → Actions) com a URL pública do backend Flask.
-          </div>
-        )}
       </header>
 
-      <iframe
-        src={iframeSrc}
-        title="Asset Solutions Valuation"
-        className="flex-1 w-full border-0 bg-[#0f1419]"
-        allow="clipboard-read; clipboard-write"
-      />
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />
+        <p className="text-sm">Abrindo Asset Solutions Valuation…</p>
+        <a
+          href={assetPath("/afs-valuation/index.html")}
+          className="text-sm text-[#ea580c] hover:underline"
+        >
+          Clique aqui se não redirecionar automaticamente
+        </a>
+      </div>
     </div>
   )
 }

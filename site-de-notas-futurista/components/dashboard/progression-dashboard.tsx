@@ -388,7 +388,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   className="shrink-0 max-md:w-full max-md:min-h-11"
                   title="Asset Solutions Valuation (acesso privado)"
                 >
-                  <Link href="/dashboard/afs-valuation/">
+                  <Link href={assetPath("/afs-valuation/index.html")}>
                     <Building2 className="w-4 h-4 mr-2" />
                     AFS Valuation
                   </Link>
