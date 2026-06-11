@@ -90,6 +90,8 @@ class EvaluationPipeline:
             conservacao_verificada = None
             raciocinio_visual = None
             
+            vision_payload = {}
+            
             if (run_tag or run_age or run_conservation):
                 import urllib.request
                 import tempfile
@@ -133,6 +135,12 @@ class EvaluationPipeline:
                             idade_verificada = v_data.get("idade_aparente_anos")
                             conservacao_verificada = v_data.get("estado_conservacao")
                             raciocinio_visual = v_data.get("raciocinio_visual")
+                            vision_payload = {
+                                "tag": tag_verificada,
+                                "idade": idade_verificada,
+                                "conservacao": conservacao_verificada,
+                                "raciocinio": raciocinio_visual
+                            }
                             
                             tokens_used = vision_res.get("tokens", 0)
                             total_tokens += tokens_used
@@ -154,13 +162,27 @@ class EvaluationPipeline:
             # 3. BUSCAR PREVIOUS FEEDBACK NO DB (Regras 8 e 9)
             previous_feedback = db.get_relevant_feedback(descricao_original)
             
+            # 3b. PESQUISA DE COMPARATIVOS (Search via Gemini)
+            search_data = None
+            if run_market:
+                search_res = gemini_client.search_comparables(descricao_original)
+                if search_res.get("status") == "ok":
+                    search_data = search_res["data"]
+                    total_tokens += search_res.get("tokens", 0)
+                    logger.info("[CAMADA 1][pipeline] Search concluído para linha %d", row_idx)
+            
             # 4. EXECUTAR AVALIAÇÃO DE MERCADO (Gemini)
             market_data = {}
             api_ok = True
             api_error_msg = None
             
             if run_market:
-                gemini_res = gemini_client.run_valuation_methodology(descricao_original, previous_feedback=previous_feedback)
+                gemini_res = gemini_client.run_valuation_methodology(
+                    descricao_original,
+                    previous_feedback=previous_feedback,
+                    search_results=search_data,
+                    vision_context=vision_payload if vision_payload else None
+                )
                 if gemini_res["status"] == "ok":
                     tokens_used = gemini_res.get("tokens", 0)
                     total_tokens += tokens_used
@@ -184,6 +206,21 @@ class EvaluationPipeline:
                     })
                 self.pause()
                 break
+
+            if run_market and search_data:
+                if not market_data.get("valor_usado") and search_data.get("melhor_valor_usado"):
+                    market_data["valor_usado"] = search_data.get("melhor_valor_usado")
+                if not market_data.get("valor_novo") and search_data.get("melhor_valor_novo"):
+                    market_data["valor_novo"] = search_data.get("melhor_valor_novo")
+                links = market_data.get("links_comparativos") or []
+                if search_data.get("link_principal") and search_data["link_principal"] not in links:
+                    links.insert(0, search_data["link_principal"])
+                market_data["links_comparativos"] = links
+                if search_data.get("raciocinio_pesquisa"):
+                    extra = search_data["raciocinio_pesquisa"]
+                    market_data["raciocinio_detalhado"] = (
+                        (market_data.get("raciocinio_detalhado") or "") + "\n\n[Pesquisa]: " + extra
+                    ).strip()
 
             # 5. SALVAR NO DB
             eval_id = db.save_evaluation(
@@ -234,6 +271,13 @@ class EvaluationPipeline:
                     "photo_url": foto_url,
                     "photo_spec": foto_spec,
                     "photo_tag": foto_tag,
+                    "apparent_age": idade_verificada,
+                    "conservation_state": conservacao_verificada,
+                    "tag_verificada": tag_verificada,
+                    "raciocinio_visual": raciocinio_visual,
+                    "search_link": search_data.get("link_principal") if search_data else None,
+                    "search_value_used": search_data.get("melhor_valor_usado") if search_data else None,
+                    "search_value_new": search_data.get("melhor_valor_novo") if search_data else None,
                     "valuation": market_data if run_market else {"metodologia": "Apenas Análise Visual", "raciocinio_detalhado": raciocinio_visual}
                 })
 

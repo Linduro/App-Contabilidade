@@ -16,6 +16,43 @@ function apiUrl(path) {
     return `${base}${normalized}`;
 }
 
+async function loadApiConfig() {
+    try {
+        const configPath = window.location.pathname.replace(/\/[^/]*$/, '/config.json');
+        const res = await fetch(`${configPath}?t=${Date.now()}`);
+        if (!res.ok) return;
+        const cfg = await res.json();
+        if (cfg.apiBase && String(cfg.apiBase).trim()) {
+            window.__AFS_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+        }
+    } catch (e) {
+        console.warn('Config API não carregada:', e);
+    }
+}
+
+async function apiFetch(path, options = {}) {
+    const res = await fetch(apiUrl(path), options);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        const preview = (await res.text()).slice(0, 80);
+        if (preview.trimStart().startsWith('<')) {
+            throw new Error(
+                'Servidor da API indisponível. Aguarde o deploy ou verifique AFS_API_URL no GitHub.'
+            );
+        }
+        throw new Error('Resposta inválida do servidor');
+    }
+    const data = await res.json();
+    if (!res.ok && data.message) {
+        throw new Error(data.message);
+    }
+    return data;
+}
+
+function downloadFileUrl(path) {
+    return apiUrl(path);
+}
+
 // ---------- State ----------
 const state = {
     hasApiKey: false,
@@ -30,18 +67,50 @@ let currentSideRow = null;
 let currentReviewRow = null;
 
 function isValidPhotoUrl(url) {
-    return url && typeof url === 'string' && url.trim() !== '' && 
-           !url.toLowerCase().includes('sem foto') && 
-           !url.toLowerCase().includes('sem imagem') && 
-           !url.toLowerCase().includes('indisponivel') && 
-           !url.toLowerCase().includes('indisponível');
+    if (!url || typeof url !== 'string') return false;
+    const u = url.trim().toLowerCase();
+    if (!u || u.includes('sem foto') || u.includes('sem imagem') ||
+        u.includes('indisponivel') || u.includes('indisponível')) return false;
+    return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//');
+}
+
+function formatConservationLabel(value) {
+    if (value === null || value === undefined || value === '') return '-';
+    const labels = {
+        5: '5 — Novo na caixa',
+        4: '4 — Novo fora da caixa',
+        3: '3 — Bom estado relativo',
+        2: '2 — Mau estado',
+        1: '1 — Péssimo / sucata'
+    };
+    const num = parseInt(value, 10);
+    return labels[num] || String(value);
+}
+
+function updateSideConservationAge(data) {
+    const consEl = document.getElementById('sideConservation');
+    const consNote = document.getElementById('sideConservationNote');
+    const ageEl = document.getElementById('sideAge');
+    const tagEl = document.getElementById('sideTag');
+    if (!consEl) return;
+
+    const cons = data.conservation_state ?? data.conservation;
+    const age = data.apparent_age ?? data.age;
+    const tag = data.tag_verificada ?? data.tag;
+
+    consEl.textContent = formatConservationLabel(cons);
+    ageEl.textContent = (age !== null && age !== undefined && age !== '') ? `${age} anos` : '-';
+    tagEl.textContent = tag ? `Tag: ${tag}` : '';
+    consNote.textContent = data.raciocinio_visual ? String(data.raciocinio_visual).slice(0, 120) : '';
 }
 
 // ---------- Init ----------
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadApiConfig();
     setupTabs();
     setupUpload();
     loadSessionState();
+    loadSpreadsheetRegistry();
 });
 
 // ---------- Tab Navigation ----------
@@ -134,13 +203,11 @@ async function saveApiKey() {
     setLoading(btn, true);
 
     try {
-        const res = await fetch(apiUrl('/api/set-key'), {
+        const data = await apiFetch('/api/set-key', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ api_key: key })
         });
-
-        const data = await res.json();
 
         if (data.status === 'ok') {
             state.hasApiKey = true;
@@ -170,8 +237,7 @@ async function testApiKeys() {
     });
 
     try {
-        const res = await fetch(apiUrl('/api/test-keys'), { method: 'POST' });
-        const data = await res.json();
+        const data = await apiFetch('/api/test-keys', { method: 'POST' });
 
         for (const [api, result] of Object.entries(data)) {
             const statusClass = result.status === 'ok' ? 'ok' : 
@@ -283,6 +349,7 @@ async function handleFileUpload(file) {
 
             // Show mapping section
             buildMappingUI(data);
+            loadSpreadsheetRegistry();
         } else {
             showAlert(data.message || 'Erro ao processar planilha', 'error');
             zone.classList.remove('has-file');
@@ -791,6 +858,7 @@ async function startEvaluation() {
             counters.processing = 0;
             updateCountersUI();
             showAlert('Avaliação finalizada!', 'success');
+            loadSpreadsheetRegistry();
             return;
         }
 
@@ -890,6 +958,7 @@ async function startEvaluation() {
                 data.photo_tag || rowEl.dataset.photoTag, 
                 data.description || rowEl.dataset.description
             );
+            updateSideConservationAge(data);
         }
 
         // Scroll to bottom
@@ -1010,7 +1079,7 @@ function cancelCorrection() {
     document.getElementById('feedbackComment').value = '';
 }
 
-async function submitReviewFeedback(accepted) {
+async function submitReviewFeedback(accepted, reEvaluate = false) {
     if (!currentEvalId) return;
     
     let correctedValue = null;
@@ -1026,7 +1095,7 @@ async function submitReviewFeedback(accepted) {
     }
     
     try {
-        const res = await fetch(apiUrl('/api/feedback'), {
+        const data = await apiFetch('/api/feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1034,20 +1103,24 @@ async function submitReviewFeedback(accepted) {
                 accepted: accepted ? 1 : 0,
                 corrected_value: correctedValue ? parseFloat(correctedValue) : null,
                 user_comment: comment || null,
-                row: currentReviewRow
+                row: currentReviewRow,
+                re_evaluate: reEvaluate
             })
         });
-        
-        const data = await res.json();
         if (data.status === 'ok') {
-            showAlert(accepted ? 'Avaliação aceita!' : 'Feedback e correção enviados! Linha resetada no Excel.', 'success');
+            if (reEvaluate) {
+                showAlert('Feedback registrado! Re-avaliação concluída com aprendizado aplicado.', 'success');
+            } else {
+                showAlert(accepted ? 'Avaliação aceita!' : 'Feedback e correção enviados!', 'success');
+            }
             closeReviewModal();
             loadSpreadsheetRowsForEvaluation();
+            loadSpreadsheetRegistry();
         } else {
             showAlert(data.message || 'Erro ao processar feedback.', 'error');
         }
     } catch (e) {
-        showAlert('Erro de conexão ao enviar feedback: ' + e.message, 'error');
+        showAlert('Erro ao enviar feedback: ' + e.message, 'error');
     }
 }
 
@@ -1298,6 +1371,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
     document.getElementById('sideValueFipe').textContent = '-';
     document.getElementById('sideReasoning').textContent = 'Carregando...';
     document.getElementById('sideLinks').innerHTML = 'Carregando...';
+    updateSideConservationAge({});
     
     if (!evalId) {
         // If not evaluated yet, show placeholder/processing state
@@ -1309,8 +1383,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
     }
     
     try {
-        const res = await fetch(apiUrl(`/api/evaluation/${evalId}`));
-        const data = await res.json();
+        const data = await apiFetch(`/api/evaluation/${evalId}`);
         
         // Prevent race condition of rapid SSE events updates
         if (currentSideRow !== row) return;
@@ -1326,6 +1399,24 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
             document.getElementById('sideValueFipe').textContent = fmtNum(ev.value_fipe);
             
             document.getElementById('sideReasoning').innerHTML = (ev.reasoning || '').replace(/\n/g, '<br>');
+            updateSideConservationAge({
+                conservation_state: ev.conservation_state,
+                apparent_age: ev.apparent_age,
+                raciocinio_visual: ev.reasoning
+            });
+
+            // Atualizar galeria com todas as fotos do registro
+            sidePhotos = [];
+            if (isValidPhotoUrl(ev.photo_url)) sidePhotos.push({ url: ev.photo_url, type: 'Foto do Bem' });
+            if (isValidPhotoUrl(ev.photo_spec)) sidePhotos.push({ url: ev.photo_spec, type: 'Foto Especificações' });
+            if (isValidPhotoUrl(ev.photo_tag)) sidePhotos.push({ url: ev.photo_tag, type: 'Foto da TAG' });
+            if (sidePhotos.length === 0) {
+                if (isValidPhotoUrl(photoUrl)) sidePhotos.push({ url: photoUrl, type: 'Foto do Bem' });
+                if (isValidPhotoUrl(photoSpec)) sidePhotos.push({ url: photoSpec, type: 'Foto Especificações' });
+                if (isValidPhotoUrl(photoTag)) sidePhotos.push({ url: photoTag, type: 'Foto da TAG' });
+            }
+            currentSidePhotoIndex = 0;
+            updateSidePhotoUI();
             
             if (ev.links) {
                 const linksHtml = ev.links.split(',').map(l => `<a href="${l.trim()}" target="_blank" style="color: var(--afs-orange-400);">${l.trim()}</a>`).join('<br>');
@@ -1338,7 +1429,96 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
         }
     } catch (e) {
         if (currentSideRow !== row) return;
-        document.getElementById('sideReasoning').textContent = 'Erro de conexão: ' + e.message;
+        document.getElementById('sideReasoning').textContent = 'Erro: ' + e.message;
+    }
+}
+
+// ---------- Download & Spreadsheet Registry ----------
+function downloadResults() {
+    window.location.href = downloadFileUrl('/api/download-excel');
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    const units = ['B', 'KB', 'MB'];
+    let i = 0;
+    let size = bytes;
+    while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+    return `${size.toFixed(i ? 1 : 0)} ${units[i]}`;
+}
+
+function renderRegistryList(containerId, files, type) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!files || files.length === 0) {
+        el.innerHTML = '<div class="registry-item"><span class="registry-item-name" style="color:var(--text-muted)">Nenhuma planilha</span></div>';
+        return;
+    }
+    el.innerHTML = files.map(f => {
+        const activeClass = f.active ? ' active' : '';
+        const date = new Date(f.modified * 1000).toLocaleString('pt-BR');
+        const activateBtn = type === 'input' && !f.active
+            ? `<button class="btn btn-secondary btn-sm" onclick="activateSpreadsheet('${f.name.replace(/'/g, "\\'")}')" title="Ativar">▶</button>`
+            : '';
+        const downloadBtn = type === 'output'
+            ? `<a class="btn btn-secondary btn-sm" href="${downloadFileUrl('/api/download-output/' + encodeURIComponent(f.name))}" title="Download">⬇</a>`
+            : '';
+        return `<div class="registry-item${activeClass}">
+            <span class="registry-item-name" title="${f.name}">${f.name}${f.active ? ' (ativa)' : ''}<br><small style="color:var(--text-muted)">${formatFileSize(f.size)} · ${date}</small></span>
+            <div class="registry-item-actions">
+                ${activateBtn}
+                ${downloadBtn}
+                <button class="btn btn-secondary btn-sm" onclick="deleteSpreadsheet('${type}', '${f.name.replace(/'/g, "\\'")}')" title="Excluir">🗑</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function loadSpreadsheetRegistry() {
+    try {
+        const [inputData, outputData] = await Promise.all([
+            apiFetch('/api/spreadsheets/input'),
+            apiFetch('/api/spreadsheets/output')
+        ]);
+        renderRegistryList('inputSpreadsheetsList', inputData.files || [], 'input');
+        renderRegistryList('outputSpreadsheetsList', outputData.files || [], 'output');
+    } catch (e) {
+        const msg = `<div class="registry-item"><span class="registry-item-name" style="color:var(--status-error)">${e.message}</span></div>`;
+        const inEl = document.getElementById('inputSpreadsheetsList');
+        const outEl = document.getElementById('outputSpreadsheetsList');
+        if (inEl) inEl.innerHTML = msg;
+        if (outEl) outEl.innerHTML = msg;
+    }
+}
+
+async function deleteSpreadsheet(type, filename) {
+    if (!confirm(`Excluir planilha "${filename}"?`)) return;
+    try {
+        const path = type === 'input' ? '/api/spreadsheets/input' : '/api/spreadsheets/output';
+        await apiFetch(path, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        });
+        showAlert('Planilha removida.', 'success');
+        loadSpreadsheetRegistry();
+    } catch (e) {
+        showAlert('Erro ao excluir: ' + e.message, 'error');
+    }
+}
+
+async function activateSpreadsheet(filename) {
+    try {
+        await apiFetch('/api/spreadsheets/input/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename })
+        });
+        showAlert(`Planilha "${filename}" ativada.`, 'success');
+        loadSpreadsheetRegistry();
+        loadSessionState();
+    } catch (e) {
+        showAlert('Erro ao ativar: ' + e.message, 'error');
     }
 }
 

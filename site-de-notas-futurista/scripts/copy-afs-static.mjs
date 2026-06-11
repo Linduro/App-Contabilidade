@@ -37,11 +37,11 @@ function buildIndexHtml() {
   return baseHtml
     .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=4"',
+      'href="./css/style.css?v=5"',
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=4"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=5"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }
@@ -58,5 +58,12 @@ fs.copyFileSync(
   path.join(outDir, "js", "app.js"),
 )
 fs.writeFileSync(path.join(outDir, "index.html"), buildIndexHtml(), "utf8")
+
+const apiBase = process.env.AFS_API_URL || process.env.NEXT_PUBLIC_AFS_API_URL || ""
+fs.writeFileSync(
+  path.join(outDir, "config.json"),
+  JSON.stringify({ apiBase: apiBase.replace(/\/$/, "") }, null, 2),
+  "utf8",
+)
 
 console.log("AFS static assets copied to public/afs-valuation/")

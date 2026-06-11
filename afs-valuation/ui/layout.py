@@ -6,6 +6,7 @@
 
 import logging
 from flask import Blueprint, render_template, request, jsonify
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +212,93 @@ def download_excel():
     state = get_session_state()
     filepath = state.get("spreadsheet_path")
     if filepath:
-        return send_file(filepath, as_attachment=True)
-    return "Arquivo não encontrado", 404
+        return send_file(filepath, as_attachment=True, download_name=os.path.basename(filepath))
+    return jsonify({"status": "error", "message": "Arquivo não encontrado"}), 404
+
+
+@main_bp.route('/api/download-output/<filename>', methods=['GET'])
+def download_output(filename):
+    """Baixa uma planilha de output."""
+    from flask import send_file
+    import os
+    from orchestrator.manager import OUTPUT_DIR
+    safe_name = os.path.basename(filename)
+    path = os.path.join(OUTPUT_DIR, safe_name)
+    if os.path.exists(path):
+        return send_file(path, as_attachment=True, download_name=safe_name)
+    return jsonify({"status": "error", "message": "Arquivo não encontrado"}), 404
+
+
+@main_bp.route('/api/spreadsheets/input', methods=['GET'])
+def list_input_spreadsheets_route():
+    try:
+        from orchestrator.manager import list_input_spreadsheets
+        return jsonify(list_input_spreadsheets())
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/spreadsheets/output', methods=['GET'])
+def list_output_spreadsheets_route():
+    try:
+        from orchestrator.manager import list_output_spreadsheets
+        return jsonify(list_output_spreadsheets())
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/spreadsheets/input', methods=['DELETE'])
+def delete_input_spreadsheet_route():
+    try:
+        data = request.get_json() or {}
+        filename = data.get('filename') or request.args.get('filename')
+        from orchestrator.manager import delete_input_spreadsheet
+        return jsonify(delete_input_spreadsheet(filename))
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/spreadsheets/output', methods=['DELETE'])
+def delete_output_spreadsheet_route():
+    try:
+        data = request.get_json() or {}
+        filename = data.get('filename') or request.args.get('filename')
+        from orchestrator.manager import delete_output_spreadsheet
+        return jsonify(delete_output_spreadsheet(filename))
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/spreadsheets/input/activate', methods=['POST'])
+def activate_input_spreadsheet_route():
+    try:
+        data = request.get_json() or {}
+        filename = data.get('filename')
+        from orchestrator.manager import activate_input_spreadsheet
+        return jsonify(activate_input_spreadsheet(filename))
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route('/api/re-evaluate', methods=['POST'])
+def re_evaluate_route():
+    """Re-avalia uma linha com base em feedback do usuário."""
+    try:
+        data = request.get_json() or {}
+        row_idx = data.get('row')
+        if not row_idx:
+            return jsonify({"status": "error", "message": "Linha não informada"}), 400
+        from orchestrator.manager import re_evaluate_row
+        result = re_evaluate_row(
+            int(row_idx),
+            user_comment=data.get('user_comment'),
+            evaluation_id=data.get('evaluation_id')
+        )
+        status_code = 200 if result.get("status") == "ok" else 400
+        return jsonify(result), status_code
+    except Exception as e:
+        logger.error("[CAMADA 0][layout][re_evaluate] %s", str(e))
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @main_bp.route('/api/feedback', methods=['POST'])
@@ -255,6 +341,12 @@ def save_feedback_route():
             # Salvar arquivo formatado
             with open(auto_aprendizados_path, 'w', encoding='utf-8') as f:
                 json.dump(aprendizados, f, indent=2, ensure_ascii=False)
+                
+            # Re-avaliação automática se solicitada
+            if data.get('re_evaluate') and row_idx:
+                from orchestrator.manager import re_evaluate_row
+                re_result = re_evaluate_row(int(row_idx), user_comment=user_comment, evaluation_id=evaluation_id)
+                return jsonify({"status": "ok", "re_evaluate": re_result})
                 
             # 3. Atualizar valor_usado no banco para o valor corrigido
             from db.models import get_connection

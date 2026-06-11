@@ -5,7 +5,7 @@
 
 import logging
 import json
-from .prompts import VISION_CONSERVATION_PROMPT, SYSTEM_VALUATION_PROMPT
+from .prompts import VISION_CONSERVATION_PROMPT, SYSTEM_VALUATION_PROMPT, SEARCH_COMPARABLES_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,47 @@ class GeminiClient:
             logger.error("[CAMADA 2][api][gemini.analyze_images] %s", str(e))
             return {"status": "error", "message": str(e)}
 
-    def run_valuation_methodology(self, asset_description, previous_feedback=None):
+    def _parse_json_response(self, response):
+        text_content = ""
+        if response.candidates and response.candidates[0].content.parts:
+            text_content = response.candidates[0].content.parts[0].text
+        elif hasattr(response, 'text'):
+            text_content = response.text
+        if not text_content:
+            return None
+        return json.loads(text_content)
+
+    def search_comparables(self, asset_description, num_results=5):
+        """Pesquisa comparativos via Gemini (com grounding quando disponível)."""
+        import google.generativeai as genai
+        try:
+            prompt = f"{SEARCH_COMPARABLES_PROMPT}\n\nBEM A PESQUISAR:\n{asset_description}\n\nRetorne até {num_results} comparativos relevantes."
+            model = None
+            try:
+                model = genai.GenerativeModel(
+                    self.model_name,
+                    tools=[{"google_search_retrieval": {}}]
+                )
+            except Exception:
+                model = self._get_model()
+
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="application/json",
+                    temperature=0.3
+                )
+            )
+            tokens = self._extract_tokens(response)
+            data = self._parse_json_response(response)
+            if not data:
+                return {"status": "error", "message": "Nenhum comparativo retornado."}
+            return {"status": "ok", "data": data, "tokens": tokens}
+        except Exception as e:
+            logger.error("[CAMADA 2][api][gemini.search_comparables] %s", str(e))
+            return {"status": "error", "message": str(e)}
+
+    def run_valuation_methodology(self, asset_description, previous_feedback=None, search_results=None, vision_context=None):
         """
         Executa a metodologia de avaliação baseada nas Regras 1 a 7 e 9.
         Se houver previous_feedback, usa a Regra 8 (Aprender com erros passados).
@@ -132,6 +172,23 @@ class GeminiClient:
         try:
             model = self._get_model()
             prompt = f"Avalie o seguinte bem corporativo:\n{asset_description}\n"
+
+            if vision_context:
+                prompt += (
+                    f"\nDADOS DA ANÁLISE VISUAL (Vision/Gemini Flash):\n"
+                    f"- Tag identificada: {vision_context.get('tag')}\n"
+                    f"- Idade aparente (anos): {vision_context.get('idade')}\n"
+                    f"- Estado de conservação (1-5): {vision_context.get('conservacao')}\n"
+                    f"- Raciocínio visual: {vision_context.get('raciocinio')}\n"
+                )
+
+            if search_results:
+                prompt += (
+                    f"\nRESULTADOS DE PESQUISA DE MERCADO (Search/Grounding):\n"
+                    f"{json.dumps(search_results, ensure_ascii=False)}\n"
+                    f"Use os comparativos acima quando disponíveis. Se link_principal existir, inclua em links_comparativos.\n"
+                    f"Priorize melhor_valor_usado e melhor_valor_novo da pesquisa, ajustando com pensamento crítico.\n"
+                )
             
             if previous_feedback:
                 prompt += f"\nATENÇÃO - Aprendizado Ativo: Em uma avaliação anterior de um bem similar, o usuário apontou este feedback: '{previous_feedback}'. Incorpore isso na sua lógica atual."

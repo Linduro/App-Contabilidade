@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 # Diretório de uploads
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'outputs')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Estado da sessão (in-memory para localhost single-user)
 _session_state = {
@@ -277,6 +279,9 @@ def load_latest_spreadsheet():
 
 def initialize_session_from_saved_data():
     """Inicializa a sessão com os dados salvos no banco e a planilha mais recente."""
+    env_key = os.environ.get('GOOGLE_API_KEY') or os.environ.get('GEMINI_API_KEY')
+    if env_key and not _session_state.get("api_key"):
+        set_api_key(env_key)
     load_saved_api_key()
     load_saved_mappings()
     load_latest_spreadsheet()
@@ -353,6 +358,17 @@ def run_evaluation_loop(model_name, run_tag, run_age, run_conservation, run_mark
             except queue.Empty:
                 continue
 
+        # Salvar cópia da planilha processada em outputs/
+        try:
+            from datetime import datetime
+            src = _session_state.get("spreadsheet_path")
+            if src and os.path.exists(src):
+                out_name = f"output_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{os.path.basename(src)}"
+                shutil.copy2(src, os.path.join(OUTPUT_DIR, out_name))
+                logger.info("[CAMADA 1][manager] Planilha output salva: %s", out_name)
+        except Exception as copy_err:
+            logger.warning("[CAMADA 1][manager] Falha ao salvar output: %s", copy_err)
+
     except Exception as e:
         logger.error("[CAMADA 1][manager][run_evaluation_loop] %s", str(e))
         yield {"status": f"Erro Orquestrador: {str(e)}", "row": 0}
@@ -365,3 +381,155 @@ def pause_evaluation_loop():
         pipeline.pause()
     except Exception as e:
         logger.error("[CAMADA 1][manager][pause_evaluation_loop] %s", str(e))
+
+
+def _file_info(path, active_path=None):
+    return {
+        "name": os.path.basename(path),
+        "size": os.path.getsize(path),
+        "modified": os.path.getmtime(path),
+        "active": path == active_path
+    }
+
+
+def list_input_spreadsheets():
+    """Lista planilhas de input carregadas em uploads/."""
+    active = _session_state.get("spreadsheet_path")
+    files = []
+    if os.path.exists(UPLOAD_DIR):
+        for name in os.listdir(UPLOAD_DIR):
+            if name.endswith(('.xlsx', '.xls')):
+                path = os.path.join(UPLOAD_DIR, name)
+                files.append(_file_info(path, active))
+    files.sort(key=lambda x: x["modified"], reverse=True)
+    return {"status": "ok", "files": files}
+
+
+def list_output_spreadsheets():
+    """Lista planilhas geradas em outputs/."""
+    files = []
+    if os.path.exists(OUTPUT_DIR):
+        for name in os.listdir(OUTPUT_DIR):
+            if name.endswith(('.xlsx', '.xls')):
+                path = os.path.join(OUTPUT_DIR, name)
+                files.append(_file_info(path))
+    files.sort(key=lambda x: x["modified"], reverse=True)
+    return {"status": "ok", "files": files}
+
+
+def delete_input_spreadsheet(filename):
+    """Remove planilha de input."""
+    safe_name = os.path.basename(filename)
+    path = os.path.join(UPLOAD_DIR, safe_name)
+    if not os.path.exists(path):
+        return {"status": "error", "message": "Arquivo não encontrado"}
+    if _session_state.get("spreadsheet_path") == path:
+        _session_state["spreadsheet_path"] = None
+        _session_state["spreadsheet_data"] = None
+    os.remove(path)
+    return {"status": "ok", "message": f"Planilha {safe_name} removida"}
+
+
+def delete_output_spreadsheet(filename):
+    """Remove planilha de output."""
+    safe_name = os.path.basename(filename)
+    path = os.path.join(OUTPUT_DIR, safe_name)
+    if not os.path.exists(path):
+        return {"status": "error", "message": "Arquivo não encontrado"}
+    os.remove(path)
+    return {"status": "ok", "message": f"Output {safe_name} removido"}
+
+
+def activate_input_spreadsheet(filename):
+    """Carrega planilha de input como ativa na sessão."""
+    safe_name = os.path.basename(filename)
+    path = os.path.join(UPLOAD_DIR, safe_name)
+    if not os.path.exists(path):
+        return {"status": "error", "message": "Arquivo não encontrado"}
+    from excel.reader import get_preview
+    result = get_preview(path)
+    if result.get("status") != "ok":
+        return result
+    _session_state["spreadsheet_path"] = path
+    _session_state["spreadsheet_data"] = result
+    _session_state["sheet_index"] = result.get("best_sheet_idx", 0)
+    return {"status": "ok", "message": f"Planilha {safe_name} ativada", "preview": result}
+
+
+def re_evaluate_row(row_index, user_comment=None, evaluation_id=None):
+    """Re-avalia uma única linha com feedback opcional."""
+    if not _session_state.get("spreadsheet_path"):
+        return {"status": "error", "message": "Nenhuma planilha carregada"}
+
+    try:
+        from excel.reader import read_data
+        from db.queries import get_column_mappings, save_feedback
+        from orchestrator.pipeline import pipeline
+        import queue
+        import threading
+
+        column_mappings = get_column_mappings()
+        header_row = _session_state.get("spreadsheet_data", {}).get("header_row", 1)
+        sheet_index = _session_state.get("sheet_index", 0)
+
+        data = read_data(
+            _session_state["spreadsheet_path"],
+            sheet_index=sheet_index,
+            header_row=header_row,
+            column_mappings=column_mappings
+        )
+        if data.get("status") != "ok":
+            return data
+
+        target_rows = [r for r in data["rows"] if r.get("_row_index") == int(row_index)]
+        if not target_rows:
+            return {"status": "error", "message": f"Linha {row_index} não encontrada"}
+
+        # Limpar link1 para forçar reprocessamento
+        link1_letter = column_mappings.get("link1", {}).get("letter")
+        if link1_letter:
+            from excel.writer import write_row_results
+            write_row_results(
+                _session_state["spreadsheet_path"],
+                sheet_index,
+                int(row_index),
+                {"link1": ""},
+                column_mappings
+            )
+            target_rows[0][link1_letter] = ""
+
+        if evaluation_id and user_comment:
+            save_feedback(evaluation_id, user_comment, None, 0)
+
+        events = []
+        event_queue = queue.Queue()
+
+        def emit_event(event_data):
+            event_queue.put(event_data)
+
+        eval_thread = threading.Thread(
+            target=pipeline.process_spreadsheet,
+            kwargs={
+                "filepath": _session_state["spreadsheet_path"],
+                "sheet_index": sheet_index,
+                "rows": target_rows,
+                "column_mappings": column_mappings,
+                "model_name": "gemini-2.5-flash",
+                "update_callback": emit_event,
+                "run_tag": True,
+                "run_age": True,
+                "run_conservation": True,
+                "run_market": True
+            }
+        )
+        eval_thread.start()
+        while eval_thread.is_alive() or not event_queue.empty():
+            try:
+                events.append(event_queue.get(timeout=0.5))
+            except queue.Empty:
+                continue
+
+        last = events[-1] if events else {}
+        return {"status": "ok", "events": events, "result": last}
+    except Exception as e:
+        return handle_error(e, "manager", "re_evaluate_row")

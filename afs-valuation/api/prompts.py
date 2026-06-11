@@ -53,3 +53,27 @@ RETORNE EXATAMENTE UM JSON com a seguinte estrutura (e nada mais):
     "raciocinio_detalhado": "Explique passo a passo a dedução dupla (se usada) e as auto-perguntas críticas."
 }
 """
+
+SEARCH_COMPARABLES_PROMPT = """
+Você é um pesquisador de mercado especializado em ativos corporativos, equipamentos industriais e bens patrimoniais no Brasil.
+Pesquise comparativos de mercado para o bem descrito abaixo. Priorize anúncios brasileiros (usado e novo).
+Se não encontrar comparativo direto, use reasoning crítico para estimar faixa de valor com base em bens similares, commodities, escala industrial ou custo de reposição.
+
+Retorne APENAS JSON válido:
+{
+    "comparativos": [
+        {
+            "titulo": "Descrição curta do anúncio ou referência",
+            "url": "https://... ou null se estimativa sem link",
+            "valor_usado": numero_float_ou_null,
+            "valor_novo": numero_float_ou_null,
+            "condicao": "usado|novo|estimativa",
+            "fonte": "marketplace|fabricante|estimativa_critica"
+        }
+    ],
+    "melhor_valor_usado": numero_float_ou_null,
+    "melhor_valor_novo": numero_float_ou_null,
+    "link_principal": "url do melhor comparativo ou null",
+    "raciocinio_pesquisa": "Como chegou aos valores; cite limitações para bens complexos/industriais"
+}
+"""
