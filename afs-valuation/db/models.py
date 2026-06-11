@@ -73,7 +73,7 @@ def init_db():
         """)
 
         # Garantir colunas adicionais para resiliência de migração
-        for col in ["photo_url", "photo_spec", "photo_tag"]:
+        for col in ["photo_url", "photo_spec", "photo_tag", "asset_normalized"]:
             try:
                 cursor.execute(f"ALTER TABLE evaluations ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:

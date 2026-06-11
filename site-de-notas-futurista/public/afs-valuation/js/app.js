@@ -144,6 +144,56 @@ function updateSideConservationAge(data) {
     consNote.textContent = data.raciocinio_visual ? String(data.raciocinio_visual).slice(0, 120) : '';
 }
 
+function updateSideValuation(data) {
+    const val = data.valuation || {};
+    const ativo = data.ativo || val.ativo || '';
+    const ativoEl = document.getElementById('sideAsset');
+    if (ativoEl) ativoEl.textContent = ativo || '-';
+
+    if (val.descricao_identificacao) {
+        const descIa = document.getElementById('sideDescIA');
+        if (descIa) descIa.textContent = val.descricao_identificacao;
+    }
+    if (val.metodologia) {
+        const meth = document.getElementById('sideMethodology');
+        if (meth) meth.textContent = val.metodologia;
+    }
+    if (val.raciocinio_detalhado) {
+        const reasoning = document.getElementById('sideReasoning');
+        if (reasoning) reasoning.innerHTML = String(val.raciocinio_detalhado).replace(/\n/g, '<br>');
+    }
+    const fmtNum = (v) => v ? Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+    if (val.valor_usado != null) {
+        const el = document.getElementById('sideValueUsed');
+        if (el) el.textContent = fmtNum(val.valor_usado);
+    }
+    if (val.valor_novo != null) {
+        const el = document.getElementById('sideValueNew');
+        if (el) el.textContent = fmtNum(val.valor_novo);
+    }
+    if (val.valor_fipe != null) {
+        const el = document.getElementById('sideValueFipe');
+        if (el) el.textContent = fmtNum(val.valor_fipe);
+    }
+    if (val.links_comparativos && val.links_comparativos.length) {
+        const linksEl = document.getElementById('sideLinks');
+        if (linksEl) {
+            linksEl.innerHTML = val.links_comparativos
+                .filter(Boolean)
+                .map(l => `<a href="${l}" target="_blank" rel="noopener" style="color: var(--afs-orange-400);">${l}</a>`)
+                .join('<br>');
+        }
+    }
+}
+
+function formatEvalAssetCell(ativo, description) {
+    if (ativo) {
+        return `<strong style="color:var(--afs-orange-300);text-transform:lowercase;">${ativo}</strong>`;
+    }
+    const desc = description || '...';
+    return desc.length > 40 ? `${desc.substring(0, 40)}…` : desc;
+}
+
 // ---------- Init ----------
 document.addEventListener('DOMContentLoaded', async () => {
     await loadApiConfig();
@@ -446,6 +496,7 @@ async function buildMappingUI(spreadsheetData) {
         "tag_output": { letter: "D", keywords: ["tag verificada", "tag nova", "ok"] },
         "desc_original": { letter: "BB", keywords: ["descrição", "identificação", "original"] },
         "desc_output": { letter: "BC", keywords: ["descrição ia", "reasoning", "descrição verificada"] },
+        "asset_output": { letter: "BA", keywords: ["ativo", "categoria", "tipo", "essência", "essencia"] },
         "age_original": { letter: "BL", keywords: ["idade origem", "idade original"] },
         "age_output": { letter: "BK", keywords: ["idade verificada", "idade ia"] },
         "conservation_original": { letter: "BN", keywords: ["conservação original", "estado original"] },
@@ -487,12 +538,21 @@ async function buildMappingUI(spreadsheetData) {
 
     // Categorize fields into parts
     const partControlKeys = ["control"];
-    const part1Keys = ["tag_original", "tag_output", "desc_original", "desc_output", "age_original", "age_output", "conservation_original", "conservation_output", "photo_original", "photo_spec", "photo_tag"];
+    const part1Keys = ["tag_original", "tag_output", "desc_original", "desc_output", "asset_output", "age_original", "age_output", "conservation_original", "conservation_output", "photo_original", "photo_spec", "photo_tag"];
     const part2Keys = ["methodology", "value_new", "value_used", "value_fipe", "link1", "link2"];
 
 
     function getFieldDef(fieldName) {
-        return fields.required[fieldName] || fields.optional[fieldName];
+        const fromReq = fields.required?.[fieldName];
+        const fromOpt = fields.optional?.[fieldName];
+        const def = fromReq || fromOpt;
+        if (!def) return null;
+        if (typeof def === 'string') return { label: def, description: '' };
+        return def;
+    }
+
+    function isRequiredField(fieldName) {
+        return Boolean(fields.required?.[fieldName]);
     }
 
     // Control
@@ -511,7 +571,7 @@ async function buildMappingUI(spreadsheetData) {
                 if (match) bestMatch = match.letter;
             }
             const optionsHtml = generateOptionsHtml(bestMatch);
-            gridControl.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, 'required');
+            gridControl.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, 'optional');
         }
     }
 
@@ -523,7 +583,7 @@ async function buildMappingUI(spreadsheetData) {
         if (!fieldDef) continue;
         const bestMatch = getBestMatch(fieldName);
         const optionsHtml = generateOptionsHtml(bestMatch);
-        grid1.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, 'required');
+        grid1.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, isRequiredField(fieldName) ? 'required' : 'optional');
     }
 
     // Parte 2
@@ -534,7 +594,7 @@ async function buildMappingUI(spreadsheetData) {
         if (!fieldDef) continue;
         const bestMatch = getBestMatch(fieldName);
         const optionsHtml = generateOptionsHtml(bestMatch);
-        grid2.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, 'required');
+        grid2.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, isRequiredField(fieldName) ? 'required' : 'optional');
     }
 
     // Preview table
@@ -576,7 +636,11 @@ function buildPreviewTable(data) {
         '</tr>';
 
     // Data rows
-    const previewRows = data.preview_rows || [];
+    const previewRows = data.preview_rows || data.preview || [];
+    if (previewRows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="' + (displayHeaders.length + (data.headers.length > 15 ? 1 : 0)) + '" style="text-align:center;color:var(--text-muted);padding:16px;">Nenhuma linha de dados para exibir no preview.</td></tr>';
+        return;
+    }
     tbody.innerHTML = previewRows.map(row => {
         return '<tr>' +
             displayHeaders.map(h => {
@@ -738,6 +802,7 @@ async function loadSpreadsheetRowsForEvaluation() {
         const link1Letter = mappings.link1 || '';
         const controlLetter = mappings.control || '';
         const descLetter = mappings.desc_original || '';
+        const assetLetter = mappings.asset_output || '';
         const photoUrlLetter = mappings.photo_original || '';
         const photoSpecLetter = mappings.photo_spec || '';
         const photoTagLetter = mappings.photo_tag || '';
@@ -764,6 +829,7 @@ async function loadSpreadsheetRowsForEvaluation() {
             const rowIdx = row._row_index;
             const controlVal = controlLetter ? row[controlLetter] : null;
             const descText = descLetter ? row[descLetter] : "Item sem descrição";
+            const assetText = assetLetter ? row[assetLetter] : '';
             const fotoUrl = photoUrlLetter ? row[photoUrlLetter] : "Sem foto";
             const fotoSpec = photoSpecLetter ? row[photoSpecLetter] : "Sem foto especificação";
             const fotoTag = photoTagLetter ? row[photoTagLetter] : "Sem foto tag";
@@ -784,6 +850,7 @@ async function loadSpreadsheetRowsForEvaluation() {
             // Atribuir datasets para uso no side panel e no play loop
             if (controlVal) rowEl.dataset.control = controlVal;
             rowEl.dataset.description = descText;
+            if (assetText) rowEl.dataset.ativo = String(assetText).trim();
             rowEl.dataset.photoUrl = fotoUrl;
             rowEl.dataset.photoSpec = fotoSpec;
             rowEl.dataset.photoTag = fotoTag;
@@ -797,7 +864,7 @@ async function loadSpreadsheetRowsForEvaluation() {
             
             rowEl.innerHTML = `
                 <td>${controlText}</td>
-                <td title="${descText}">${descText.substring(0, 30)}...</td>
+                <td title="${assetText || descText}">${formatEvalAssetCell(assetText, descText)}</td>
                 <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
                 <td>-</td>
                 <td><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button></td>
@@ -952,6 +1019,8 @@ async function startEvaluation() {
         // Preserve data across events
         if (data.control) rowEl.dataset.control = data.control;
         if (data.description) rowEl.dataset.description = data.description;
+        if (data.ativo) rowEl.dataset.ativo = data.ativo;
+        else if (data.valuation?.ativo) rowEl.dataset.ativo = data.valuation.ativo;
         if (data.eval_id) rowEl.dataset.eval_id = data.eval_id;
         if (data.photo_url) rowEl.dataset.photoUrl = data.photo_url;
         if (data.photo_spec) rowEl.dataset.photoSpec = data.photo_spec;
@@ -960,6 +1029,7 @@ async function startEvaluation() {
 
         const controlText = rowEl.dataset.control ? `Item ${rowEl.dataset.control}` : `Linha ${data.row}`;
         const descText = rowEl.dataset.description || '...';
+        const ativoText = rowEl.dataset.ativo || data.ativo || data.valuation?.ativo || '';
         
         const btnHtml = data.status === 'Concluído' && rowEl.dataset.eval_id ? 
             `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${rowEl.dataset.eval_id}, ${data.row}, '${rowEl.dataset.control || ''}')">Revisar</button>` :
@@ -967,7 +1037,7 @@ async function startEvaluation() {
 
         rowEl.innerHTML = `
             <td>${controlText}</td>
-            <td title="${descText}">${descText.substring(0, 30)}...</td>
+            <td title="${ativoText || descText}">${formatEvalAssetCell(ativoText, descText)}</td>
             <td style="color: ${statusColor}; font-weight: bold;">${data.status}</td>
             <td>${(data.tokens || 0).toLocaleString()}</td>
             <td>${btnHtml}</td>
@@ -1003,6 +1073,7 @@ async function startEvaluation() {
                 data.description || rowEl.dataset.description
             );
             updateSideConservationAge(data);
+            updateSideValuation(data);
         }
 
         // Scroll to bottom
@@ -1397,6 +1468,8 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
     
     document.getElementById('sideActiveItem').textContent = `Controle: ${control || '-'}`;
     document.getElementById('sideDescOriginal').textContent = description || 'Sem descrição';
+    const ativoEl = document.getElementById('sideAsset');
+    if (ativoEl) ativoEl.textContent = '-';
     
     // Set photos list using objects for proper categorization
     sidePhotos = [];
@@ -1434,6 +1507,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
         
         if (data.status === 'ok') {
             const ev = data.evaluation;
+            if (ativoEl) ativoEl.textContent = ev.asset_normalized || '-';
             document.getElementById('sideDescIA').textContent = ev.asset_description || description;
             document.getElementById('sideMethodology').textContent = ev.methodology || 'Não informada';
             

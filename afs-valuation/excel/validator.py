@@ -70,8 +70,12 @@ REQUIRED_FIELDS = {
 
 OPTIONAL_FIELDS = {
     "control": {
-        "label": "Controle",
-        "description": "Coluna de controle pessoal do operador"
+        "label": "ID de Controle (Principal)",
+        "description": "Coluna de identificação única do item na planilha"
+    },
+    "asset_output": {
+        "label": "Ativo (DESTINO / IA)",
+        "description": "Coluna para gravar o nome simplificado e normalizado do bem (ex: cadeira, mesa)"
     },
     "link1": {
         "label": "Link da Pesquisa 1",

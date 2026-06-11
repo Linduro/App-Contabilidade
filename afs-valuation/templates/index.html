@@ -189,7 +189,7 @@
 
         <!-- Preview Table -->
         <div class="form-label mt-2">Preview dos Dados</div>
-        <div class="data-table-container" id="previewTableContainer" style="max-height: 300px; overflow-y: auto;">
+        <div class="data-table-container preview-table-container" id="previewTableContainer">
             <table class="data-table" id="previewTable">
                 <thead id="previewTableHead"></thead>
                 <tbody id="previewTableBody"></tbody>
@@ -357,8 +357,13 @@
                 </div>
             </div>
 
-            <!-- 4 frames: 2x2 descrições + revisões -->
+            <!-- Ativo normalizado + 4 frames: 2x2 descrições + revisões -->
             <div class="side-info-grid">
+                <div class="info-frame info-frame-asset">
+                    <div class="info-frame-label">Ativo</div>
+                    <div id="sideAsset" class="info-frame-body info-frame-value">-</div>
+                    <div id="sideAssetNote" class="info-frame-note">Descrição simplificada e normalizada do bem</div>
+                </div>
                 <div class="info-frame info-frame-muted">
                     <div class="info-frame-label">Descrição de Vistoria</div>
                     <div id="sideDescOriginal" class="info-frame-body">Aguardando início...</div>

@@ -223,8 +223,11 @@ class EvaluationPipeline:
                     ).strip()
 
             # 5. SALVAR NO DB
+            ativo_normalizado = market_data.get("ativo") if run_market else None
+
             eval_id = db.save_evaluation(
                 asset_description=descricao_original,
+                asset_normalized=ativo_normalizado,
                 methodology=market_data.get("metodologia") if run_market else "Apenas Análise Visual",
                 value_new=market_data.get("valor_novo") if run_market else None,
                 value_used=market_data.get("valor_usado") if run_market else None,
@@ -242,6 +245,7 @@ class EvaluationPipeline:
             excel_updates = {}
             if run_market:
                 excel_updates.update({
+                    "asset_output": ativo_normalizado,
                     "desc_output": market_data.get("descricao_identificacao", descricao_original),
                     "methodology": market_data.get("metodologia", "Não informada"),
                     "value_new": market_data.get("valor_novo"),
@@ -278,6 +282,7 @@ class EvaluationPipeline:
                     "search_link": search_data.get("link_principal") if search_data else None,
                     "search_value_used": search_data.get("melhor_valor_usado") if search_data else None,
                     "search_value_new": search_data.get("melhor_valor_novo") if search_data else None,
+                    "ativo": ativo_normalizado,
                     "valuation": market_data if run_market else {"metodologia": "Apenas Análise Visual", "raciocinio_detalhado": raciocinio_visual}
                 })
 

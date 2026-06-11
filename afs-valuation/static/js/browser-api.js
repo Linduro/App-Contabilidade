@@ -92,6 +92,7 @@ function afsParseWorkbook(file) {
                     status: 'ok',
                     headers,
                     preview,
+                    preview_rows: preview,
                     rows: allRows,
                     total_rows: allRows.length,
                     header_row: headerRow,
@@ -109,14 +110,28 @@ function afsParseWorkbook(file) {
 }
 
 const AFS_FIELDS = {
-    required: ['control', 'desc_original', 'link1'],
+    required: {
+        tag_original: { label: 'Número da Tag (ORIGEM)', description: 'Coluna com a tag original colhida na vistoria' },
+        tag_output: { label: 'Número da Tag (DESTINO / IA)', description: "Coluna para gravar o 'ok' ou novo número da foto" },
+        link1: { label: 'Link 1 (Destino)', description: 'Coluna para gravar o primeiro link de referência' },
+        link2: { label: 'Link 2 (Destino)', description: 'Coluna para gravar o segundo link de referência' },
+        desc_original: { label: 'Descrição (ORIGEM)', description: 'Coluna com a descrição original da vistoria' },
+        desc_output: { label: 'Descrição e Reasoning (DESTINO / IA)', description: 'Ex: Coluna BC - Descrição + Raciocínio' },
+        methodology: { label: 'Metodologia de Avaliação', description: 'Coluna para gravar a metodologia utilizada' },
+        value_new: { label: 'Valor de Novo', description: 'Coluna para gravar o valor do bem novo' },
+        value_used: { label: 'Valor de Usado / Comparativo Direto', description: 'Coluna para gravar o valor de mercado usado' },
+        value_fipe: { label: 'Valor FIPE', description: 'Coluna para gravar o valor da tabela FIPE (veículos)' },
+        age_original: { label: 'Idade Aparente (ORIGEM)', description: 'Coluna com a idade coletada na vistoria' },
+        age_output: { label: 'Idade Aparente (DESTINO / IA)', description: 'Coluna para gravar a validação da idade pela foto' },
+        conservation_original: { label: 'Estado de Conservação (ORIGEM)', description: 'Coluna com a conservação coletada na vistoria' },
+        conservation_output: { label: 'Estado de Conservação (DESTINO / IA)', description: 'Coluna para gravar a validação da conservação pela foto' }
+    },
     optional: {
-        tag_original: 'Tag original', tag_output: 'Tag verificada', desc_output: 'Descrição IA',
-        age_original: 'Idade original', age_output: 'Idade verificada',
-        conservation_original: 'Conservação original', conservation_output: 'Conservação IA',
-        methodology: 'Metodologia', value_new: 'Valor novo', value_used: 'Valor usado',
-        value_fipe: 'Valor FIPE', link1: 'Link 1', link2: 'Link 2',
-        photo_original: 'Foto do bem', photo_spec: 'Foto especificações', photo_tag: 'Foto tag'
+        control: { label: 'ID de Controle (Principal)', description: 'Coluna de identificação única do item na planilha' },
+        asset_output: { label: 'Ativo (DESTINO / IA)', description: 'Coluna para gravar o nome simplificado do bem (ex: cadeira, mesa)' },
+        photo_original: { label: 'Foto do Ativo', description: 'Coluna com o link da imagem original da vistoria' },
+        photo_spec: { label: 'Foto Especificações', description: 'Coluna com o link da foto de especificações do bem' },
+        photo_tag: { label: 'Foto da TAG', description: 'Coluna com o link da foto da plaqueta/tag do bem' }
     }
 };
 
