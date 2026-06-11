@@ -1,0 +1,77 @@
+name: Deploy AFS Market Intelligence (Cloud Run)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "afs-market-intelligence/**"
+      - ".github/workflows/deploy-afs-market-cloudrun.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GCP_PROJECT: contabilidade-ebed6
+  GCP_REGION: southamerica-east1
+  SERVICE_NAME: afs-market-intelligence
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Enable required APIs
+        run: |
+          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
+
+      - name: Deploy to Cloud Run
+        working-directory: afs-market-intelligence
+        run: |
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --source . \
+            --region "${{ env.GCP_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "PORT=8080,DB_ENGINE=duckdb,DB_PATH=/app/data/afs_market.duckdb" \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 3600 \
+            --max-instances 3 \
+            --quiet
+
+      - name: Resolve service URL
+        id: service
+        run: |
+          URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --region "${{ env.GCP_REGION }}" \
+            --format='value(status.url)')
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "AFS Market API URL: ${URL}"
+
+      - name: Update config.json for GitHub Pages
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = 'site-de-notas-futurista/public/afs-market-intelligence/config.json';
+            fs.mkdirSync('site-de-notas-futurista/public/afs-market-intelligence', { recursive: true });
+            fs.writeFileSync(path, JSON.stringify({ apiBase: '${{ steps.service.outputs.url }}' }, null, 2));
+          "
+
+      - name: Commit config.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site-de-notas-futurista/public/afs-market-intelligence/config.json
+          git diff --staged --quiet || git commit -m "Atualizar AFS Market API URL (Cloud Run) [skip market]"
+          git push

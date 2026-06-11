@@ -80,9 +80,10 @@ def save_mappings():
     try:
         data = request.get_json()
         mappings = data.get('mappings', {})
+        spreadsheet_name = data.get('spreadsheet_name')
 
         from orchestrator.manager import save_column_mappings
-        result = save_column_mappings(mappings)
+        result = save_column_mappings(mappings, spreadsheet_name=spreadsheet_name)
         return jsonify(result)
 
     except Exception as e:

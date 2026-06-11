@@ -401,6 +401,21 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                   size="sm"
                   asChild
                   className="shrink-0 max-md:w-full max-md:min-h-11"
+                  title="AFS Market Intelligence — prospecção B2B (acesso privado)"
+                >
+                  <Link href="/dashboard/afs-market-intelligence/">
+                    <Search className="w-4 h-4 mr-2" />
+                    AFS Intelligence
+                  </Link>
+                </Button>
+              )}
+
+              {adminAccess && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="shrink-0 max-md:w-full max-md:min-h-11"
                   title="Leads trabalhistas (acesso privado)"
                 >
                   <Link href="/dashboard/trabalhista-leads/">

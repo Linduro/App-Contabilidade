@@ -1000,15 +1000,9 @@ body {
 }
 
 .info-frame-asset {
-    grid-column: 1 / -1;
     background: rgba(249, 115, 22, 0.08);
     border: 1px solid rgba(249, 115, 22, 0.22);
-    min-height: 64px;
-}
-
-.info-frame-asset .info-frame-value {
-    font-size: 1.25rem;
-    text-transform: lowercase;
+    min-height: 56px;
 }
 
 .info-frame {
@@ -1110,4 +1104,89 @@ body {
     display: flex;
     gap: 6px;
     flex-shrink: 0;
+}
+
+/* ---------- Modals ---------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content,
+.gallery-modal-content {
+    max-width: 1200px;
+    width: 95%;
+    max-height: calc(100vh - 64px);
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-subtle);
+}
+
+.modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+.gallery-modal-body {
+    display: flex;
+    gap: 20px;
+    padding: 24px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.gallery-modal-list {
+    flex: 2;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.gallery-table-wrap {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-input);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    min-height: 280px;
+}
+
+.gallery-modal-detail {
+    flex: 1;
+    min-width: 0;
+    max-width: 33.333%;
+    border-top: 4px solid var(--afs-orange-400);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 0;
+    overflow-y: auto;
+    background: var(--bg-card);
+    padding: 16px;
+}
+
+.side-info-grid .info-frame-asset {
+    min-height: 56px;
+}
+
+.side-info-grid .info-frame-asset .info-frame-value {
+    font-size: 1.05rem;
 }

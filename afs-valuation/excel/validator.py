@@ -77,6 +77,10 @@ OPTIONAL_FIELDS = {
         "label": "Ativo (DESTINO / IA)",
         "description": "Coluna para gravar o nome simplificado e normalizado do bem (ex: cadeira, mesa)"
     },
+    "category_output": {
+        "label": "Categoria (DESTINO / IA)",
+        "description": "Coluna para gravar a categoria ampla do bem (ex: mobiliário, TI, veículos)"
+    },
     "link1": {
         "label": "Link da Pesquisa 1",
         "description": "Coluna para gravar o link do primeiro comparativo"

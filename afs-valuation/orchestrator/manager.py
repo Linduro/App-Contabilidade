@@ -22,12 +22,25 @@ _session_state = {
     "spreadsheet_path": None,
     "spreadsheet_data": None,
     "column_mappings": {},
+    "spreadsheet_mappings": {},
     "initialized": False,
 }
 
 
+def _active_spreadsheet_name():
+    path = _session_state.get("spreadsheet_path")
+    return os.path.basename(path) if path else None
+
+
+def _apply_mappings_for_active_spreadsheet():
+    name = _active_spreadsheet_name()
+    if name and _session_state.get("spreadsheet_mappings", {}).get(name):
+        _session_state["column_mappings"] = _session_state["spreadsheet_mappings"][name]
+
+
 def get_session_state():
     """Retorna o estado atual da sessão."""
+    _apply_mappings_for_active_spreadsheet()
     if not _session_state.get("column_mappings"):
         load_saved_mappings()
     return _session_state.copy()
@@ -133,6 +146,8 @@ def process_upload(file_storage):
             _session_state["spreadsheet_path"] = filepath
             _session_state["spreadsheet_data"] = result
             _session_state["sheet_index"] = result.get("best_sheet_idx", 0)
+            saved = _session_state.get("spreadsheet_mappings", {}).get(filename)
+            _session_state["column_mappings"] = saved if saved else {}
             logger.info(
                 "[CAMADA 1][manager][process_upload] "
                 "Planilha carregada: %s (%d linhas, %d colunas, aba %d)",
@@ -145,33 +160,34 @@ def process_upload(file_storage):
         return handle_error(e, "manager", "process_upload")
 
 
-def save_column_mappings(mappings):
+def save_column_mappings(mappings, spreadsheet_name=None):
     """
     Salva os mapeamentos de coluna definidos pelo usuário.
     
     Args:
         mappings: dict {field_name: column_letter}
+        spreadsheet_name: nome do arquivo da planilha (opcional)
     """
     try:
-        # Validar
         from excel.validator import validate_mappings
         validation = validate_mappings(mappings)
 
-        if validation["status"] == "ok" or validation["status"] == "incomplete":
-            # Salvar no banco
+        if validation["status"] in ("ok", "incomplete"):
+            name = spreadsheet_name or _active_spreadsheet_name()
+            if name:
+                _session_state.setdefault("spreadsheet_mappings", {})[name] = mappings
+            _session_state["column_mappings"] = mappings
+
             try:
                 from db.queries import save_column_mapping, clear_column_mappings
                 clear_column_mappings()
                 for field_name, col_letter in mappings.items():
                     if col_letter:
-                        # Encontrar o index da coluna
                         from openpyxl.utils import column_index_from_string
                         col_index = column_index_from_string(col_letter)
                         save_column_mapping(field_name, col_letter, col_index)
             except ImportError:
                 logger.warning("[CAMADA 1][manager] db.queries não disponível para salvar mapeamentos")
-
-            _session_state["column_mappings"] = mappings
 
         return validation
 
@@ -453,6 +469,8 @@ def activate_input_spreadsheet(filename):
     _session_state["spreadsheet_path"] = path
     _session_state["spreadsheet_data"] = result
     _session_state["sheet_index"] = result.get("best_sheet_idx", 0)
+    saved = _session_state.get("spreadsheet_mappings", {}).get(safe_name)
+    _session_state["column_mappings"] = saved if saved else {}
     return {"status": "ok", "message": f"Planilha {safe_name} ativada", "preview": result}
 
 

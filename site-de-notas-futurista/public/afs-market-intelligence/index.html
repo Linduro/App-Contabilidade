@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFS Market Intelligence</title>
+    <link rel="stylesheet" href="./css/style.css?v=1">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">AFS</div>
+                <div>
+                    <h1>Market Intelligence</h1>
+                    <p>Asset Flow Solutions</p>
+                </div>
+            </div>
+            <nav class="nav">
+                <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+                <button class="nav-item" data-tab="pipeline">Pipeline</button>
+                <button class="nav-item" data-tab="leads">Leads ICP</button>
+                <button class="nav-item" data-tab="deadzone">Dead Zone</button>
+                <button class="nav-item" data-tab="transicao">Transição Regime</button>
+                <button class="nav-item" data-tab="parceiros">Parceiros B2B2B</button>
+                <button class="nav-item" data-tab="funil">Funil Comercial</button>
+                <button class="nav-item" data-tab="export">Export Excel</button>
+            </nav>
+            <div class="profile-select">
+                <label for="perfil">Perfil de uso</label>
+                <select id="perfil">
+                    <option value="patrimonial">Conformidade Patrimonial</option>
+                    <option value="generico">Busca Genérica</option>
+                    <option value="transicao_regime">Transição de Regime</option>
+                    <option value="parceiros_auditoria">Parceiros Auditoria</option>
+                </select>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <h2 id="page-title">Dashboard</h2>
+                <div class="topbar-actions">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Carregando...</span>
+                </div>
+            </header>
+
+            <section class="tab-panel active" id="tab-dashboard">
+                <div class="metrics-grid" id="metrics-grid"></div>
+                <div class="card">
+                    <h3>Arquitetura em Camadas</h3>
+                    <div class="layers-flow">
+                        <div class="layer">1 · Ingestão RF</div>
+                        <div class="layer-arrow">→</div>
+                        <div class="layer">2 · Enriquecimento</div>
+                        <div class="layer-arrow">→</div>
+                        <div class="layer">3 · Validação</div>
+                        <div class="layer-arrow">→</div>
+                        <div class="layer">Dead Zone</div>
+                        <div class="layer-arrow">→</div>
+                        <div class="layer">Export Manual</div>
+                    </div>
+                    <p class="hint">Abordagem comercial 100% manual · Feedback loop recalibra scoring</p>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-pipeline">
+                <div class="card">
+                    <h3>Executar Pipeline</h3>
+                    <div class="btn-group">
+                        <button class="btn primary" id="btn-run-full">Pipeline Completo</button>
+                        <button class="btn" id="btn-run-icp">Só ICP</button>
+                        <button class="btn" id="btn-run-enrich">Só Enriquecimento</button>
+                        <button class="btn" id="btn-run-validate">Só Validação</button>
+                        <button class="btn" id="btn-run-regime">Monitor Regime</button>
+                        <button class="btn" id="btn-load-partners">Carregar Parceiros</button>
+                    </div>
+                    <pre id="pipeline-log" class="log"></pre>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-leads">
+                <div class="card">
+                    <h3>Leads ICP Filtrados</h3>
+                    <table class="data-table" id="leads-table">
+                        <thead><tr>
+                            <th>CNPJ</th><th>Razão Social</th><th>Cluster</th>
+                            <th>Capital</th><th>Filiais</th><th>Score</th><th>Transição</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-deadzone">
+                <div class="card">
+                    <h3>Dead Zone — Rotas Alternativas</h3>
+                    <p class="hint">LinkedIn → Telefone → Endereço → Parceiro B2B2B → Revisão manual</p>
+                    <table class="data-table" id="deadzone-table">
+                        <thead><tr>
+                            <th>Empresa</th><th>Cluster</th><th>Motivo</th><th>Rota</th>
+                            <th>LinkedIn</th><th>Telefone</th><th>Prioridade</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-transicao">
+                <div class="card highlight">
+                    <h3>🔥 Empresas em Transição Presumido → Lucro Real</h3>
+                    <p class="hint">Lead mais quente — CFO em reestruturação · defasagem RF 3–6 meses</p>
+                    <table class="data-table" id="transicao-table">
+                        <thead><tr>
+                            <th>CNPJ</th><th>Empresa</th><th>De</th><th>Para</th><th>Cluster</th><th>Score</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-parceiros">
+                <div class="card">
+                    <h3>Canal B2B2B — Bancas de Auditoria Média</h3>
+                    <p class="hint">95 bancas cadastradas · Exclui Big Four + top 6 globais</p>
+                    <table class="data-table" id="parceiros-table">
+                        <thead><tr>
+                            <th>Banca</th><th>Rede</th><th>UF</th><th>Website</th><th>Status</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-funil">
+                <div class="card">
+                    <h3>Funil Comercial & Feedback</h3>
+                    <div class="funnel" id="funnel-viz"></div>
+                    <div class="feedback-form">
+                        <h4>Registrar Outcome</h4>
+                        <input type="number" id="fb-lead-id" placeholder="Lead ID">
+                        <select id="fb-outcome">
+                            <option value="positivo">Positivo</option>
+                            <option value="negativo">Negativo</option>
+                            <option value="sem_resposta">Sem Resposta</option>
+                            <option value="reuniao">Reunião Agendada</option>
+                            <option value="indicacao_b2b2b">Indicação B2B2B</option>
+                        </select>
+                        <input type="text" id="fb-motivo" placeholder="Motivo (opcional)">
+                        <button class="btn primary" id="btn-feedback">Registrar</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="tab-panel" id="tab-export">
+                <div class="card">
+                    <h3>Export Excel Consolidado</h3>
+                    <p class="hint">Abas: Leads Prontos · Dead Zone · Transição Regime · Parceiros · Metadados</p>
+                    <button class="btn primary" id="btn-export">Gerar Planilha</button>
+                    <div id="export-result"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var fromQuery = params.get("apiBase");
+        if (fromQuery) {
+          window.__AFS_MARKET_API_BASE__ = fromQuery.replace(/\/$/, "");
+          return;
+        }
+        fetch("./config.json?t=" + Date.now())
+          .then(function (r) { return r.json(); })
+          .then(function (cfg) {
+            if (cfg && cfg.apiBase) window.__AFS_MARKET_API_BASE__ = cfg.apiBase.replace(/\/$/, "");
+          })
+          .catch(function () {});
+      })();
+    </script>
+    <script src="./js/browser-api.js?v=1"></script>
+    <script src="./js/app.js?v=1"></script>
+</body>
+</html>

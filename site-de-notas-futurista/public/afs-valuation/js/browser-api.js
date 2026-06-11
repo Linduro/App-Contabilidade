@@ -11,6 +11,7 @@ function afsLoadState() {
             api_key: null,
             spreadsheet: null,
             column_mappings: {},
+            spreadsheet_mappings: {},
             initialized: false,
             evaluations: [],
             uploads: [],
@@ -18,12 +19,31 @@ function afsLoadState() {
             feedback: []
         };
     } catch {
-        return { api_key: null, spreadsheet: null, column_mappings: {}, initialized: false, evaluations: [], uploads: [], outputs: [], feedback: [] };
+        return { api_key: null, spreadsheet: null, column_mappings: {}, spreadsheet_mappings: {}, initialized: false, evaluations: [], uploads: [], outputs: [], feedback: [] };
     }
 }
 
 function afsSaveState(s) {
     localStorage.setItem(AFS_STORAGE_KEY, JSON.stringify(s));
+}
+
+function afsActiveSpreadsheetName(s) {
+    return s.spreadsheet?.file_name || null;
+}
+
+function afsGetActiveMappings(s) {
+    const name = afsActiveSpreadsheetName(s);
+    if (name && s.spreadsheet_mappings?.[name]) return s.spreadsheet_mappings[name];
+    return s.column_mappings || {};
+}
+
+function afsSaveMappings(s, mappings, spreadsheetName) {
+    const name = spreadsheetName || afsActiveSpreadsheetName(s);
+    s.column_mappings = mappings;
+    if (name) {
+        s.spreadsheet_mappings = s.spreadsheet_mappings || {};
+        s.spreadsheet_mappings[name] = mappings;
+    }
 }
 
 async function afsGeminiRequest(apiKey, model, parts, jsonMode = true) {
@@ -129,6 +149,7 @@ const AFS_FIELDS = {
     optional: {
         control: { label: 'ID de Controle (Principal)', description: 'Coluna de identificação única do item na planilha' },
         asset_output: { label: 'Ativo (DESTINO / IA)', description: 'Coluna para gravar o nome simplificado do bem (ex: cadeira, mesa)' },
+        category_output: { label: 'Categoria (DESTINO / IA)', description: 'Coluna para gravar a categoria ampla (ex: mobiliário, TI)' },
         photo_original: { label: 'Foto do Ativo', description: 'Coluna com o link da imagem original da vistoria' },
         photo_spec: { label: 'Foto Especificações', description: 'Coluna com o link da foto de especificações do bem' },
         photo_tag: { label: 'Foto da TAG', description: 'Coluna com o link da foto da plaqueta/tag do bem' }
@@ -159,12 +180,14 @@ async function browserApiFetch(path, options = {}) {
     }
 
     if (path === '/api/session-state' && method === 'GET') {
+        const mappings = afsGetActiveMappings(s);
         const session = {
             has_api_key: Boolean(s.api_key),
             has_spreadsheet: Boolean(s.spreadsheet),
-            has_mappings: Boolean(Object.keys(s.column_mappings || {}).length),
+            has_mappings: Boolean(Object.keys(mappings).length),
             initialized: s.initialized,
-            column_mappings: s.column_mappings || {}
+            column_mappings: mappings,
+            active_spreadsheet: afsActiveSpreadsheetName(s)
         };
         if (s.spreadsheet) session.spreadsheet_preview = s.spreadsheet;
         return session;
@@ -175,16 +198,17 @@ async function browserApiFetch(path, options = {}) {
     }
 
     if (path === '/api/column-mappings' && method === 'POST') {
-        s.column_mappings = body.mappings || {};
+        const name = body.spreadsheet_name || afsActiveSpreadsheetName(s);
+        afsSaveMappings(s, body.mappings || {}, name);
         afsSaveState(s);
-        return { status: 'ok', message: 'Mapeamentos salvos' };
+        return { status: 'ok', message: `Mapeamentos salvos${name ? ' para ' + name : ''}` };
     }
 
     if (path === '/api/finalize-init' && method === 'POST') {
         const issues = [];
         if (!s.api_key) issues.push('Chave de API não configurada');
         if (!s.spreadsheet) issues.push('Planilha não carregada');
-        if (!Object.keys(s.column_mappings || {}).length) issues.push('Mapeamento não definido');
+        if (!Object.keys(afsGetActiveMappings(s)).length) issues.push('Mapeamento não definido');
         if (issues.length) return { status: 'incomplete', issues, message: `${issues.length} item(ns) pendente(s)` };
         s.initialized = true;
         afsSaveState(s);
@@ -215,8 +239,10 @@ async function browserApiFetch(path, options = {}) {
             return { status: 'error', message: 'Dados da planilha indisponíveis. Envie o arquivo novamente.' };
         }
         s.spreadsheet = sheetData;
+        const saved = (s.spreadsheet_mappings || {})[filename];
+        s.column_mappings = saved || {};
         afsSaveState(s);
-        return { status: 'ok', message: `Planilha ${filename} ativada`, preview: sheetData };
+        return { status: 'ok', message: `Planilha ${filename} ativada`, preview: sheetData, column_mappings: s.column_mappings };
     }
 
     if (path.startsWith('/api/evaluation/') && method === 'GET') {
@@ -253,6 +279,11 @@ async function browserHandleUpload(file) {
     s.uploads = s.uploads || [];
     s.uploads = s.uploads.filter(u => u.name !== file.name);
     s.uploads.unshift({ name: file.name, size: file.size, modified: Date.now() / 1000, data: parsed });
+    if (!(s.spreadsheet_mappings || {})[file.name]) {
+        s.spreadsheet_mappings = s.spreadsheet_mappings || {};
+        s.spreadsheet_mappings[file.name] = {};
+    }
+    s.column_mappings = s.spreadsheet_mappings[file.name];
     afsSaveState(s);
     return parsed;
 }

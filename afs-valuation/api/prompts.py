@@ -45,6 +45,7 @@ REGRAS OBRIGATÓRIAS DE AVALIAÇÃO:
 RETORNE EXATAMENTE UM JSON com a seguinte estrutura (e nada mais):
 {
     "ativo": "nome curto padronizado do bem em minúsculas, apenas a essência (ex: cadeira, mesa, impressora, veículo — cadeira com rodízios e cadeira fixa viram 'cadeira')",
+    "categoria": "categoria ampla do bem (ex: mobiliário, informática, veículos, ferramentas)",
     "descricao_identificacao": "Nome descritivo melhorado do bem",
     "metodologia": "Comparativo Direto | Avaliação por Dedução Dupla | etc...",
     "valor_novo": numero_float_ou_null,

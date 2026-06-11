@@ -254,6 +254,12 @@
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="cb_market" checked> <span>Avaliação de Mercado</span>
                         </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="cb_categoria" checked> <span>Categoria (IA)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="cb_ativo" checked> <span>Ativo normalizado (IA)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -317,7 +323,7 @@
                     <table class="data-table" id="evaluationTable">
                         <thead>
                             <tr>
-                                <th>Linha Processada</th>
+                                <th>Controle</th>
                                 <th>Descrição / Ativo</th>
                                 <th>Status</th>
                                 <th>Tokens Pagos</th>
@@ -359,6 +365,10 @@
 
             <!-- Ativo normalizado + 4 frames: 2x2 descrições + revisões -->
             <div class="side-info-grid">
+                <div class="info-frame info-frame-asset">
+                    <div class="info-frame-label">Categoria</div>
+                    <div id="sideCategoria" class="info-frame-body info-frame-value">-</div>
+                </div>
                 <div class="info-frame info-frame-asset">
                     <div class="info-frame-label">Ativo</div>
                     <div id="sideAsset" class="info-frame-body info-frame-value">-</div>
@@ -537,9 +547,9 @@
      MODAL GALERIA DE ATIVOS
      ========================================== -->
 <div class="modal-overlay" id="galleryModal" style="display: none;">
-    <div class="modal-content" style="max-width: 1200px; width: 95%; background: var(--bg-card); border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column;">
+    <div class="modal-content gallery-modal-content">
         <!-- Header -->
-        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+        <div class="modal-header">
             <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
                 <i class="fa-solid fa-database" style="color: var(--afs-orange-400);"></i> Banco de Ativos Avaliados
             </h2>
@@ -547,10 +557,10 @@
         </div>
         
         <!-- Body -->
-        <div style="display: flex; gap: 20px; padding: 24px; height: 70vh; max-height: 70vh; overflow: hidden;">
+        <div class="gallery-modal-body">
             <!-- Left 2/3: List -->
-            <div style="flex: 2; min-width: 0; display: flex; flex-direction: column; height: 100%;">
-                <div class="data-table-container" style="flex: 1; overflow-y: auto; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-subtle);">
+            <div class="gallery-modal-list">
+                <div class="data-table-container gallery-table-wrap">
                     <table class="data-table" id="galleryTable">
                         <thead>
                             <tr>
@@ -571,7 +581,7 @@
             </div>
             
             <!-- Right 1/3: Visualizer -->
-            <div id="gallerySidePanel" class="card" style="flex: 1; border-top: 4px solid var(--afs-orange-400); display: flex; flex-direction: column; gap: 15px; margin: 0; overflow-y: auto; background: var(--bg-card); padding: 16px;">
+            <div id="gallerySidePanel" class="card gallery-modal-detail">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
                     <h3 style="margin: 0; font-size: 1.1rem; color: var(--afs-orange-300); display: flex; align-items: center; gap: 8px;">
                         <i class="fa-solid fa-chart-line"></i> Detalhes do Ativo

@@ -107,11 +107,28 @@ let currentSideRow = null;
 let currentReviewRow = null;
 
 function isValidPhotoUrl(url) {
-    if (!url || typeof url !== 'string') return false;
-    const u = url.trim().toLowerCase();
+    const normalized = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(url) : url;
+    if (!normalized || typeof normalized !== 'string') return false;
+    const u = normalized.trim().toLowerCase();
     if (!u || u.includes('sem foto') || u.includes('sem imagem') ||
         u.includes('indisponivel') || u.includes('indisponível')) return false;
     return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//');
+}
+
+function getActiveSpreadsheetName() {
+    return state.spreadsheetData?.file_name || '';
+}
+
+function formatControlLabel(controlVal, rowIdx) {
+    if (controlVal !== null && controlVal !== undefined && String(controlVal).trim() !== '') {
+        return String(controlVal).trim();
+    }
+    return rowIdx != null ? `— (${rowIdx})` : '—';
+}
+
+function evalRowId(rowIdx, controlVal) {
+    const ctrl = controlVal != null && String(controlVal).trim() !== '' ? String(controlVal).trim() : '';
+    return ctrl ? `eval_ctrl_${ctrl.replace(/[^a-zA-Z0-9_-]/g, '_')}` : `eval_row_${rowIdx}`;
 }
 
 function formatConservationLabel(value) {
@@ -147,7 +164,10 @@ function updateSideConservationAge(data) {
 function updateSideValuation(data) {
     const val = data.valuation || {};
     const ativo = data.ativo || val.ativo || '';
+    const categoria = data.categoria || val.categoria || '';
     const ativoEl = document.getElementById('sideAsset');
+    const catEl = document.getElementById('sideCategoria');
+    if (catEl) catEl.textContent = categoria || '-';
     if (ativoEl) ativoEl.textContent = ativo || '-';
 
     if (val.descricao_identificacao) {
@@ -535,7 +555,6 @@ async function buildMappingUI(spreadsheetData) {
         "tag_output": { letter: "D", keywords: ["tag verificada", "tag nova", "ok"] },
         "desc_original": { letter: "BB", keywords: ["descrição", "identificação", "original"] },
         "desc_output": { letter: "BC", keywords: ["descrição ia", "reasoning", "descrição verificada"] },
-        "asset_output": { letter: "BA", keywords: ["ativo", "categoria", "tipo", "essência", "essencia"] },
         "age_original": { letter: "BL", keywords: ["idade origem", "idade original"] },
         "age_output": { letter: "BK", keywords: ["idade verificada", "idade ia"] },
         "conservation_original": { letter: "BN", keywords: ["conservação original", "estado original"] },
@@ -548,7 +567,9 @@ async function buildMappingUI(spreadsheetData) {
         "link2": { letter: "BN", keywords: ["link 2", "link2"] },
         "photo_original": { letter: "U", keywords: ["foto do bem", "foto do bem 1", "foto", "imagem"] },
         "photo_spec": { letter: "V", keywords: ["foto especificações", "foto especificação", "foto especificacoes", "foto especificacao"] },
-        "photo_tag": { letter: "W", keywords: ["foto da tag", "foto tag", "foto da plaqueta"] }
+        "photo_tag": { letter: "W", keywords: ["foto da tag", "foto tag", "foto da plaqueta"] },
+        "category_output": { letter: "AZ", keywords: ["categoria", "grupo", "família", "familia"] },
+        "asset_output": { letter: "BA", keywords: ["ativo", "tipo", "essência", "essencia"] }
     };
 
     function getBestMatch(fieldName) {
@@ -577,7 +598,14 @@ async function buildMappingUI(spreadsheetData) {
 
     // Categorize fields into parts
     const partControlKeys = ["control"];
-    const part1Keys = ["tag_original", "tag_output", "desc_original", "desc_output", "asset_output", "age_original", "age_output", "conservation_original", "conservation_output", "photo_original", "photo_spec", "photo_tag"];
+    const part1Keys = [
+        "tag_original", "tag_output",
+        "desc_original", "desc_output",
+        "age_original", "age_output",
+        "conservation_original", "conservation_output",
+        "photo_original", "photo_spec", "photo_tag",
+        "category_output", "asset_output"
+    ];
     const part2Keys = ["methodology", "value_new", "value_used", "value_fipe", "link1", "link2"];
 
 
@@ -710,22 +738,30 @@ async function saveMappings() {
     }
 
     try {
+        const spreadsheetName = getActiveSpreadsheetName();
         const data = await apiFetch('/api/column-mappings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mappings })
+            body: JSON.stringify({ mappings, spreadsheet_name: spreadsheetName })
         });
 
         if (data.status === 'ok') {
             state.hasMappings = true;
             updateStep(3, 'completed');
             updateStep(4, 'active');
-            showAlert('Mapeamento salvo com sucesso!', 'success');
+            const finalizeSection = document.getElementById('cardFinalize');
+            if (finalizeSection) finalizeSection.style.display = 'block';
+            showAlert(spreadsheetName
+                ? `Mapeamento salvo para "${spreadsheetName}"!`
+                : 'Mapeamento salvo com sucesso!', 'success');
+            document.getElementById('cardMapping')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else if (data.status === 'incomplete') {
-            state.hasMappings = true; // Allow continuing even with partial mapping
+            state.hasMappings = true;
             updateStep(3, 'completed');
             updateStep(4, 'active');
-            const missing = data.missing.map(m => m.label).join(', ');
+            const finalizeSection = document.getElementById('cardFinalize');
+            if (finalizeSection) finalizeSection.style.display = 'block';
+            const missing = (data.missing || []).map(m => m.label).join(', ');
             showAlert(`Mapeamento salvo. Campos pendentes: ${missing}`, 'warning');
         } else {
             showAlert(data.message || 'Erro ao salvar mapeamento', 'error');
@@ -820,13 +856,139 @@ function showAlert(message, type = 'info') {
 
 // ---------- Evaluation Engine (Tab 2) ----------
 let evaluationEventSource = null;
+let browserEvaluationRunning = false;
+
+function processEvaluationEvent(data, counters, pendingAtStart) {
+    if (data.status === 'finished') {
+        document.getElementById('btnPlay').disabled = false;
+        document.getElementById('btnPause').disabled = true;
+        counters.processing = 0;
+        document.getElementById('countPending').textContent = counters.pending;
+        document.getElementById('countProcessing').textContent = counters.processing;
+        document.getElementById('countDone').textContent = counters.done;
+        document.getElementById('countIgnored').textContent = counters.ignored;
+        showAlert('Avaliação finalizada!', 'success');
+        loadSpreadsheetRegistry();
+        return;
+    }
+
+    if (data.status && data.status.startsWith('Erro Orquestrador')) {
+        showAlert(data.status, 'error');
+        return;
+    }
+
+    if (data.status === 'error') {
+        showAlert('Erro: ' + data.message, 'error');
+        return;
+    }
+
+    if (data.tokens) {
+        document.getElementById('tokenCounter').textContent = data.tokens.toLocaleString();
+    }
+
+    if (data.status === 'Avaliando') {
+        counters.processing = 1;
+        counters.pending = Math.max(0, pendingAtStart - counters.done - 1);
+    } else if (data.status === 'Ignorado') {
+        counters.processing = 0;
+    } else if (data.status === 'Concluído' || (data.status && data.status.includes('Concluído'))) {
+        counters.processing = 0;
+        counters.done++;
+        counters.pending = Math.max(0, pendingAtStart - counters.done);
+    }
+
+    document.getElementById('countPending').textContent = counters.pending;
+    document.getElementById('countProcessing').textContent = counters.processing;
+    document.getElementById('countDone').textContent = counters.done;
+
+    const rowKey = evalRowId(data.row, data.control);
+    let rowEl = document.getElementById(rowKey);
+    if (!rowEl) {
+        rowEl = document.getElementById(`eval_row_${data.row}`);
+    }
+    if (!rowEl) {
+        rowEl = document.createElement('tr');
+        rowEl.id = rowKey;
+        rowEl.dataset.rowIndex = data.row;
+        document.getElementById('evaluationTableBody').appendChild(rowEl);
+    }
+
+    let statusColor = 'var(--text-color)';
+    if (data.status === 'Concluído') statusColor = 'var(--status-ok)';
+    if (data.status && data.status.includes('Erro')) statusColor = 'var(--status-error)';
+    if (data.status === 'Avaliando') statusColor = 'var(--status-info)';
+
+    if (data.control != null) rowEl.dataset.control = data.control;
+    if (data.description) rowEl.dataset.description = data.description;
+    if (data.ativo) rowEl.dataset.ativo = data.ativo;
+    else if (data.valuation?.ativo) rowEl.dataset.ativo = data.valuation.ativo;
+    if (data.categoria) rowEl.dataset.categoria = data.categoria;
+    else if (data.valuation?.categoria) rowEl.dataset.categoria = data.valuation.categoria;
+    if (data.eval_id) rowEl.dataset.eval_id = data.eval_id;
+    if (data.photo_url) rowEl.dataset.photoUrl = normalizePhotoUrl(data.photo_url) || data.photo_url;
+    if (data.photo_spec) rowEl.dataset.photoSpec = normalizePhotoUrl(data.photo_spec) || data.photo_spec;
+    if (data.photo_tag) rowEl.dataset.photoTag = normalizePhotoUrl(data.photo_tag) || data.photo_tag;
+    rowEl.dataset.status = data.status;
+
+    const controlText = formatControlLabel(rowEl.dataset.control, data.row);
+    const descText = rowEl.dataset.description || '...';
+    const ativoText = rowEl.dataset.ativo || data.ativo || data.valuation?.ativo || '';
+    const ctrlEsc = (rowEl.dataset.control || '').replace(/'/g, "\\'");
+
+    const btnHtml = data.status === 'Concluído' && rowEl.dataset.eval_id ?
+        `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${rowEl.dataset.eval_id}, ${data.row}, '${ctrlEsc}')">Revisar</button>` :
+        `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
+
+    rowEl.innerHTML = `
+        <td>${controlText}</td>
+        <td title="${ativoText || descText}">${formatEvalAssetCell(ativoText, descText)}</td>
+        <td style="color: ${statusColor}; font-weight: bold;">${data.status}</td>
+        <td>${(data.tokens || 0).toLocaleString()}</td>
+        <td>${btnHtml}</td>
+    `;
+
+    rowEl.style.cursor = 'pointer';
+    rowEl.onclick = (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        document.querySelectorAll('#evaluationTable tr').forEach(r => r.classList.remove('selected-row'));
+        rowEl.classList.add('selected-row');
+        loadSidePanelDetails(
+            rowEl.dataset.eval_id || null,
+            data.row,
+            rowEl.dataset.control,
+            rowEl.dataset.photoUrl,
+            rowEl.dataset.photoSpec,
+            rowEl.dataset.photoTag,
+            rowEl.dataset.description
+        );
+    };
+
+    if (data.status === 'Avaliando' || data.status === 'Concluído' || (data.status && data.status.startsWith('Erro'))) {
+        document.querySelectorAll('#evaluationTable tr').forEach(r => r.classList.remove('selected-row'));
+        rowEl.classList.add('selected-row');
+        loadSidePanelDetails(
+            data.eval_id || null,
+            data.row,
+            data.control || rowEl.dataset.control,
+            normalizePhotoUrl(data.photo_url) || rowEl.dataset.photoUrl,
+            normalizePhotoUrl(data.photo_spec) || rowEl.dataset.photoSpec,
+            normalizePhotoUrl(data.photo_tag) || rowEl.dataset.photoTag,
+            data.description || rowEl.dataset.description
+        );
+        updateSideConservationAge(data);
+        updateSideValuation(data);
+    }
+
+    const container = rowEl.closest('.data-table-container');
+    if (container) container.scrollTop = container.scrollHeight;
+}
 
 async function loadSpreadsheetRowsForEvaluation() {
     const tbody = document.getElementById('evaluationTableBody');
     if (!tbody) return;
     
     // Se o EventSource estiver ativo ou se o botão de play estiver desabilitado (está rodando), não recarrega.
-    if (evaluationEventSource !== null || document.getElementById('btnPlay').disabled) {
+    if (evaluationEventSource !== null || browserEvaluationRunning || document.getElementById('btnPlay').disabled) {
         return;
     }
     
@@ -869,9 +1031,9 @@ async function loadSpreadsheetRowsForEvaluation() {
             const controlVal = controlLetter ? row[controlLetter] : null;
             const descText = descLetter ? row[descLetter] : "Item sem descrição";
             const assetText = assetLetter ? row[assetLetter] : '';
-            const fotoUrl = photoUrlLetter ? row[photoUrlLetter] : "Sem foto";
-            const fotoSpec = photoSpecLetter ? row[photoSpecLetter] : "Sem foto especificação";
-            const fotoTag = photoTagLetter ? row[photoTagLetter] : "Sem foto tag";
+            const fotoUrl = normalizePhotoUrl(photoUrlLetter ? row[photoUrlLetter] : null) || "Sem foto";
+            const fotoSpec = normalizePhotoUrl(photoSpecLetter ? row[photoSpecLetter] : null) || "Sem foto especificação";
+            const fotoTag = normalizePhotoUrl(photoTagLetter ? row[photoTagLetter] : null) || "Sem foto tag";
             const link1Val = link1Letter ? row[link1Letter] : null;
             
             // Determinar status
@@ -884,7 +1046,8 @@ async function loadSpreadsheetRowsForEvaluation() {
             }
             
             const rowEl = document.createElement('tr');
-            rowEl.id = `eval_row_${rowIdx}`;
+            rowEl.id = evalRowId(rowIdx, controlVal);
+            rowEl.dataset.rowIndex = rowIdx;
             
             // Atribuir datasets para uso no side panel e no play loop
             if (controlVal) rowEl.dataset.control = controlVal;
@@ -895,7 +1058,7 @@ async function loadSpreadsheetRowsForEvaluation() {
             rowEl.dataset.photoTag = fotoTag;
             rowEl.dataset.status = status;
             
-            const controlText = controlVal ? `Item ${controlVal}` : `Linha ${rowIdx}`;
+            const controlText = formatControlLabel(controlVal, rowIdx);
             
             let statusColor = 'var(--text-color)';
             if (status === 'Ignorado') statusColor = 'var(--text-muted)';
@@ -946,8 +1109,10 @@ async function startEvaluation() {
     const runAge = document.getElementById('cb_age').checked;
     const runConservation = document.getElementById('cb_conservation').checked;
     const runMarket = document.getElementById('cb_market').checked;
+    const runCategoria = document.getElementById('cb_categoria').checked;
+    const runAtivo = document.getElementById('cb_ativo').checked;
 
-    if (!runTag && !runAge && !runConservation && !runMarket) {
+    if (!runTag && !runAge && !runConservation && !runMarket && !runCategoria && !runAtivo) {
         showAlert('Selecione pelo menos uma tarefa para executar', 'warning');
         return;
     }
@@ -955,31 +1120,44 @@ async function startEvaluation() {
     document.getElementById('btnPlay').disabled = true;
     document.getElementById('btnPause').disabled = false;
 
-    // Garantir que a tabela está carregada
     if (document.getElementById('evaluationTableBody').children.length === 0) {
         await loadSpreadsheetRowsForEvaluation();
     }
-    
+
     const pendingAtStart = parseInt(document.getElementById('countPending').textContent) || 0;
     const ignoredAtStart = parseInt(document.getElementById('countIgnored').textContent) || 0;
+    const counters = { pending: pendingAtStart, processing: 0, done: 0, ignored: ignoredAtStart };
 
-    const counters = {
-        pending: pendingAtStart,
-        processing: 0,
-        done: 0,
-        ignored: ignoredAtStart
-    };
-    
-    function updateCountersUI() {
-        document.getElementById('countPending').textContent = counters.pending;
-        document.getElementById('countProcessing').textContent = counters.processing;
-        document.getElementById('countDone').textContent = counters.done;
-        document.getElementById('countIgnored').textContent = counters.ignored;
+    if (!hasRemoteApi()) {
+        if (typeof browserRunEvaluation !== 'function') {
+            showAlert('Motor de avaliação do navegador indisponível.', 'error');
+            document.getElementById('btnPlay').disabled = false;
+            document.getElementById('btnPause').disabled = true;
+            return;
+        }
+        try {
+            browserEvaluationRunning = true;
+            const sessionData = await apiFetch('/api/session-state');
+            await browserRunEvaluation({
+                model,
+                runTag,
+                runAge,
+                runConservation,
+                runMarket,
+                runCategoria,
+                runAtivo,
+                mappings: sessionData.column_mappings || {}
+            }, (data) => processEvaluationEvent(data, counters, pendingAtStart));
+        } catch (e) {
+            showAlert('Erro na avaliação: ' + e.message, 'error');
+        } finally {
+            browserEvaluationRunning = false;
+            document.getElementById('btnPlay').disabled = false;
+            document.getElementById('btnPause').disabled = true;
+        }
+        return;
     }
-    
-    updateCountersUI();
 
-    // Initialize SSE or modo navegador
     const query = new URLSearchParams({
         model: model,
         run_tag: runTag,
@@ -988,141 +1166,21 @@ async function startEvaluation() {
         run_market: runMarket
     });
 
-    if (!hasRemoteApi()) {
-        showAlert('Avaliação completa requer API no servidor. Configure Cloud Run ou use apiBase na URL.', 'warning');
-        document.getElementById('btnPlay').disabled = false;
-        document.getElementById('btnPause').disabled = true;
-        return;
-    }
-
     evaluationEventSource = new EventSource(apiUrl(`/api/start-evaluation?${query.toString()}`));
 
     evaluationEventSource.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        
         if (data.status === 'finished') {
             evaluationEventSource.close();
             evaluationEventSource = null;
-            document.getElementById('btnPlay').disabled = false;
-            document.getElementById('btnPause').disabled = true;
-            counters.processing = 0;
-            updateCountersUI();
-            showAlert('Avaliação finalizada!', 'success');
-            loadSpreadsheetRegistry();
-            return;
         }
-
-        if (data.status && data.status.startsWith('Erro Orquestrador')) {
-            showAlert(data.status, 'error');
-            return;
-        }
-
-        if (data.status === 'error') {
-            showAlert('Erro: ' + data.message, 'error');
-            return;
-        }
-
-        // Update token counter
-        if (data.tokens) {
-            document.getElementById('tokenCounter').textContent = data.tokens.toLocaleString();
-        }
-
-        // Handle counters
-        if (data.status === 'Avaliando') {
-            counters.processing = 1;
-            counters.pending = Math.max(0, pendingAtStart - counters.done - 1);
-            updateCountersUI();
-        } else if (data.status === 'Ignorado') {
-            counters.processing = 0;
-            // Se já estava ignorado na carga inicial, não faz nada com contador ignored
-        } else if (data.status === 'Concluído' || data.status.includes('Concluído')) {
-            counters.processing = 0;
-            counters.done++;
-            counters.pending = Math.max(0, pendingAtStart - counters.done);
-            updateCountersUI();
-        }
-
-        // Update table row
-        let rowEl = document.getElementById(`eval_row_${data.row}`);
-        if (!rowEl) {
-            rowEl = document.createElement('tr');
-            rowEl.id = `eval_row_${data.row}`;
-            document.getElementById('evaluationTableBody').appendChild(rowEl);
-        }
-
-        let statusColor = 'var(--text-color)';
-        if (data.status === 'Concluído') statusColor = 'var(--status-ok)';
-        if (data.status.includes('Erro')) statusColor = 'var(--status-error)';
-        if (data.status === 'Avaliando') statusColor = 'var(--status-info)';
-
-        // Preserve data across events
-        if (data.control) rowEl.dataset.control = data.control;
-        if (data.description) rowEl.dataset.description = data.description;
-        if (data.ativo) rowEl.dataset.ativo = data.ativo;
-        else if (data.valuation?.ativo) rowEl.dataset.ativo = data.valuation.ativo;
-        if (data.eval_id) rowEl.dataset.eval_id = data.eval_id;
-        if (data.photo_url) rowEl.dataset.photoUrl = data.photo_url;
-        if (data.photo_spec) rowEl.dataset.photoSpec = data.photo_spec;
-        if (data.photo_tag) rowEl.dataset.photoTag = data.photo_tag;
-        rowEl.dataset.status = data.status;
-
-        const controlText = rowEl.dataset.control ? `Item ${rowEl.dataset.control}` : `Linha ${data.row}`;
-        const descText = rowEl.dataset.description || '...';
-        const ativoText = rowEl.dataset.ativo || data.ativo || data.valuation?.ativo || '';
-        
-        const btnHtml = data.status === 'Concluído' && rowEl.dataset.eval_id ? 
-            `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${rowEl.dataset.eval_id}, ${data.row}, '${rowEl.dataset.control || ''}')">Revisar</button>` :
-            `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
-
-        rowEl.innerHTML = `
-            <td>${controlText}</td>
-            <td title="${ativoText || descText}">${formatEvalAssetCell(ativoText, descText)}</td>
-            <td style="color: ${statusColor}; font-weight: bold;">${data.status}</td>
-            <td>${(data.tokens || 0).toLocaleString()}</td>
-            <td>${btnHtml}</td>
-        `;
-        
-        rowEl.style.cursor = 'pointer';
-        rowEl.onclick = (e) => {
-            if (e.target.tagName === 'BUTTON') return;
-            document.querySelectorAll('#evaluationTable tr').forEach(r => r.classList.remove('selected-row'));
-            rowEl.classList.add('selected-row');
-            loadSidePanelDetails(
-                rowEl.dataset.eval_id || null, 
-                data.row, 
-                rowEl.dataset.control, 
-                rowEl.dataset.photoUrl, 
-                rowEl.dataset.photoSpec, 
-                rowEl.dataset.photoTag, 
-                rowEl.dataset.description
-            );
-        };
-
-        // Auto-select and show in side panel
-        if (data.status === 'Avaliando' || data.status === 'Concluído' || data.status.startsWith('Erro')) {
-            document.querySelectorAll('#evaluationTable tr').forEach(r => r.classList.remove('selected-row'));
-            rowEl.classList.add('selected-row');
-            loadSidePanelDetails(
-                data.eval_id || null, 
-                data.row, 
-                data.control || rowEl.dataset.control, 
-                data.photo_url || rowEl.dataset.photoUrl, 
-                data.photo_spec || rowEl.dataset.photoSpec, 
-                data.photo_tag || rowEl.dataset.photoTag, 
-                data.description || rowEl.dataset.description
-            );
-            updateSideConservationAge(data);
-            updateSideValuation(data);
-        }
-
-        // Scroll to bottom
-        const container = rowEl.closest('.data-table-container');
-        container.scrollTop = container.scrollHeight;
+        processEvaluationEvent(data, counters, pendingAtStart);
     };
 
     evaluationEventSource.onerror = function(err) {
         console.error("SSE Error:", err);
         evaluationEventSource.close();
+        evaluationEventSource = null;
         document.getElementById('btnPlay').disabled = false;
         document.getElementById('btnPause').disabled = true;
         showAlert('Conexão perdida ou finalizada com erro.', 'error');
@@ -1130,14 +1188,17 @@ async function startEvaluation() {
 }
 
 async function pauseEvaluation() {
+    window.__afs_eval_paused = true;
     if (evaluationEventSource) {
         evaluationEventSource.close();
+        evaluationEventSource = null;
     }
+    browserEvaluationRunning = false;
     document.getElementById('btnPlay').disabled = false;
     document.getElementById('btnPause').disabled = true;
-    
+
     try {
-        await fetch(apiUrl('/api/pause-evaluation'), { method: 'POST' });
+        await apiFetch('/api/pause-evaluation', { method: 'POST' });
         showAlert('Avaliação pausada pelo usuário.', 'info');
     } catch (e) {
         console.warn(e);
@@ -1173,8 +1234,7 @@ async function openReviewModal(evalId, row, control) {
     document.getElementById('reviewModal').style.display = 'flex';
     
     try {
-        const res = await fetch(apiUrl(`/api/evaluation/${evalId}`));
-        const data = await res.json();
+        const data = await apiFetch(`/api/evaluation/${evalId}`);
         
         if (data.status === 'ok') {
             const ev = data.evaluation;
@@ -1343,8 +1403,7 @@ async function openGalleryModal() {
     updateGalleryPhotoUI();
 
     try {
-        const res = await fetch(apiUrl('/api/evaluations'));
-        const data = await res.json();
+        const data = await apiFetch('/api/evaluations');
         
         if (data.status === 'ok') {
             if (data.evaluations.length === 0) {
@@ -1505,16 +1564,21 @@ function updateSidePhotoUI() {
 async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, photoTag, description) {
     currentSideRow = row;
     
-    document.getElementById('sideActiveItem').textContent = `Controle: ${control || '-'}`;
+    document.getElementById('sideActiveItem').textContent = `Controle: ${formatControlLabel(control, null)}`;
     document.getElementById('sideDescOriginal').textContent = description || 'Sem descrição';
     const ativoEl = document.getElementById('sideAsset');
+    const catEl = document.getElementById('sideCategoria');
     if (ativoEl) ativoEl.textContent = '-';
+    if (catEl) catEl.textContent = '-';
     
     // Set photos list using objects for proper categorization
     sidePhotos = [];
-    if (isValidPhotoUrl(photoUrl)) sidePhotos.push({ url: photoUrl, type: 'Foto do Bem' });
-    if (isValidPhotoUrl(photoSpec)) sidePhotos.push({ url: photoSpec, type: 'Foto Especificações' });
-    if (isValidPhotoUrl(photoTag)) sidePhotos.push({ url: photoTag, type: 'Foto da TAG' });
+    const pUrl = normalizePhotoUrl(photoUrl);
+    const pSpec = normalizePhotoUrl(photoSpec);
+    const pTag = normalizePhotoUrl(photoTag);
+    if (isValidPhotoUrl(pUrl)) sidePhotos.push({ url: pUrl, type: 'Foto do Bem' });
+    if (isValidPhotoUrl(pSpec)) sidePhotos.push({ url: pSpec, type: 'Foto Especificações' });
+    if (isValidPhotoUrl(pTag)) sidePhotos.push({ url: pTag, type: 'Foto da TAG' });
     
     currentSidePhotoIndex = 0;
     updateSidePhotoUI();
@@ -1547,6 +1611,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
         if (data.status === 'ok') {
             const ev = data.evaluation;
             if (ativoEl) ativoEl.textContent = ev.asset_normalized || '-';
+            if (catEl) catEl.textContent = ev.category_normalized || '-';
             document.getElementById('sideDescIA').textContent = ev.asset_description || description;
             document.getElementById('sideMethodology').textContent = ev.methodology || 'Não informada';
             
@@ -1682,6 +1747,7 @@ async function activateSpreadsheet(filename) {
         const preview = data.preview || data;
         const sessionData = await apiFetch('/api/session-state');
         sessionData.spreadsheet_preview = preview;
+        if (data.column_mappings) sessionData.column_mappings = data.column_mappings;
         await restoreSpreadsheetMappingUI(sessionData);
         showAlert(`Planilha "${filename}" selecionada.`, 'success');
         loadSpreadsheetRegistry();

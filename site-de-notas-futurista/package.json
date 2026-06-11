@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-afs-static.mjs",
+    "predev": "node scripts/copy-afs-static.mjs && node scripts/copy-afs-market-static.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/copy-afs-static.mjs",
+    "prebuild": "node scripts/copy-afs-static.mjs && node scripts/copy-afs-market-static.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."

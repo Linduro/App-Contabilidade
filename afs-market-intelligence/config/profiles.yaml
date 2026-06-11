@@ -1,0 +1,43 @@
+# Perfis adaptáveis — AFS patrimonial + uso genérico do sócio
+
+profiles:
+  patrimonial:
+    label: "Conformidade Patrimonial AFS"
+    description: "ICP padrão Lucro Real, clusters Agro/Indústria/Varejo"
+    icp_config: "icp.yaml"
+    clusters_config: "clusters.yaml"
+    enable_regime_monitor: true
+    enable_dead_zone: true
+    enable_feedback: true
+    export_tabs: ["leads_prontos", "dead_zone", "transicao_regime", "parceiros"]
+
+  generico:
+    label: "Busca Genérica"
+    description: "Filtros livres para propósitos diversos do sócio"
+    icp_config: null
+    custom_filters:
+      capital_social_min: 0
+      uf: []
+      cnae_prefixos: []
+      filiais_min: 0
+    enable_regime_monitor: false
+    enable_dead_zone: true
+    enable_feedback: true
+    export_tabs: ["leads_prontos", "dead_zone"]
+
+  transicao_regime:
+    label: "Monitor Transição de Regime"
+    description: "Empresas migrando Presumido → Lucro Real"
+    icp_config: "icp.yaml"
+    enable_regime_monitor: true
+    regime_monitor_only: true
+    export_tabs: ["transicao_regime", "leads_prontos"]
+
+  parceiros_auditoria:
+    label: "Canal B2B2B Auditoria"
+    description: "Funil de parceria com bancas médias"
+    icp_config: null
+    enable_partnerships: true
+    export_tabs: ["parceiros", "leads_prontos"]
+
+default_profile: patrimonial

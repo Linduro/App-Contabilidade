@@ -1,0 +1,59 @@
+# Perfil de Cliente Ideal — Asset Flow Solutions
+# Lucro Real · Capital ≥ R$ 2M · CNAEs estratégicos · >3 filiais
+
+icp:
+  capital_social_min: 2000000
+  filiais_min: 3
+  situacao_cadastral: ["02"]  # Ativa
+  porte_permitido: ["05", "03", "01"]  # Demais, EPP, ME (ajustar conforme RF)
+
+  # Proxy para Lucro Real (regime nem sempre explícito na RF)
+  regime_proxy:
+    capital_social_min: 2000000
+    natureza_juridica:
+      - "2062"  # Ltda
+      - "2054"  # S/A Fechada
+      - "2046"  # S/A Aberta
+    cnae_excluir:
+      - "84"    # Administração pública
+      - "94"    # Organismos internacionais
+
+  cnae_obrigatorio_prefixos:
+    agro:
+      - "01"
+      - "02"
+      - "03"
+    industria:
+      - "10"
+      - "11"
+      - "13"
+      - "14"
+      - "15"
+      - "16"
+      - "17"
+      - "20"
+      - "21"
+      - "22"
+      - "23"
+      - "24"
+      - "25"
+      - "26"
+      - "27"
+      - "28"
+      - "29"
+      - "30"
+      - "31"
+      - "32"
+      - "33"
+    varejo:
+      - "45"
+      - "46"
+      - "47"
+
+  universo_estimado: 230000
+
+scoring:
+  peso_capital: 0.25
+  peso_filiais: 0.20
+  peso_cluster: 0.25
+  peso_transicao_regime: 0.30

@@ -1,0 +1,30 @@
+# Clusters estratégicos AFS
+
+clusters:
+  agro:
+    label: "Agro"
+    foco: "Ativos biológicos, maquinário disperso, CPC 27"
+    cnae_prefixos: ["01", "02", "03"]
+    dor_comercial: "Controle patrimonial em múltiplas propriedades rurais"
+    script_abordagem: "conformidade_ativos_biologicos"
+
+  industria:
+    label: "Indústria"
+    foco: "Auditoria e laudos CPC 01/27"
+    cnae_prefixos: ["10", "11", "13", "14", "15", "16", "17", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33"]
+    dor_comercial: "Imobilizado complexo e laudos anuais caros"
+    script_abordagem: "substituicao_laudo_tradicional"
+
+  varejo:
+    label: "Varejo"
+    foco: "Furos de estoque/imobilizado multi-loja"
+    cnae_prefixos: ["45", "46", "47"]
+    dor_comercial: "Dispersão de PDVs sem controle patrimonial unificado"
+    script_abordagem: "controle_multi_loja"
+
+  outro:
+    label: "Outro"
+    foco: "Busca genérica"
+    cnae_prefixos: []
+    dor_comercial: "A definir pelo perfil"
+    script_abordagem: "generico"

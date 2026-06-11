@@ -96,16 +96,16 @@ def save_evaluation(asset_description, methodology=None, value_new=None,
                     value_used=None, value_fipe=None, apparent_age=None,
                     conservation_state=None, links=None, reasoning=None,
                     photo_url=None, photo_spec=None, photo_tag=None,
-                    asset_normalized=None):
+                    asset_normalized=None, category_normalized=None):
     """Salva uma avaliação realizada."""
     try:
         conn = get_connection()
         cursor = conn.execute(
             "INSERT INTO evaluations "
-            "(asset_description, asset_normalized, methodology, value_new, value_used, value_fipe, "
+            "(asset_description, asset_normalized, category_normalized, methodology, value_new, value_used, value_fipe, "
             "apparent_age, conservation_state, links, reasoning, photo_url, photo_spec, photo_tag) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (asset_description, asset_normalized, methodology, value_new, value_used, value_fipe,
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (asset_description, asset_normalized, category_normalized, methodology, value_new, value_used, value_fipe,
              apparent_age, conservation_state, links, reasoning, photo_url, photo_spec, photo_tag)
         )
         conn.commit()

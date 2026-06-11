@@ -10,15 +10,21 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
     NEXT_PUBLIC_AFS_API_URL: process.env.NEXT_PUBLIC_AFS_API_URL ?? '',
+    NEXT_PUBLIC_AFS_MARKET_API_URL: process.env.NEXT_PUBLIC_AFS_MARKET_API_URL ?? '',
     NEXT_PUBLIC_GITHUB_PAGES: isGithubPages ? 'true' : '',
   },
   async rewrites() {
     if (isGithubPages) return []
-    const apiPrefix = basePath ? `${basePath}/afs-api` : '/afs-api'
+    const afsApiPrefix = basePath ? `${basePath}/afs-api` : '/afs-api'
+    const marketApiPrefix = basePath ? `${basePath}/afs-market-api` : '/afs-market-api'
     return [
       {
-        source: `${apiPrefix}/:path*`,
+        source: `${afsApiPrefix}/:path*`,
         destination: 'http://127.0.0.1:5000/api/:path*',
+      },
+      {
+        source: `${marketApiPrefix}/:path*`,
+        destination: 'http://127.0.0.1:5001/api/:path*',
       },
     ]
   },

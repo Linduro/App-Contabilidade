@@ -1,0 +1,9 @@
+data/
+data/rf/raw/
+data/exports/
+*.duckdb
+*.log
+.env
+.venv/
+__pycache__/
+*.pyc
