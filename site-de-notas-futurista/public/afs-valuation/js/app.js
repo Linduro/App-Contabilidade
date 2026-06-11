@@ -16,21 +16,38 @@ function apiUrl(path) {
     return `${base}${normalized}`;
 }
 
+function hasRemoteApi() {
+    const base = getAfsApiBase();
+    return Boolean(base && base.trim());
+}
+
 async function loadApiConfig() {
     try {
         const configPath = window.location.pathname.replace(/\/[^/]*$/, '/config.json');
         const res = await fetch(`${configPath}?t=${Date.now()}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            window.__AFS_API_BASE__ = '';
+            return;
+        }
         const cfg = await res.json();
         if (cfg.apiBase && String(cfg.apiBase).trim()) {
             window.__AFS_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+        } else {
+            window.__AFS_API_BASE__ = '';
         }
     } catch (e) {
-        console.warn('Config API não carregada:', e);
+        window.__AFS_API_BASE__ = '';
+        console.warn('Config API não carregada — modo navegador:', e);
     }
 }
 
 async function apiFetch(path, options = {}) {
+    if (!hasRemoteApi()) {
+        if (typeof browserApiFetch === 'function') {
+            return browserApiFetch(path, options);
+        }
+        throw new Error('Modo navegador indisponível');
+    }
     const res = await fetch(apiUrl(path), options);
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
@@ -157,8 +174,9 @@ function unlockTab(tabId) {
 // ---------- Session State ----------
 async function loadSessionState() {
     try {
-        const res = await fetch(apiUrl('/api/session-state'));
-        const data = await res.json();
+        const data = hasRemoteApi()
+            ? await (await fetch(apiUrl('/api/session-state'))).json()
+            : await apiFetch('/api/session-state');
         
         if (data.has_api_key) {
             state.hasApiKey = true;
@@ -324,18 +342,18 @@ async function handleFileUpload(file) {
     zone.classList.add('has-file');
 
     // Upload
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
         showAlert('Enviando planilha...', 'info');
 
-        const res = await fetch(apiUrl('/api/upload'), {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await res.json();
+        let data;
+        if (!hasRemoteApi()) {
+            data = await browserHandleUpload(file);
+        } else {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(apiUrl('/api/upload'), { method: 'POST', body: formData });
+            data = await res.json();
+        }
 
         if (data.status === 'ok') {
             state.hasSpreadsheet = true;
@@ -388,8 +406,9 @@ async function buildMappingUI(spreadsheetData) {
     // Fetch field definitions
     let fields;
     try {
-        const res = await fetch(apiUrl('/api/fields'));
-        fields = await res.json();
+        fields = hasRemoteApi()
+            ? await (await fetch(apiUrl('/api/fields'))).json()
+            : await apiFetch('/api/fields');
     } catch (e) {
         showAlert('Erro ao carregar campos: ' + e.message, 'error');
         return;
@@ -836,7 +855,7 @@ async function startEvaluation() {
     
     updateCountersUI();
 
-    // Initialize SSE
+    // Initialize SSE or modo navegador
     const query = new URLSearchParams({
         model: model,
         run_tag: runTag,
@@ -844,6 +863,13 @@ async function startEvaluation() {
         run_conservation: runConservation,
         run_market: runMarket
     });
+
+    if (!hasRemoteApi()) {
+        showAlert('Avaliação completa requer API no servidor. Configure Cloud Run ou use apiBase na URL.', 'warning');
+        document.getElementById('btnPlay').disabled = false;
+        document.getElementById('btnPause').disabled = true;
+        return;
+    }
 
     evaluationEventSource = new EventSource(apiUrl(`/api/start-evaluation?${query.toString()}`));
 

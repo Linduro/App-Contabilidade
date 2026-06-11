@@ -21,27 +21,26 @@ function buildIndexHtml() {
     .replace(/\{% endblock %\}\s*$/, "")
 
   const configScript = `
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script>
       (function () {
         var params = new URLSearchParams(window.location.search);
         var fromQuery = params.get("apiBase");
         if (fromQuery) {
           window.__AFS_API_BASE__ = fromQuery.replace(/\\/$/, "");
-          return;
         }
-        var match = window.location.pathname.match(/^(.*)\\/afs-valuation(?:\\/|$)/);
-        window.__AFS_API_BASE__ = match ? match[1] + "/afs-api" : "";
       })();
-    </script>`
+    </script>
+    <script src="./js/browser-api.js?v=1"></script>`
 
   return baseHtml
     .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=5"',
+      'href="./css/style.css?v=6"',
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=5"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=6"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }
@@ -52,6 +51,10 @@ ensureDir(path.join(outDir, "js"))
 fs.copyFileSync(
   path.join(afsRoot, "static", "css", "style.css"),
   path.join(outDir, "css", "style.css"),
+)
+fs.copyFileSync(
+  path.join(afsRoot, "static", "js", "browser-api.js"),
+  path.join(outDir, "js", "browser-api.js"),
 )
 fs.copyFileSync(
   path.join(afsRoot, "static", "js", "app.js"),
