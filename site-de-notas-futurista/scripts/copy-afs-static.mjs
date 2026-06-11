@@ -60,10 +60,18 @@ fs.copyFileSync(
 fs.writeFileSync(path.join(outDir, "index.html"), buildIndexHtml(), "utf8")
 
 const apiBase = process.env.AFS_API_URL || process.env.NEXT_PUBLIC_AFS_API_URL || ""
-fs.writeFileSync(
-  path.join(outDir, "config.json"),
-  JSON.stringify({ apiBase: apiBase.replace(/\/$/, "") }, null, 2),
-  "utf8",
-)
+let configToWrite = { apiBase: apiBase.replace(/\/$/, "") }
+
+const configOutPath = path.join(outDir, "config.json")
+if (!configToWrite.apiBase && fs.existsSync(configOutPath)) {
+  try {
+    const existing = JSON.parse(fs.readFileSync(configOutPath, "utf8"))
+    if (existing.apiBase) configToWrite = existing
+  } catch {
+    /* keep env value */
+  }
+}
+
+fs.writeFileSync(configOutPath, JSON.stringify(configToWrite, null, 2), "utf8")
 
 console.log("AFS static assets copied to public/afs-valuation/")

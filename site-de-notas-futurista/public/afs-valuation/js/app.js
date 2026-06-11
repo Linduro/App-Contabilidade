@@ -37,7 +37,7 @@ async function apiFetch(path, options = {}) {
         const preview = (await res.text()).slice(0, 80);
         if (preview.trimStart().startsWith('<')) {
             throw new Error(
-                'Servidor da API indisponível. Aguarde o deploy ou verifique AFS_API_URL no GitHub.'
+                'Servidor da API indisponível. O deploy automático está em andamento — aguarde alguns minutos e recarregue a página.'
             );
         }
         throw new Error('Resposta inválida do servidor');
