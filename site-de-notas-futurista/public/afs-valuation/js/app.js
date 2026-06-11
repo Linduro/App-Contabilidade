@@ -584,13 +584,11 @@ async function saveMappings() {
     }
 
     try {
-        const res = await fetch(apiUrl('/api/column-mappings'), {
+        const data = await apiFetch('/api/column-mappings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mappings })
         });
-
-        const data = await res.json();
 
         if (data.status === 'ok') {
             state.hasMappings = true;
@@ -619,8 +617,7 @@ async function finalizeInit() {
     setLoading(btn, true);
 
     try {
-        const res = await fetch(apiUrl('/api/finalize-init'), { method: 'POST' });
-        const data = await res.json();
+        const data = await apiFetch('/api/finalize-init', { method: 'POST' });
 
         if (data.status === 'ok') {
             state.initialized = true;
@@ -711,8 +708,7 @@ async function loadSpreadsheetRowsForEvaluation() {
     
     try {
         // Obter mapeamento de colunas do banco/sessão
-        const sessionRes = await fetch(apiUrl('/api/session-state'));
-        const sessionData = await sessionRes.json();
+        const sessionData = await apiFetch('/api/session-state');
         const mappings = sessionData.column_mappings || {};
         
         // Letras das colunas mapeadas
@@ -723,8 +719,7 @@ async function loadSpreadsheetRowsForEvaluation() {
         const photoSpecLetter = mappings.photo_spec || '';
         const photoTagLetter = mappings.photo_tag || '';
         
-        const res = await fetch(apiUrl('/api/spreadsheet-data'));
-        const data = await res.json();
+        const data = await apiFetch('/api/spreadsheet-data');
         
         if (data.status !== 'ok') {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--status-error);">Erro ao carregar ativos: ${data.message || 'Erro desconhecido'}</td></tr>`;
