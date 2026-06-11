@@ -12,30 +12,49 @@ logger = logging.getLogger(__name__)
 
 def build_photo_lookup(filepath):
     """
-    Constrói um dicionário de busca para fotos a partir da aba 'Foto do Bem'.
-    Retorna dict {chave_normalizada: url_publica}
+    Constrói lookup de fotos a partir da aba 'Foto do Bem'.
+    Chave na coluna BB (fallback B), URL na coluna DD (fallback D).
     """
     lookup = {}
     try:
+        from openpyxl.utils import column_index_from_string
         wb = openpyxl.load_workbook(filepath, data_only=True)
-        if "Foto do Bem" in wb.sheetnames:
-            ws = wb["Foto do Bem"]
-            for row in ws.iter_rows(min_row=2, max_col=4, values_only=True):
-                # row[1] é coluna B (Chave), row[3] é coluna D (URL)
-                if len(row) >= 4:
-                    key = row[1]
-                    url = row[3]
-                    if key is not None and url is not None:
-                        key_str = str(key).strip()
-                        url_str = str(url).strip()
-                        if key_str and url_str:
-                            lookup[key_str] = url_str
-            logger.info("[CAMADA 2][excel][reader.build_photo_lookup] Carregadas %d fotos da aba 'Foto do Bem'", len(lookup))
-        else:
-            logger.warning("[CAMADA 2][excel][reader.build_photo_lookup] Aba 'Foto do Bem' não encontrada na planilha")
+        if "Foto do Bem" not in wb.sheetnames:
+            logger.warning("[CAMADA 2][excel][reader.build_photo_lookup] Aba 'Foto do Bem' não encontrada")
+            wb.close()
+            return lookup
+
+        ws = wb["Foto do Bem"]
+        col_pairs = [("BB", "DD"), ("B", "D")]
+
+        for key_col, url_col in col_pairs:
+            key_idx = column_index_from_string(key_col) - 1
+            url_idx = column_index_from_string(url_col) - 1
+            found = 0
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if len(row) <= url_idx:
+                    continue
+                key = row[key_idx]
+                url = row[url_idx]
+                if key is None or url is None:
+                    continue
+                key_str = str(key).strip()
+                url_str = str(url).strip()
+                if not key_str or not url_str:
+                    continue
+                if key_str not in lookup:
+                    lookup[key_str] = url_str
+                    found += 1
+            if found > 0:
+                logger.info(
+                    "[CAMADA 2][excel][reader.build_photo_lookup] %d fotos via %s→%s",
+                    found, key_col, url_col
+                )
+                break
+
         wb.close()
     except Exception as e:
-        logger.error("[CAMADA 2][excel][reader.build_photo_lookup] Erro ao construir lookup de fotos: %s", str(e))
+        logger.error("[CAMADA 2][excel][reader.build_photo_lookup] %s", str(e))
     return lookup
 
 
@@ -184,7 +203,7 @@ def read_data(filepath, sheet_index=0, header_row=1, max_rows=None, column_mappi
             if not has_data:
                 continue
 
-            # Segundo pass: resolver fotos usando coluna A como ID do bem
+            # Segundo pass: resolver fotos usando coluna A como ID do bem (chave foto)
             asset_id = raw_row.get("A")
             for col_idx in range(1, ws.max_column + 1):
                 letter = get_column_letter(col_idx)
@@ -208,25 +227,23 @@ def read_data(filepath, sheet_index=0, header_row=1, max_rows=None, column_mappi
                                 is_photo_col = True
                                 photo_idx = "2"
 
-                # 2. Auto-detect se valor for "Foto"
-                if not is_photo_col and val == "Foto":
+                if not is_photo_col and (val == "Foto" or (val and str(val).strip().lower() == "foto")):
                     header_name = headers.get(letter, "").lower()
-                    if any(kw in header_name for kw in ["foto do bem 1", "foto do ativo", "foto original"]):
-                        is_photo_col = True
-                        photo_idx = "0"
-                    elif any(kw in header_name for kw in ["foto especificações", "foto especificação", "foto especificacoes", "foto especificacao", "foto do bem 2"]):
+                    if any(kw in header_name for kw in ["foto do bem 2", "foto especificações", "foto especificação", "foto especificacoes", "foto especificacao"]):
                         is_photo_col = True
                         photo_idx = "1"
                     elif any(kw in header_name for kw in ["foto da tag", "foto tag", "foto da plaqueta", "foto do bem 3"]):
                         is_photo_col = True
                         photo_idx = "2"
+                    elif any(kw in header_name for kw in ["foto do bem 1", "foto do ativo", "foto original", "foto do bem"]):
+                        is_photo_col = True
+                        photo_idx = "0"
                     else:
                         is_photo_col = True
                         photo_idx = "0"
 
                 if is_photo_col and asset_id is not None:
-                    # Normalizar o asset ID
-                    if isinstance(asset_id, float) and asset_id.is_integer():
+                    if isinstance(asset_id, float) and asset_id == int(asset_id):
                         asset_id_str = str(int(asset_id))
                     else:
                         asset_id_str = str(asset_id).strip()
@@ -234,8 +251,8 @@ def read_data(filepath, sheet_index=0, header_row=1, max_rows=None, column_mappi
                     key = f"{asset_id_str}.{photo_idx}"
                     if key in photo_lookup:
                         val = photo_lookup[key]
-                    elif val == "Foto":
-                        val = "Sem foto"
+                    elif val == "Foto" or (val and str(val).strip().lower() == "foto"):
+                        val = None
 
                 row_data[letter] = val
             rows.append(row_data)

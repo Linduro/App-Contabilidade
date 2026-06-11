@@ -106,6 +106,29 @@ const state = {
 let currentSideRow = null;
 let currentReviewRow = null;
 
+function resolveRowPhotosForDisplay(row, mappings, spreadsheetMeta) {
+    if (typeof afsCollectPhotosForRow === 'function' && spreadsheetMeta) {
+        const photos = afsCollectPhotosForRow(
+            row,
+            mappings,
+            spreadsheetMeta.photo_lookup || {},
+            spreadsheetMeta.headers || []
+        );
+        if (photos.length) return photos;
+    }
+    const letters = [
+        { letter: mappings.photo_original, type: 'Foto do Bem' },
+        { letter: mappings.photo_spec, type: 'Foto Especificações' },
+        { letter: mappings.photo_tag, type: 'Foto da TAG' }
+    ];
+    const photos = [];
+    for (const { letter, type } of letters) {
+        const url = letter ? normalizePhotoUrl(row[letter]) : null;
+        if (isValidPhotoUrl(url)) photos.push({ url, type });
+    }
+    return photos;
+}
+
 function isValidPhotoUrl(url) {
     const normalized = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(url) : url;
     if (!normalized || typeof normalized !== 'string') return false;
@@ -492,10 +515,13 @@ async function handleFileUpload(file) {
             state.spreadsheetHeaders = data.headers;
             state.spreadsheetData = data;
 
-            fileMeta.textContent = `${(file.size / 1024).toFixed(1)} KB · ${data.total_rows} linhas · ${data.headers.length} colunas`;
+            fileMeta.textContent = `${(file.size / 1024).toFixed(1)} KB · ${data.total_rows} linhas · ${data.headers.length} colunas${data.photo_count != null ? ` · ${data.photo_count} fotos` : ''}`;
 
             updateStep(2, 'completed');
-            showAlert(`Planilha carregada: ${data.total_rows} linhas, ${data.headers.length} colunas`, 'success');
+            const photoMsg = data.photo_count != null
+                ? (data.photo_count > 0 ? ` · ${data.photo_count} fotos indexadas` : ' · aviso: nenhuma foto na aba Foto do Bem (BB→DD)')
+                : '';
+            showAlert(`Planilha carregada: ${data.total_rows} linhas, ${data.headers.length} colunas${photoMsg}`, data.photo_count === 0 ? 'warning' : 'success');
 
             // Show mapping section
             buildMappingUI(data);
@@ -621,7 +647,7 @@ async function buildMappingUI(spreadsheetData) {
         ['conservation_original', 'conservation_output'],
         ['photo_original', 'photo_spec'],
         ['photo_tag', null],
-        ['category_output', 'asset_output', { final: true }]
+        ['category_output', 'asset_output', {}]
     ];
 
     const part2Rows = [
@@ -656,7 +682,7 @@ async function buildMappingUI(spreadsheetData) {
             const leftHtml = buildMappingFieldHtml(leftKey);
             if (!leftHtml && !rightKey) return;
             const rightHtml = rightKey ? buildMappingFieldHtml(rightKey) : '<div class="mapping-item mapping-item-empty" aria-hidden="true"></div>';
-            const rowClass = opts.final ? 'mapping-row mapping-row-final' : 'mapping-row';
+            const rowClass = 'mapping-row';
             container.innerHTML += `<div class="${rowClass}">${leftHtml || '<div class="mapping-item mapping-item-empty"></div>'}${rightHtml}</div>`;
         });
     }
@@ -1008,15 +1034,13 @@ async function loadSpreadsheetRowsForEvaluation() {
         // Obter mapeamento de colunas do banco/sessão
         const sessionData = await apiFetch('/api/session-state');
         const mappings = sessionData.column_mappings || {};
+        const spreadsheetMeta = sessionData.spreadsheet_preview || {};
         
         // Letras das colunas mapeadas
         const link1Letter = mappings.link1 || '';
         const controlLetter = mappings.control || '';
         const descLetter = mappings.desc_original || '';
         const assetLetter = mappings.asset_output || '';
-        const photoUrlLetter = mappings.photo_original || '';
-        const photoSpecLetter = mappings.photo_spec || '';
-        const photoTagLetter = mappings.photo_tag || '';
         
         const data = await apiFetch('/api/spreadsheet-data');
         
@@ -1041,9 +1065,10 @@ async function loadSpreadsheetRowsForEvaluation() {
             const controlVal = controlLetter ? row[controlLetter] : null;
             const descText = descLetter ? row[descLetter] : "Item sem descrição";
             const assetText = assetLetter ? row[assetLetter] : '';
-            const fotoUrl = normalizePhotoUrl(photoUrlLetter ? row[photoUrlLetter] : null) || "Sem foto";
-            const fotoSpec = normalizePhotoUrl(photoSpecLetter ? row[photoSpecLetter] : null) || "Sem foto especificação";
-            const fotoTag = normalizePhotoUrl(photoTagLetter ? row[photoTagLetter] : null) || "Sem foto tag";
+            const rowPhotos = resolveRowPhotosForDisplay(row, mappings, { ...spreadsheetMeta, photo_lookup: data.photo_lookup || spreadsheetMeta.photo_lookup });
+            const fotoUrl = rowPhotos[0]?.url || "Sem foto";
+            const fotoSpec = rowPhotos[1]?.url || "Sem foto especificação";
+            const fotoTag = rowPhotos[2]?.url || "Sem foto tag";
             const link1Val = link1Letter ? row[link1Letter] : null;
             
             // Determinar status
@@ -1094,7 +1119,8 @@ async function loadSpreadsheetRowsForEvaluation() {
                     fotoUrl, 
                     fotoSpec, 
                     fotoTag, 
-                    descText
+                    descText,
+                    rowPhotos
                 );
             };
             
@@ -1269,10 +1295,15 @@ async function openReviewModal(evalId, row, control) {
             
             // Renderizar foto, se houver
             const photoLabel = document.getElementById('modalPhotoLabel');
-            const photoContainer = photoLabel.parentElement.parentElement;
-            if (ev.photo_url && ev.photo_url !== 'Sem foto') {
-                photoContainer.innerHTML = `<img src="${ev.photo_url}" style="max-width:100%; max-height:200px; border-radius:8px;" alt="Foto do Bem" onerror="this.outerHTML='<div style=\\\'text-align:center; color:var(--status-error);\\\'><i class=\\\'fa-solid fa-image-slash fa-2x\\\'></i><br>Erro ao carregar imagem</div>'"/>`;
-            } else {
+            const photoContainer = photoLabel?.parentElement?.parentElement;
+            const photoCandidates = [
+                ev.photo_url, ev.photo_spec, ev.photo_tag
+            ].map(u => typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(u) : u)
+             .filter(u => isValidPhotoUrl(u));
+            if (photoContainer && photoCandidates.length) {
+                const src = photoCandidates[0];
+                photoContainer.innerHTML = `<img src="${src}" referrerpolicy="no-referrer" style="max-width:100%; max-height:200px; border-radius:8px;" alt="Foto do Bem" onerror="this.outerHTML='<div style=\\'text-align:center; color:var(--status-error);\\'><i class=\\'fa-solid fa-image-slash fa-2x\\'></i><br>Erro ao carregar imagem</div>'"/>`;
+            } else if (photoContainer) {
                 photoContainer.innerHTML = `<div style="text-align: center;"><i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i><span>Foto Indisponível</span></div>`;
             }
         } else {
@@ -1303,6 +1334,18 @@ function cancelCorrection() {
     document.getElementById('feedbackComment').value = '';
 }
 
+function parseBrazilianNumber(raw) {
+    if (raw == null || raw === '') return null;
+    if (typeof raw === 'number') return raw;
+    let s = String(raw).trim().replace(/[R$\s]/gi, '');
+    if (!s) return null;
+    if (s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+    }
+    const n = parseFloat(s);
+    return Number.isNaN(n) ? null : n;
+}
+
 async function submitReviewFeedback(accepted, reEvaluate = false) {
     if (!currentEvalId) return;
     
@@ -1310,28 +1353,43 @@ async function submitReviewFeedback(accepted, reEvaluate = false) {
     let comment = "";
     
     if (!accepted) {
-        correctedValue = document.getElementById('feedbackCorrectedValue').value.trim();
+        correctedValue = parseBrazilianNumber(document.getElementById('feedbackCorrectedValue').value.trim());
         comment = document.getElementById('feedbackComment').value.trim();
-        if (!correctedValue && !comment) {
+        if (correctedValue == null && !comment) {
             showAlert('Insira um valor de correção ou uma instrução/comentário.', 'warning');
             return;
         }
     }
     
     try {
+        const model = document.getElementById('aiModelSelect')?.value || 'gemini-2.5-flash';
         const data = await apiFetch('/api/feedback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 evaluation_id: currentEvalId,
                 accepted: accepted ? 1 : 0,
-                corrected_value: correctedValue ? parseFloat(correctedValue) : null,
+                corrected_value: correctedValue,
                 user_comment: comment || null,
                 row: currentReviewRow,
-                re_evaluate: reEvaluate
+                re_evaluate: reEvaluate,
+                model
             })
         });
         if (data.status === 'ok') {
+            const updatedEv = data.evaluation || data.re_evaluate?.evaluation;
+            if (updatedEv) {
+                const rowEl = document.querySelector(`tr[data-eval_id="${currentEvalId}"]`);
+                if (rowEl) {
+                    rowEl.dataset.status = 'Concluído';
+                    const fmtNum = (val) => val != null ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+                    const cells = rowEl.querySelectorAll('td');
+                    if (cells.length >= 3) {
+                        cells[2].textContent = 'Concluído (revisado)';
+                        cells[2].style.color = 'var(--status-ok)';
+                    }
+                }
+            }
             if (reEvaluate) {
                 showAlert('Feedback registrado! Re-avaliação concluída com aprendizado aplicado.', 'success');
             } else {
@@ -1564,14 +1622,21 @@ function updateSidePhotoUI() {
     
     const photoObj = sidePhotos[currentSidePhotoIndex];
     typeLabel.textContent = photoObj.type;
-    img.src = photoObj.url;
+    const imgUrl = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(photoObj.url) : photoObj.url;
+    img.src = imgUrl;
+    img.referrerPolicy = 'no-referrer';
+    img.onerror = () => {
+        img.style.display = 'none';
+        empty.style.display = 'block';
+        typeLabel.textContent = 'Foto indisponível (link)';
+    };
     img.style.display = 'block';
     empty.style.display = 'none';
     prevBtn.disabled = sidePhotos.length <= 1;
     nextBtn.disabled = sidePhotos.length <= 1;
 }
 
-async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, photoTag, description) {
+async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, photoTag, description, photosFromRow) {
     currentSideRow = row;
     
     document.getElementById('sideActiveItem').textContent = `Controle: ${formatControlLabel(control, null)}`;
@@ -1581,14 +1646,17 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
     if (ativoEl) ativoEl.textContent = '-';
     if (catEl) catEl.textContent = '-';
     
-    // Set photos list using objects for proper categorization
     sidePhotos = [];
-    const pUrl = normalizePhotoUrl(photoUrl);
-    const pSpec = normalizePhotoUrl(photoSpec);
-    const pTag = normalizePhotoUrl(photoTag);
-    if (isValidPhotoUrl(pUrl)) sidePhotos.push({ url: pUrl, type: 'Foto do Bem' });
-    if (isValidPhotoUrl(pSpec)) sidePhotos.push({ url: pSpec, type: 'Foto Especificações' });
-    if (isValidPhotoUrl(pTag)) sidePhotos.push({ url: pTag, type: 'Foto da TAG' });
+    if (Array.isArray(photosFromRow) && photosFromRow.length) {
+        sidePhotos = photosFromRow.filter(p => isValidPhotoUrl(p.url));
+    } else {
+        const pUrl = normalizePhotoUrl(photoUrl);
+        const pSpec = normalizePhotoUrl(photoSpec);
+        const pTag = normalizePhotoUrl(photoTag);
+        if (isValidPhotoUrl(pUrl)) sidePhotos.push({ url: pUrl, type: 'Foto do Bem' });
+        if (isValidPhotoUrl(pSpec)) sidePhotos.push({ url: pSpec, type: 'Foto Especificações' });
+        if (isValidPhotoUrl(pTag)) sidePhotos.push({ url: pTag, type: 'Foto da TAG' });
+    }
     
     currentSidePhotoIndex = 0;
     updateSidePhotoUI();
@@ -1637,16 +1705,13 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
                 raciocinio_visual: ev.reasoning
             });
 
-            // Atualizar galeria com todas as fotos do registro
+            // Atualizar galeria com fotos disponíveis (pula slots vazios)
             sidePhotos = [];
-            if (isValidPhotoUrl(ev.photo_url)) sidePhotos.push({ url: ev.photo_url, type: 'Foto do Bem' });
-            if (isValidPhotoUrl(ev.photo_spec)) sidePhotos.push({ url: ev.photo_spec, type: 'Foto Especificações' });
-            if (isValidPhotoUrl(ev.photo_tag)) sidePhotos.push({ url: ev.photo_tag, type: 'Foto da TAG' });
-            if (sidePhotos.length === 0) {
-                if (isValidPhotoUrl(photoUrl)) sidePhotos.push({ url: photoUrl, type: 'Foto do Bem' });
-                if (isValidPhotoUrl(photoSpec)) sidePhotos.push({ url: photoSpec, type: 'Foto Especificações' });
-                if (isValidPhotoUrl(photoTag)) sidePhotos.push({ url: photoTag, type: 'Foto da TAG' });
-            }
+            const evPhotos = [];
+            if (isValidPhotoUrl(ev.photo_url)) evPhotos.push({ url: ev.photo_url, type: 'Foto do Bem' });
+            if (isValidPhotoUrl(ev.photo_spec)) evPhotos.push({ url: ev.photo_spec, type: 'Foto Especificações' });
+            if (isValidPhotoUrl(ev.photo_tag)) evPhotos.push({ url: ev.photo_tag, type: 'Foto da TAG' });
+            sidePhotos = evPhotos.length ? evPhotos : (Array.isArray(photosFromRow) ? photosFromRow.filter(p => isValidPhotoUrl(p.url)) : []);
             currentSidePhotoIndex = 0;
             updateSidePhotoUI();
             

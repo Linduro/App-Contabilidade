@@ -108,6 +108,10 @@ function afsParseWorkbook(file) {
                     headers.forEach((h, ci) => { obj[h.letter] = row[ci] ?? null; });
                     return obj;
                 });
+                const photoLookup = typeof afsBuildPhotoLookupFromWorkbook === 'function'
+                    ? afsBuildPhotoLookupFromWorkbook(wb)
+                    : {};
+                const photoCount = Object.keys(photoLookup).length;
                 resolve({
                     status: 'ok',
                     headers,
@@ -118,7 +122,9 @@ function afsParseWorkbook(file) {
                     header_row: headerRow,
                     sheet_names: wb.SheetNames,
                     best_sheet_idx: wb.SheetNames.indexOf(sheetName),
-                    file_name: file.name
+                    file_name: file.name,
+                    photo_lookup: photoLookup,
+                    photo_count: photoCount
                 });
             } catch (err) {
                 reject(err);
@@ -217,7 +223,11 @@ async function browserApiFetch(path, options = {}) {
 
     if (path === '/api/spreadsheet-data' && method === 'GET') {
         if (!s.spreadsheet) return { status: 'error', message: 'Nenhuma planilha carregada' };
-        return { status: 'ok', rows: s.spreadsheet.rows };
+        const mappings = afsGetActiveMappings(s);
+        const rows = typeof afsResolveAllRowsPhotos === 'function'
+            ? afsResolveAllRowsPhotos(s.spreadsheet, mappings)
+            : (s.spreadsheet.rows || []);
+        return { status: 'ok', rows, photo_lookup: s.spreadsheet.photo_lookup || {} };
     }
 
     if (path === '/api/spreadsheets/input' && method === 'GET') {
@@ -257,10 +267,58 @@ async function browserApiFetch(path, options = {}) {
     }
 
     if (path === '/api/feedback' && method === 'POST') {
+        const evaluationId = body?.evaluation_id;
+        const accepted = Boolean(body?.accepted);
+        const correctedValue = body?.corrected_value;
+        const userComment = body?.user_comment || '';
+        const rowIdx = body?.row;
+        const reEvaluate = Boolean(body?.re_evaluate);
+
         s.feedback = s.feedback || [];
         s.feedback.push({ ...body, at: Date.now() });
+
+        const evIdx = (s.evaluations || []).findIndex(e => e.id === evaluationId);
+        const ev = evIdx >= 0 ? s.evaluations[evIdx] : null;
+
+        if (ev && !accepted) {
+            s.auto_aprendizados = s.auto_aprendizados || [];
+            s.auto_aprendizados.push({
+                descricao_bem: ev.asset_description,
+                feedback_usuario: userComment,
+                valor_correto: correctedValue,
+                data: new Date().toISOString()
+            });
+
+            if (reEvaluate && rowIdx && typeof browserReEvaluateRow === 'function') {
+                try {
+                    const reResult = await browserReEvaluateRow({
+                        rowIdx: parseInt(rowIdx, 10),
+                        evaluationId,
+                        userComment,
+                        correctedValue,
+                        model: body?.model || 'gemini-2.5-flash'
+                    });
+                    afsSaveState(s);
+                    return { status: 'ok', re_evaluate: reResult, evaluation: reResult?.evaluation };
+                } catch (err) {
+                    return { status: 'error', message: err.message || String(err) };
+                }
+            }
+
+            if (correctedValue != null && !Number.isNaN(Number(correctedValue))) {
+                ev.value_used = Number(correctedValue);
+            }
+
+            const mappings = afsGetActiveMappings(s);
+            const link1Letter = mappings.link1;
+            if (link1Letter && s.spreadsheet?.rows) {
+                const rowData = s.spreadsheet.rows.find(r => r._row_index === parseInt(rowIdx, 10));
+                if (rowData) rowData[link1Letter] = '';
+            }
+        }
+
         afsSaveState(s);
-        return { status: 'ok' };
+        return { status: 'ok', evaluation: ev };
     }
 
     if (path === '/api/pause-evaluation' && method === 'POST') {

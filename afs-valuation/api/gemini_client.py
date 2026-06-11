@@ -175,7 +175,13 @@ class GeminiClient:
 
             if vision_context:
                 prompt += (
-                    f"\nDADOS DA ANÁLISE VISUAL (Vision/Gemini Flash):\n"
+                    f"\nDADOS DA IDENTIFICAÇÃO VISUAL (Google Lens / Multimodal):\n"
+                    f"- Ativo identificado: {vision_context.get('ativo')}\n"
+                    f"- Categoria: {vision_context.get('categoria')}\n"
+                    f"- Marca/Modelo: {vision_context.get('marca_modelo')}\n"
+                    f"- Descrição visual: {vision_context.get('descricao_visual')}\n"
+                    f"- Objetos similares: {vision_context.get('objetos_similares')}\n"
+                    f"- Confiança: {vision_context.get('confianca')}\n"
                     f"- Tag identificada: {vision_context.get('tag')}\n"
                     f"- Idade aparente (anos): {vision_context.get('idade')}\n"
                     f"- Estado de conservação (1-5): {vision_context.get('conservacao')}\n"

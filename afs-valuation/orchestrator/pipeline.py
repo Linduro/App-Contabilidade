@@ -136,6 +136,12 @@ class EvaluationPipeline:
                             conservacao_verificada = v_data.get("estado_conservacao")
                             raciocinio_visual = v_data.get("raciocinio_visual")
                             vision_payload = {
+                                "ativo": v_data.get("ativo_identificado"),
+                                "categoria": v_data.get("categoria_identificada"),
+                                "marca_modelo": v_data.get("marca_modelo"),
+                                "descricao_visual": v_data.get("descricao_visual"),
+                                "objetos_similares": v_data.get("objetos_similares"),
+                                "confianca": v_data.get("confianca_identificacao"),
                                 "tag": tag_verificada,
                                 "idade": idade_verificada,
                                 "conservacao": conservacao_verificada,
