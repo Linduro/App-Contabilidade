@@ -27,20 +27,23 @@ function buildIndexHtml() {
         var params = new URLSearchParams(window.location.search);
         var fromQuery = params.get("apiBase");
         if (fromQuery) {
-          window.__AFS_API_BASE__ = fromQuery.replace(/\\/$/, "");
+          var b = fromQuery.replace(/\\/$/, "");
+          if (!/\\/afs-api$/i.test(b) && !/github\\.io\\/.*afs-api/i.test(b)) {
+            window.__AFS_API_BASE__ = b;
+          }
         }
       })();
     </script>
-    <script src="./js/browser-api.js?v=1"></script>`
+    <script src="./js/browser-api.js?v=7"></script>`
 
   return baseHtml
     .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=6"',
+      'href="./css/style.css?v=7"',
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=6"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=7"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }

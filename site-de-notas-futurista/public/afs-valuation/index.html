@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Asset Solutions Valuation — Avaliação e conciliação de ativo imobilizado patrimonial">
     <title>Asset Solutions Valuation</title>
-    <link rel="stylesheet" href="./css/style.css?v=6">
+    <link rel="stylesheet" href="./css/style.css?v=7">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23f97316'/><text x='16' y='22' text-anchor='middle' font-family='Inter,sans-serif' font-size='16' font-weight='700' fill='white'>A</text></svg>">
 </head>
@@ -656,11 +656,14 @@
         var params = new URLSearchParams(window.location.search);
         var fromQuery = params.get("apiBase");
         if (fromQuery) {
-          window.__AFS_API_BASE__ = fromQuery.replace(/\/$/, "");
+          var b = fromQuery.replace(/\/$/, "");
+          if (!/\/afs-api$/i.test(b) && !/github\.io\/.*afs-api/i.test(b)) {
+            window.__AFS_API_BASE__ = b;
+          }
         }
       })();
     </script>
-    <script src="./js/browser-api.js?v=1"></script>
-    <script src="./js/app.js?v=6"></script>
+    <script src="./js/browser-api.js?v=7"></script>
+    <script src="./js/app.js?v=7"></script>
 </body>
 </html>

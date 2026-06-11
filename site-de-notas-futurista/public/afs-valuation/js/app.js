@@ -3,9 +3,19 @@
 // static/js/app.js
 // ============================================================
 
+function sanitizeApiBase(base) {
+    const b = String(base || '').trim().replace(/\/$/, '');
+    if (!b) return '';
+    if (/\/afs-api$/i.test(b) || /github\.io\/.*afs-api/i.test(b)) return '';
+    if (b.startsWith('/') && typeof window !== 'undefined' && /github\.io$/i.test(window.location.hostname)) {
+        return '';
+    }
+    return b;
+}
+
 function getAfsApiBase() {
     if (typeof window !== 'undefined' && window.__AFS_API_BASE__ != null) {
-        return String(window.__AFS_API_BASE__).replace(/\/$/, '');
+        return sanitizeApiBase(window.__AFS_API_BASE__);
     }
     return '';
 }
@@ -31,7 +41,7 @@ async function loadApiConfig() {
         }
         const cfg = await res.json();
         if (cfg.apiBase && String(cfg.apiBase).trim()) {
-            window.__AFS_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+            window.__AFS_API_BASE__ = sanitizeApiBase(cfg.apiBase);
         } else {
             window.__AFS_API_BASE__ = '';
         }
@@ -39,6 +49,19 @@ async function loadApiConfig() {
         window.__AFS_API_BASE__ = '';
         console.warn('Config API não carregada — modo navegador:', e);
     }
+    updateApiModeBadge();
+}
+
+function updateApiModeBadge() {
+    const textEl = document.getElementById('statusText');
+    const dotEl = document.getElementById('statusDot');
+    if (!textEl) return;
+    if (!hasRemoteApi()) {
+        textEl.textContent = 'Modo navegador (sem servidor)';
+        dotEl?.classList.add('active');
+        return;
+    }
+    textEl.textContent = 'API remota conectada';
 }
 
 async function apiFetch(path, options = {}) {
@@ -54,7 +77,7 @@ async function apiFetch(path, options = {}) {
         const preview = (await res.text()).slice(0, 80);
         if (preview.trimStart().startsWith('<')) {
             throw new Error(
-                'Servidor da API indisponível. O deploy automático está em andamento — aguarde alguns minutos e recarregue a página.'
+                'Servidor da API indisponível. Recarregue com Ctrl+Shift+R. Sem backend, o app funciona em modo navegador (apiBase vazio).'
             );
         }
         throw new Error('Resposta inválida do servidor');
