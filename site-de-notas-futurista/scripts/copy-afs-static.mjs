@@ -34,18 +34,18 @@ function buildIndexHtml() {
         }
       })();
     </script>
-    <script src="./js/photo-resolver.js?v=13"></script>
-    <script src="./js/browser-evaluation.js?v=13"></script>
-    <script src="./js/browser-api.js?v=13"></script>`
+    <script src="./js/photo-resolver.js?v=14"></script>
+    <script src="./js/browser-evaluation.js?v=14"></script>
+    <script src="./js/browser-api.js?v=14"></script>`
 
   return baseHtml
     .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=13"',
+      'href="./css/style.css?v=14"',
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=13"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=14"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }

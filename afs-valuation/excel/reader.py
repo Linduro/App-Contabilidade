@@ -10,46 +10,99 @@ from openpyxl.utils import get_column_letter
 logger = logging.getLogger(__name__)
 
 
+def _detect_photo_columns(rows):
+    """Detecta colunas de chave e URL na aba de fotos por cabeçalho ou conteúdo."""
+    import re
+    key_re = re.compile(r"c[óo]digo|chave|foto do bem|key|\bid\b", re.I)
+    url_re = re.compile(r"link|download|url|http", re.I)
+    for r in range(min(5, len(rows))):
+        row = rows[r] or []
+        key_col = url_col = -1
+        for c, cell in enumerate(row):
+            if cell is None:
+                continue
+            txt = str(cell).strip()
+            if not txt:
+                continue
+            if key_col == -1 and key_re.search(txt):
+                key_col = c
+            if url_re.search(txt):
+                url_col = c
+        if key_col != -1 and url_col != -1 and key_col != url_col:
+            return key_col, url_col
+
+    key_pat = re.compile(r"^[\w-]+\.\d+(\.\d+)?$")
+    key_scores, url_scores = {}, {}
+    for r in range(min(60, len(rows))):
+        row = rows[r] or []
+        for c, cell in enumerate(row):
+            if cell is None:
+                continue
+            txt = str(cell).strip()
+            if not txt:
+                continue
+            if re.match(r"^https?://", txt, re.I):
+                url_scores[c] = url_scores.get(c, 0) + 1
+            elif key_pat.match(txt):
+                key_scores[c] = key_scores.get(c, 0) + 1
+    if key_scores and url_scores:
+        best_key = max(key_scores, key=key_scores.get)
+        best_url = max(url_scores, key=url_scores.get)
+        return best_key, best_url
+    return None
+
+
 def build_photo_lookup(filepath):
     """
     Constrói lookup de fotos a partir da aba 'Foto do Bem'.
-    Chave na coluna BB (fallback B), URL na coluna DD (fallback D).
+    Auto-detecta colunas (ex: A=Código, C=Link). Fallback A→C, A→B, BB→DD, B→D.
     """
     lookup = {}
     try:
         from openpyxl.utils import column_index_from_string
         wb = openpyxl.load_workbook(filepath, data_only=True)
-        if "Foto do Bem" not in wb.sheetnames:
+        sheet_name = next((s for s in wb.sheetnames if "foto" in s.lower() and "bem" in s.lower()), None)
+        if not sheet_name:
             logger.warning("[CAMADA 2][excel][reader.build_photo_lookup] Aba 'Foto do Bem' não encontrada")
             wb.close()
             return lookup
 
-        ws = wb["Foto do Bem"]
-        col_pairs = [("BB", "DD"), ("B", "D")]
+        ws = wb[sheet_name]
+        rows = [list(r) for r in ws.iter_rows(values_only=True)]
 
-        for key_col, url_col in col_pairs:
-            key_idx = column_index_from_string(key_col) - 1
-            url_idx = column_index_from_string(url_col) - 1
+        candidate_pairs = []
+        detected = _detect_photo_columns(rows)
+        if detected:
+            candidate_pairs.append(detected)
+        candidate_pairs.extend([
+            (0, 2), (0, 1),
+            (column_index_from_string("BB") - 1, column_index_from_string("DD") - 1),
+            (column_index_from_string("B") - 1, column_index_from_string("D") - 1),
+        ])
+
+        import re
+        for key_idx, url_idx in candidate_pairs:
+            if key_idx is None or url_idx is None or key_idx == url_idx:
+                continue
             found = 0
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if len(row) <= url_idx:
+            for row in rows:
+                if len(row) <= max(key_idx, url_idx):
                     continue
-                key = row[key_idx]
-                url = row[url_idx]
+                key, url = row[key_idx], row[url_idx]
                 if key is None or url is None:
                     continue
-                key_str = str(key).strip()
-                url_str = str(url).strip()
+                key_str, url_str = str(key).strip(), str(url).strip()
                 if not key_str or not url_str:
+                    continue
+                if not re.match(r"^https?://", url_str, re.I):
+                    continue
+                if re.match(r"^(c[óo]digo|chave|key|id|link|download|url|nome)", key_str, re.I):
                     continue
                 if key_str not in lookup:
                     lookup[key_str] = url_str
                     found += 1
             if found > 0:
-                logger.info(
-                    "[CAMADA 2][excel][reader.build_photo_lookup] %d fotos via %s→%s",
-                    found, key_col, url_col
-                )
+                logger.info("[CAMADA 2][excel][reader.build_photo_lookup] %d fotos (cols %s→%s)", found, key_idx, url_idx)
                 break
 
         wb.close()

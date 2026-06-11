@@ -98,16 +98,14 @@ function afsParseWorkbook(file) {
                     name: name != null ? String(name).trim() : ''
                 })).filter(h => h.name);
                 const dataRows = rows.slice(headerRow).filter(r => r && r.some(c => c != null && String(c).trim()));
-                const preview = dataRows.slice(0, 5).map((row, i) => {
+                const buildRow = (row, i) => {
                     const obj = { _row_index: headerRow + 1 + i };
-                    headers.forEach((h, ci) => { obj[h.letter] = row[ci] ?? null; });
+                    // Mapear por índice REAL da coluna (h.index-1), não pela posição filtrada
+                    headers.forEach(h => { obj[h.letter] = row[h.index - 1] ?? null; });
                     return obj;
-                });
-                const allRows = dataRows.map((row, i) => {
-                    const obj = { _row_index: headerRow + 1 + i };
-                    headers.forEach((h, ci) => { obj[h.letter] = row[ci] ?? null; });
-                    return obj;
-                });
+                };
+                const preview = dataRows.slice(0, 5).map(buildRow);
+                const allRows = dataRows.map(buildRow);
                 const photoLookup = typeof afsBuildPhotoLookupFromWorkbook === 'function'
                     ? afsBuildPhotoLookupFromWorkbook(wb)
                     : {};

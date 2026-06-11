@@ -56,6 +56,46 @@ function afsRegisterPhotoKey(lookup, key, url) {
     }
 }
 
+function afsDetectPhotoColumns(rows) {
+    // 1) Detectar pela linha de cabeçalho (até 5 primeiras linhas)
+    const keyHeaderRe = /c[óo]digo|chave|foto do bem|key|\bid\b/i;
+    const urlHeaderRe = /link|download|url|http/i;
+    for (let r = 0; r < Math.min(5, rows.length); r++) {
+        const row = rows[r] || [];
+        let keyCol = -1;
+        let urlCol = -1;
+        for (let c = 0; c < row.length; c++) {
+            const cell = row[c] == null ? '' : String(row[c]).trim();
+            if (!cell) continue;
+            if (keyCol === -1 && keyHeaderRe.test(cell)) keyCol = c;
+            if (urlHeaderRe.test(cell)) urlCol = c;
+        }
+        if (keyCol !== -1 && urlCol !== -1 && keyCol !== urlCol) {
+            return { keyCol, urlCol, headerRow: r };
+        }
+    }
+
+    // 2) Detectar pelo conteúdo: coluna com URLs http e coluna com chaves "n.n" ou "n.n.n"
+    const keyPattern = /^[\w-]+\.\d+(\.\d+)?$/;
+    const colScores = {};
+    const urlScores = {};
+    for (let r = 0; r < Math.min(60, rows.length); r++) {
+        const row = rows[r] || [];
+        for (let c = 0; c < row.length; c++) {
+            const cell = row[c] == null ? '' : String(row[c]).trim();
+            if (!cell) continue;
+            if (/^https?:\/\//i.test(cell)) urlScores[c] = (urlScores[c] || 0) + 1;
+            else if (keyPattern.test(cell)) colScores[c] = (colScores[c] || 0) + 1;
+        }
+    }
+    const bestKey = Object.keys(colScores).sort((a, b) => colScores[b] - colScores[a])[0];
+    const bestUrl = Object.keys(urlScores).sort((a, b) => urlScores[b] - urlScores[a])[0];
+    if (bestKey != null && bestUrl != null) {
+        return { keyCol: Number(bestKey), urlCol: Number(bestUrl), headerRow: 0 };
+    }
+    return null;
+}
+
 function afsBuildPhotoLookupFromWorkbook(wb) {
     const lookup = {};
     if (!wb || !wb.SheetNames) return lookup;
@@ -66,14 +106,16 @@ function afsBuildPhotoLookupFromWorkbook(wb) {
     const ws = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
 
-    const tryPairs = [
-        ['BB', 'DD'],
-        ['B', 'D']
-    ];
+    const detected = afsDetectPhotoColumns(rows);
+    const candidatePairs = [];
+    if (detected) candidatePairs.push([detected.keyCol, detected.urlCol]);
+    // Fallbacks: A→C (layout Coletum), A→B, BB→DD, B→D
+    candidatePairs.push([0, 2], [0, 1],
+        [XLSX.utils.decode_col('BB'), XLSX.utils.decode_col('DD')],
+        [XLSX.utils.decode_col('B'), XLSX.utils.decode_col('D')]);
 
-    for (const [keyLetter, urlLetter] of tryPairs) {
-        const keyCol = XLSX.utils.decode_col(keyLetter);
-        const urlCol = XLSX.utils.decode_col(urlLetter);
+    for (const [keyCol, urlCol] of candidatePairs) {
+        if (keyCol == null || urlCol == null || keyCol === urlCol) continue;
         let found = 0;
         for (let r = 0; r < rows.length; r++) {
             const row = rows[r] || [];
@@ -83,7 +125,8 @@ function afsBuildPhotoLookupFromWorkbook(wb) {
             const keyStr = String(key).trim();
             const urlStr = String(url).trim();
             if (!keyStr || !urlStr) continue;
-            if (/^(chave|key|id|bb)$/i.test(keyStr)) continue;
+            if (!/^https?:\/\//i.test(urlStr)) continue;
+            if (/^(c[óo]digo|chave|key|id|link|download|url|nome)/i.test(keyStr)) continue;
             afsRegisterPhotoKey(lookup, keyStr, urlStr);
             found++;
         }

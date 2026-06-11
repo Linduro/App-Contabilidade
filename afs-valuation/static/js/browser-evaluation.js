@@ -151,6 +151,8 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     }
 
     const evaluation = {
+        row_index: rowIdx,
+        control: controlVal,
         asset_description: marketData.descricao_identificacao || descricao,
         asset_normalized: options.runAtivo !== false
             ? (marketData.ativo || visionData.ativo_identificado || null)

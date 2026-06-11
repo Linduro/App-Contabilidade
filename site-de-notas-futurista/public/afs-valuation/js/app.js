@@ -1491,7 +1491,7 @@ async function openGalleryModal() {
                     <td>${ev.methodology || '-'}</td>
                     <td>${fmtNum(ev.value_used)}</td>
                     <td>
-                        <button class="btn btn-secondary btn-sm" onclick="openReviewModal(${ev.id}, '-', '-')">Revisar</button>
+                        <button class="btn btn-secondary btn-sm" onclick="openReviewModal(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${(ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'")}')">Revisar</button>
                     </td>
                 `;
                 
