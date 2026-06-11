@@ -116,6 +116,10 @@ def session_state():
             "initialized": state.get("initialized", False),
             "column_mappings": state.get("column_mappings", {})
         }
+        if state.get("spreadsheet_data"):
+            preview = dict(state["spreadsheet_data"])
+            preview["status"] = "ok"
+            safe_state["spreadsheet_preview"] = preview
         return jsonify(safe_state)
     except Exception as e:
         logger.error("[CAMADA 0][layout][session_state] %s", str(e))

@@ -159,13 +159,15 @@ async function browserApiFetch(path, options = {}) {
     }
 
     if (path === '/api/session-state' && method === 'GET') {
-        return {
+        const session = {
             has_api_key: Boolean(s.api_key),
             has_spreadsheet: Boolean(s.spreadsheet),
             has_mappings: Boolean(Object.keys(s.column_mappings || {}).length),
             initialized: s.initialized,
             column_mappings: s.column_mappings || {}
         };
+        if (s.spreadsheet) session.spreadsheet_preview = s.spreadsheet;
+        return session;
     }
 
     if (path === '/api/fields' && method === 'GET') {
@@ -203,6 +205,20 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok', files: s.outputs || [] };
     }
 
+    if (path === '/api/spreadsheets/input/activate' && method === 'POST') {
+        const filename = body?.filename;
+        if (!filename) return { status: 'error', message: 'Nome do arquivo não informado' };
+        const entry = (s.uploads || []).find(u => u.name === filename);
+        let sheetData = entry?.data || null;
+        if (!sheetData && s.spreadsheet?.file_name === filename) sheetData = s.spreadsheet;
+        if (!sheetData) {
+            return { status: 'error', message: 'Dados da planilha indisponíveis. Envie o arquivo novamente.' };
+        }
+        s.spreadsheet = sheetData;
+        afsSaveState(s);
+        return { status: 'ok', message: `Planilha ${filename} ativada`, preview: sheetData };
+    }
+
     if (path.startsWith('/api/evaluation/') && method === 'GET') {
         const id = parseInt(path.split('/').pop(), 10);
         const ev = (s.evaluations || []).find(e => e.id === id);
@@ -236,7 +252,7 @@ async function browserHandleUpload(file) {
     s.spreadsheet = parsed;
     s.uploads = s.uploads || [];
     s.uploads = s.uploads.filter(u => u.name !== file.name);
-    s.uploads.unshift({ name: file.name, size: file.size, modified: Date.now() / 1000 });
+    s.uploads.unshift({ name: file.name, size: file.size, modified: Date.now() / 1000, data: parsed });
     afsSaveState(s);
     return parsed;
 }

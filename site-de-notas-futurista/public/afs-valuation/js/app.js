@@ -245,6 +245,48 @@ function unlockTab(tabId) {
 }
 
 // ---------- Session State ----------
+function showSpreadsheetFileInfo(name, metaText) {
+    const zone = document.getElementById('uploadZone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    if (!fileName) return;
+    fileName.textContent = name;
+    if (fileMeta && metaText) fileMeta.textContent = metaText;
+    fileInfo?.classList.add('visible');
+    zone?.classList.add('has-file');
+}
+
+function applySavedMappings(mappings) {
+    if (!mappings || typeof mappings !== 'object') return;
+    Object.entries(mappings).forEach(([field, letter]) => {
+        const sel = document.getElementById(`mapping_${field}`);
+        if (sel && letter) sel.value = letter;
+    });
+}
+
+async function restoreSpreadsheetMappingUI(sessionData) {
+    const preview = sessionData?.spreadsheet_preview;
+    if (!preview || !preview.headers) return;
+    state.hasSpreadsheet = true;
+    state.spreadsheetHeaders = preview.headers;
+    state.spreadsheetData = preview;
+    updateStep(2, 'completed');
+    const fileLabel = preview.file_name || 'Planilha ativa';
+    const meta = `${preview.total_rows || 0} linhas · ${preview.headers.length} colunas`;
+    showSpreadsheetFileInfo(fileLabel, meta);
+    await buildMappingUI(preview);
+    applySavedMappings(sessionData.column_mappings);
+    if (sessionData.has_mappings) {
+        updateStep(3, sessionData.initialized ? 'completed' : 'active');
+    }
+    if (sessionData.initialized) {
+        updateStep(4, 'completed');
+        const finalizeSection = document.getElementById('cardFinalize');
+        if (finalizeSection) finalizeSection.style.display = 'block';
+    }
+}
+
 async function loadSessionState() {
     try {
         const data = hasRemoteApi()
@@ -260,6 +302,7 @@ async function loadSessionState() {
         if (data.has_spreadsheet) {
             state.hasSpreadsheet = true;
             updateStep(2, 'completed');
+            await restoreSpreadsheetMappingUI(data);
         }
         if (data.has_mappings) {
             state.hasMappings = true;
@@ -408,11 +451,7 @@ async function handleFileUpload(file) {
         return;
     }
 
-    // Show file info
-    fileName.textContent = file.name;
-    fileMeta.textContent = `${(file.size / 1024).toFixed(1)} KB`;
-    fileInfo.classList.add('visible');
-    zone.classList.add('has-file');
+    showSpreadsheetFileInfo(file.name, `${(file.size / 1024).toFixed(1)} KB`);
 
     // Upload
     try {
@@ -1575,18 +1614,22 @@ function renderRegistryList(containerId, files, type) {
     el.innerHTML = files.map(f => {
         const activeClass = f.active ? ' active' : '';
         const date = new Date(f.modified * 1000).toLocaleString('pt-BR');
+        const escapedName = f.name.replace(/'/g, "\\'");
         const activateBtn = type === 'input' && !f.active
-            ? `<button class="btn btn-secondary btn-sm" onclick="activateSpreadsheet('${f.name.replace(/'/g, "\\'")}')" title="Ativar">▶</button>`
+            ? `<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); activateSpreadsheet('${escapedName}')" title="Ativar">▶</button>`
+            : '';
+        const rowClick = type === 'input'
+            ? ` onclick="activateSpreadsheet('${escapedName}')" style="cursor:pointer;" title="Selecionar planilha"`
             : '';
         const downloadBtn = type === 'output'
             ? `<a class="btn btn-secondary btn-sm" href="${downloadFileUrl('/api/download-output/' + encodeURIComponent(f.name))}" title="Download">⬇</a>`
             : '';
-        return `<div class="registry-item${activeClass}">
+        return `<div class="registry-item${activeClass}"${rowClick}>
             <span class="registry-item-name" title="${f.name}">${f.name}${f.active ? ' (ativa)' : ''}<br><small style="color:var(--text-muted)">${formatFileSize(f.size)} · ${date}</small></span>
-            <div class="registry-item-actions">
+            <div class="registry-item-actions" onclick="event.stopPropagation()">
                 ${activateBtn}
                 ${downloadBtn}
-                <button class="btn btn-secondary btn-sm" onclick="deleteSpreadsheet('${type}', '${f.name.replace(/'/g, "\\'")}')" title="Excluir">🗑</button>
+                <button class="btn btn-secondary btn-sm" onclick="deleteSpreadsheet('${type}', '${escapedName}')" title="Excluir">🗑</button>
             </div>
         </div>`;
     }).join('');
@@ -1627,14 +1670,22 @@ async function deleteSpreadsheet(type, filename) {
 
 async function activateSpreadsheet(filename) {
     try {
-        await apiFetch('/api/spreadsheets/input/activate', {
+        const data = await apiFetch('/api/spreadsheets/input/activate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filename })
         });
-        showAlert(`Planilha "${filename}" ativada.`, 'success');
+        if (data.status !== 'ok') {
+            showAlert(data.message || 'Erro ao ativar planilha', 'error');
+            return;
+        }
+        const preview = data.preview || data;
+        const sessionData = await apiFetch('/api/session-state');
+        sessionData.spreadsheet_preview = preview;
+        await restoreSpreadsheetMappingUI(sessionData);
+        showAlert(`Planilha "${filename}" selecionada.`, 'success');
         loadSpreadsheetRegistry();
-        loadSessionState();
+        document.getElementById('cardMapping')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
         showAlert('Erro ao ativar: ' + e.message, 'error');
     }
