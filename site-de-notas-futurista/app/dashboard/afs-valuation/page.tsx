@@ -18,7 +18,7 @@ function AfsValuationContent() {
       <header className="shrink-0 border-b border-border/50 bg-background/95 backdrop-blur z-10">
         <div className="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard/">
+            <Link href="/dashboard/area-restrita/">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar ao painel
             </Link>

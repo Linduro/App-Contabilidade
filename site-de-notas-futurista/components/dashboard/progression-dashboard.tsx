@@ -11,11 +11,6 @@ import {
   LogOut,
   Moon,
   Plus,
-  Sprout,
-  Landmark,
-  Scale,
-  Briefcase,
-  Building2,
   Search,
   Sun,
   X,
@@ -31,6 +26,7 @@ import { SemesterCard } from "@/components/dashboard/semester-card"
 import { HeaderTutorialButtons } from "@/components/dashboard/header-tutorial-buttons"
 import { DashboardOnboardingTour } from "@/components/dashboard/dashboard-onboarding-tour"
 import { AdminPanelDrawer } from "@/components/dashboard/admin-panel-drawer"
+import { RestrictedAreaButton } from "@/components/dashboard/restricted-area-button"
 import { SiteAdSlot } from "@/components/site-ad-slot"
 import { useExtendedScope } from "@/components/use-extended-scope"
 import { hasExtendedScope } from "@/lib/admin-access"
@@ -335,95 +331,7 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                 </div>
               </div>
 
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="Licitações jurídicas (acesso privado)"
-                >
-                  <Link href="/dashboard/licitacoes/">
-                    <Scale className="w-4 h-4 mr-2" />
-                    Licitações
-                  </Link>
-                </Button>
-              )}
-
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="Execuções rurais (acesso privado)"
-                >
-                  <Link href="/dashboard/execucoes-rurais/">
-                    <Sprout className="w-4 h-4 mr-2" />
-                    Exec. Rurais
-                  </Link>
-                </Button>
-              )}
-
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="Execuções acima de R$ 500k (acesso privado)"
-                >
-                  <Link href="/dashboard/execucoes-alto-valor/">
-                    <Landmark className="w-4 h-4 mr-2" />
-                    Exec. +500k
-                  </Link>
-                </Button>
-              )}
-
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="Asset Solutions Valuation (acesso privado)"
-                >
-                  <Link href="/afs-valuation/index.html">
-                    <Building2 className="w-4 h-4 mr-2" />
-                    AFS Valuation
-                  </Link>
-                </Button>
-              )}
-
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="AFS Market Intelligence — prospecção B2B (acesso privado)"
-                >
-                  <Link href="/dashboard/afs-market-intelligence/">
-                    <Search className="w-4 h-4 mr-2" />
-                    AFS Intelligence
-                  </Link>
-                </Button>
-              )}
-
-              {adminAccess && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="shrink-0 max-md:w-full max-md:min-h-11"
-                  title="Leads trabalhistas (acesso privado)"
-                >
-                  <Link href="/dashboard/trabalhista-leads/">
-                    <Briefcase className="w-4 h-4 mr-2" />
-                    Leads TRT
-                  </Link>
-                </Button>
-              )}
+              <RestrictedAreaButton />
 
               <Button
                 variant="outline"

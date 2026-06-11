@@ -608,6 +608,50 @@ body {
     gap: 12px;
 }
 
+.mapping-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mapping-col-headers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 2px;
+}
+
+.mapping-col-header {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 700;
+    padding: 0 4px;
+}
+
+.mapping-col-header.dest {
+    color: var(--afs-orange-400);
+}
+
+.mapping-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.mapping-row-final {
+    margin-top: 4px;
+    padding-top: 14px;
+    border-top: 1px dashed rgba(249, 115, 22, 0.35);
+}
+
+.mapping-item-empty {
+    visibility: hidden;
+    pointer-events: none;
+    min-height: 48px;
+}
+
 .mapping-item {
     display: flex;
     align-items: center;

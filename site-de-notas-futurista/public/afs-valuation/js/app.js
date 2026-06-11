@@ -568,6 +568,7 @@ async function buildMappingUI(spreadsheetData) {
         "photo_original": { letter: "U", keywords: ["foto do bem", "foto do bem 1", "foto", "imagem"] },
         "photo_spec": { letter: "V", keywords: ["foto especificações", "foto especificação", "foto especificacoes", "foto especificacao"] },
         "photo_tag": { letter: "W", keywords: ["foto da tag", "foto tag", "foto da plaqueta"] },
+        "control": { letter: "B", keywords: ["controle afs", "controle", "item", "seq", "nº"] },
         "category_output": { letter: "AZ", keywords: ["categoria", "grupo", "família", "familia"] },
         "asset_output": { letter: "BA", keywords: ["ativo", "tipo", "essência", "essencia"] }
     };
@@ -598,16 +599,6 @@ async function buildMappingUI(spreadsheetData) {
 
     // Categorize fields into parts
     const partControlKeys = ["control"];
-    const part1Keys = [
-        "tag_original", "tag_output",
-        "desc_original", "desc_output",
-        "age_original", "age_output",
-        "conservation_original", "conservation_output",
-        "photo_original", "photo_spec", "photo_tag",
-        "category_output", "asset_output"
-    ];
-    const part2Keys = ["methodology", "value_new", "value_used", "value_fipe", "link1", "link2"];
-
 
     function getFieldDef(fieldName) {
         const fromReq = fields.required?.[fieldName];
@@ -622,47 +613,66 @@ async function buildMappingUI(spreadsheetData) {
         return Boolean(fields.required?.[fieldName]);
     }
 
+    // Parte 1 — linhas explícitas: origem (esq) → destino/IA (dir)
+    const part1Rows = [
+        ['tag_original', 'tag_output'],
+        ['desc_original', 'desc_output'],
+        ['age_original', 'age_output'],
+        ['conservation_original', 'conservation_output'],
+        ['photo_original', 'photo_spec'],
+        ['photo_tag', null],
+        ['category_output', 'asset_output', { final: true }]
+    ];
+
+    const part2Rows = [
+        ['methodology', 'value_new'],
+        ['value_used', 'value_fipe'],
+        ['link1', 'link2']
+    ];
+
+    function buildMappingFieldHtml(fieldName) {
+        const fieldDef = getFieldDef(fieldName);
+        if (!fieldDef) return '';
+        const bestMatch = getBestMatch(fieldName);
+        const optionsHtml = generateOptionsHtml(bestMatch);
+        const type = isRequiredField(fieldName) ? 'required' : 'optional';
+        return createMappingItem(fieldName, fieldDef, optionsHtml, type);
+    }
+
+    function renderMappingRows(container, rows, showColumnHeaders) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (showColumnHeaders) {
+            container.innerHTML += `
+                <div class="mapping-col-headers">
+                    <div class="mapping-col-header">Origem — vistoria (esquerda)</div>
+                    <div class="mapping-col-header dest">Destino / IA (direita)</div>
+                </div>`;
+        }
+        rows.forEach(entry => {
+            const opts = entry[2] || {};
+            const leftKey = entry[0];
+            const rightKey = entry[1];
+            const leftHtml = buildMappingFieldHtml(leftKey);
+            if (!leftHtml && !rightKey) return;
+            const rightHtml = rightKey ? buildMappingFieldHtml(rightKey) : '<div class="mapping-item mapping-item-empty" aria-hidden="true"></div>';
+            const rowClass = opts.final ? 'mapping-row mapping-row-final' : 'mapping-row';
+            container.innerHTML += `<div class="${rowClass}">${leftHtml || '<div class="mapping-item mapping-item-empty"></div>'}${rightHtml}</div>`;
+        });
+    }
+
     // Control
     const gridControl = document.getElementById('mappingControl');
     if (gridControl) {
         gridControl.innerHTML = '';
         for (const fieldName of partControlKeys) {
-            const fieldDef = getFieldDef(fieldName);
-            if (!fieldDef) continue;
-            // auto select column A for control as guess, or keyword "controle"
-            const rule = { letter: "A", keywords: ["controle afs", "controle", "item", "seq"] };
-            let bestMatch = "";
-            if (headers.some(h => h.letter === rule.letter)) bestMatch = rule.letter;
-            else {
-                const match = headers.find(h => h.name && rule.keywords.some(k => h.name.toLowerCase().includes(k)));
-                if (match) bestMatch = match.letter;
-            }
-            const optionsHtml = generateOptionsHtml(bestMatch);
-            gridControl.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, 'optional');
+            const html = buildMappingFieldHtml(fieldName);
+            if (html) gridControl.innerHTML += html;
         }
     }
 
-    // Parte 1
-    const grid1 = document.getElementById('mappingPart1');
-    grid1.innerHTML = '';
-    for (const fieldName of part1Keys) {
-        const fieldDef = getFieldDef(fieldName);
-        if (!fieldDef) continue;
-        const bestMatch = getBestMatch(fieldName);
-        const optionsHtml = generateOptionsHtml(bestMatch);
-        grid1.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, isRequiredField(fieldName) ? 'required' : 'optional');
-    }
-
-    // Parte 2
-    const grid2 = document.getElementById('mappingPart2');
-    grid2.innerHTML = '';
-    for (const fieldName of part2Keys) {
-        const fieldDef = getFieldDef(fieldName);
-        if (!fieldDef) continue;
-        const bestMatch = getBestMatch(fieldName);
-        const optionsHtml = generateOptionsHtml(bestMatch);
-        grid2.innerHTML += createMappingItem(fieldName, fieldDef, optionsHtml, isRequiredField(fieldName) ? 'required' : 'optional');
-    }
+    renderMappingRows(document.getElementById('mappingPart1'), part1Rows, true);
+    renderMappingRows(document.getElementById('mappingPart2'), part2Rows, true);
 
     // Preview table
     buildPreviewTable(spreadsheetData);
