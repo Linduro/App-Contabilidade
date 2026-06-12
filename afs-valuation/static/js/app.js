@@ -479,6 +479,7 @@ async function loadSessionState() {
             state.initialized = true;
             updateStep(4, 'completed');
             unlockTab('research');
+            unlockTab('learning');
             
             // Update header status
             document.getElementById('statusDot').classList.add('active');
@@ -955,6 +956,7 @@ async function finalizeInit() {
             state.initialized = true;
             updateStep(4, 'completed');
             unlockTab('research');
+            unlockTab('learning');
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
