@@ -101,3 +101,10 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Modal **Novo Negócio**, drawer de detalhe, Pipe Metrics
 - `#/crm/oportunidades`: 6 cards-resumo + tabela de oportunidades ativas
 - Sincroniza etapa do negócio com `status_funil` do lead
+
+## v3.2 — CRM Leads (fase 3b)
+
+- `#/crm/leads`: caixa de entrada com filtros, paginação 25, seleção em massa
+- Drawer de lead, ações funil/contato/criar negócio
+- Importar CSV, exportar CSV/JSON/Copiar/Excel
+- Modal **+ Novo lead**
