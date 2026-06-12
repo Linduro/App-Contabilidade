@@ -67,9 +67,11 @@ const DEALS = [
 ];
 
 const ACTIVITIES = [
-  { id: 'act_1', tipo: 'ligacao', titulo: 'Ligar para CFO Beta', lead_id: 'ld_2', deal_id: 'deal_1', responsavel_id: 'u_owner', agendado_para: new Date().toISOString(), status: 'pendente' },
-  { id: 'act_2', tipo: 'reuniao', titulo: 'Apresentação proposta Delta', lead_id: 'ld_4', deal_id: 'deal_2', responsavel_id: 'u_gabriel', agendado_para: new Date(Date.now() - 86400000).toISOString(), status: 'atrasada' },
-  { id: 'act_3', tipo: 'email', titulo: 'Follow-up Holding Alfa', lead_id: 'ld_1', responsavel_id: 'u_owner', agendado_para: new Date(Date.now() + 86400000).toISOString(), status: 'pendente' },
+  { id: 'act_1', tipo: 'ligacao', titulo: 'Ligar para CFO Beta', lead_id: 'ld_2', deal_id: 'deal_1', responsavel_id: 'u_owner', agendado_para: new Date().toISOString(), status: 'pendente', criado_em: new Date(Date.now() - 2 * 86400000).toISOString() },
+  { id: 'act_2', tipo: 'reuniao', titulo: 'Apresentação proposta Delta', lead_id: 'ld_4', deal_id: 'deal_2', responsavel_id: 'u_gabriel', agendado_para: new Date(Date.now() - 86400000).toISOString(), status: 'atrasada', criado_em: new Date(Date.now() - 5 * 86400000).toISOString() },
+  { id: 'act_3', tipo: 'email', titulo: 'Follow-up Holding Alfa', lead_id: 'ld_1', responsavel_id: 'u_owner', agendado_para: new Date(Date.now() + 86400000).toISOString(), status: 'pendente', criado_em: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'act_4', tipo: 'whatsapp', titulo: 'WhatsApp Épsilon logística', lead_id: 'ld_5', responsavel_id: 'u_gabriel', agendado_para: new Date(Date.now() + 3 * 86400000).toISOString(), status: 'pendente', criado_em: new Date().toISOString() },
+  { id: 'act_5', tipo: 'followup', titulo: 'Retorno proposta Beta', lead_id: 'ld_2', deal_id: 'deal_1', responsavel_id: 'u_owner', agendado_para: new Date(Date.now() + 5 * 86400000).toISOString(), status: 'pendente', criado_em: new Date().toISOString() },
 ];
 
 const PARTNERS = [
@@ -78,12 +80,14 @@ const PARTNERS = [
 
 export function seedIfEmpty() {
   const db = store.getDb();
-  if (db.meta.seededAt && db.meta.seedVersion >= 2) return false;
+  if (db.meta.seededAt && db.meta.seedVersion >= 3) return false;
 
-  if (db.meta.seededAt && db.meta.seedVersion < 2) {
-    const existingIds = new Set((db.collections.deals || []).map((d) => d.id));
-    DEALS.forEach((d) => { if (!existingIds.has(d.id)) db.collections.deals.push(d); });
-    store.setMeta({ seedVersion: 2 });
+  if (db.meta.seededAt && db.meta.seedVersion < 3) {
+    const dealIds = new Set((db.collections.deals || []).map((d) => d.id));
+    DEALS.forEach((d) => { if (!dealIds.has(d.id)) db.collections.deals.push(d); });
+    const actIds = new Set((db.collections.activities || []).map((a) => a.id));
+    ACTIVITIES.forEach((a) => { if (!actIds.has(a.id)) db.collections.activities.push(a); });
+    store.setMeta({ seedVersion: 3 });
     return true;
   }
 
@@ -101,7 +105,7 @@ export function seedIfEmpty() {
 
   store.replaceDb({
     ...db,
-    meta: { ...db.meta, seededAt: new Date().toISOString(), seedVersion: 2 },
+    meta: { ...db.meta, seededAt: new Date().toISOString(), seedVersion: 3 },
     collections,
   });
   return true;

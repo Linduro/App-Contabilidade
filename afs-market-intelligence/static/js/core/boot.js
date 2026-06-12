@@ -8,6 +8,7 @@ import { renderHome } from '../modules/home.js';
 import { renderPipelines } from '../modules/crm-pipelines.js';
 import { renderOportunidades } from '../modules/crm-oportunidades.js';
 import { renderLeads } from '../modules/crm-leads.js';
+import { renderAtividades } from '../modules/atividades.js';
 import { placeholderModule } from '../modules/placeholder.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 
@@ -45,7 +46,7 @@ function registerAllRoutes() {
   register('/crm/pipelines', renderPipelines);
   register('/crm/leads', renderLeads);
   register('/crm/oportunidades', renderOportunidades);
-  register('/tarefas', ph('Atividades'));
+  register('/tarefas', renderAtividades);
   register('/parceiros', ph('Parceiros B2B2B'));
   register('/configuracoes', ph('Configurações', 'Scoring e pipelines.'));
   registerPrefix('/marketing/', ph('Marketing'));

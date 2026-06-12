@@ -108,3 +108,10 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Drawer de lead, ações funil/contato/criar negócio
 - Importar CSV, exportar CSV/JSON/Copiar/Excel
 - Modal **+ Novo lead**
+
+## v3.3 — Atividades (fase 3c)
+
+- `#/tarefas`: visão lista e calendário mensal
+- Filtros rápidos (para fazer, atrasadas, hoje, amanhã, semana, mês)
+- Nova atividade vinculada a lead/negócio, conclusão com outcome
+- Badge de atrasadas na sidebar; sync automático pendente → atrasada
