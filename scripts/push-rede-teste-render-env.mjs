@@ -30,6 +30,7 @@ function parseEnv(text) {
     const i = t.indexOf("=");
     if (i <= 0) continue;
     const key = t.slice(0, i).trim();
+    if (!key) continue;
     let val = t.slice(i + 1).trim();
     if (
       (val.startsWith('"') && val.endsWith('"')) ||
@@ -57,20 +58,6 @@ async function api(path, opts = {}) {
   return body ? JSON.parse(body) : null;
 }
 
-async function listEnvVars(serviceId) {
-  const merged = {};
-  let cursor = null;
-  do {
-    const q = cursor ? `?cursor=${encodeURIComponent(cursor)}&limit=100` : "?limit=100";
-    const page = await api(`/services/${serviceId}/env-vars${q}`);
-    for (const row of page) {
-      if (row?.envVar?.key) merged[row.envVar.key] = row.envVar.value ?? "";
-    }
-    cursor = page?.length ? page[page.length - 1]?.cursor : null;
-  } while (cursor);
-  return merged;
-}
-
 const vars = parseEnv(readFileSync(envPath, "utf8"));
 const list = await api(`/services?name=${encodeURIComponent(serviceName)}&limit=20`);
 const service = list?.find?.((row) => row.service?.name === serviceName)?.service;
@@ -81,18 +68,11 @@ if (!service?.id) {
 
 console.log(`Serviço: ${service.name} (${service.id})`);
 
-const existing = await listEnvVars(service.id);
-const merged = { ...existing, ...vars };
-const payload = Object.entries(merged).map(([key, value]) => ({
-  envVar: { key, value },
-}));
-
-await api(`/services/${service.id}/env-vars`, {
-  method: "PUT",
-  body: JSON.stringify(payload),
-});
-
-for (const key of Object.keys(vars)) {
+for (const [key, value] of Object.entries(vars)) {
+  await api(`/services/${service.id}/env-vars/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify({ value: value ?? "" }),
+  });
   console.log(`  ✓ ${key}`);
 }
 
