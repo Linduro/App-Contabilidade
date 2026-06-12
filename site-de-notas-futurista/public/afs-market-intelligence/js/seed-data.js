@@ -1,4 +1,4 @@
-import * as store from '../core/store.js';
+import * as store from './core/store.js';
 
 const USERS = [
   { id: 'u_owner', nome: 'Cartoon HQ', email: 'cartoonhq@gmail.com', papel: 'admin' },

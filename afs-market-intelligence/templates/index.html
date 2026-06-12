@@ -60,7 +60,7 @@
         }
         const { startAuthGate } = await import('{{ url_for('static', filename='js/auth-gate.js') }}?v=6');
         startAuthGate(async function () {
-            const { bootApp } = await import('{{ url_for('static', filename='js/core/boot.js') }}?v=2');
+            const { bootApp } = await import('{{ url_for('static', filename='js/core/boot.js') }}?v=3');
             await bootApp();
         });
     } catch (err) {

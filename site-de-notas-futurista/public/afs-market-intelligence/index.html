@@ -61,7 +61,7 @@
         }
         const { startAuthGate } = await import('./js/auth-gate.js?v=6');
         startAuthGate(async function () {
-            const { bootApp } = await import('./js/core/boot.js?v=2');
+            const { bootApp } = await import('./js/core/boot.js?v=3');
             await bootApp();
         });
     } catch (err) {
