@@ -821,23 +821,32 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <script type="module">
 (async function bootstrapAFS() {
-    const configPaths = ['./config.json', '/static/config.json'];
-    for (const p of configPaths) {
-        try {
-            const r = await fetch(p + '?t=' + Date.now());
-            if (!r.ok) continue;
-            const cfg = await r.json();
-            if (cfg.firebase) window.__AFS_FB_CONFIG__ = cfg.firebase;
-            else if (cfg.apiKey) window.__AFS_FB_CONFIG__ = cfg;
-            if (cfg.apiBase) window.__AFS_MARKET_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
-            break;
-        } catch (_) { /* próximo path */ }
+    const status = document.getElementById('login-status');
+    try {
+        const configPaths = ['./config.json', '/static/config.json'];
+        for (const p of configPaths) {
+            try {
+                const r = await fetch(p + '?t=' + Date.now());
+                if (!r.ok) continue;
+                const cfg = await r.json();
+                if (cfg.firebase) window.__AFS_FB_CONFIG__ = cfg.firebase;
+                else if (cfg.apiKey) window.__AFS_FB_CONFIG__ = cfg;
+                if (cfg.apiBase) window.__AFS_MARKET_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+                break;
+            } catch (_) { /* próximo path */ }
+        }
+        const { startAuthGate } = await import('./js/auth-gate.js?v=5');
+        startAuthGate(async function () {
+            await import('./js/browser-api.js?v=5');
+            await import('./js/app.js?v=5');
+            if (window.AFS_bootApp) await window.AFS_bootApp();
+        });
+    } catch (err) {
+        console.error('[AFS-ERROR] bootstrap', err);
+        if (status) status.textContent = 'Falha ao iniciar: ' + (err.message || err);
+        const fb = document.getElementById('login-fallback');
+        if (fb) fb.classList.remove('hidden');
     }
-    if (!window.__AFS_FB_CONFIG__) {
-        console.warn('[AFS] config.json não encontrado — defina window.__AFS_FB_CONFIG__ manualmente.');
-    }
-    await import('./js/browser-api.js?v=3');
-    await import('./js/app.js?v=3');
 })();
 </script>
 </body>

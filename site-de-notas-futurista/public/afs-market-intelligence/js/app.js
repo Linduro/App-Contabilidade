@@ -56,8 +56,6 @@
   let reconnectAttempts = 0;
   let browserOnline = navigator.onLine;
 
-  const ALLOWED_EMAILS = ['cartoonhq@gmail.com', 'gabrieldouran@gmail.com'];
-
   function perfil() {
     return $('#perfil')?.value || 'patrimonial';
   }
@@ -73,12 +71,14 @@
   }
 
   function portalSignInUrl() {
+    if (window.AFS_portalSignInUrl) return window.AFS_portalSignInUrl();
     const base = window.__AFS_BASE_PATH__ || '';
     const ret = encodeURIComponent(window.location.pathname + window.location.search);
     return base + '/sign-in/?redirect=' + ret;
   }
 
   function portalHomeUrl() {
+    if (window.AFS_portalHomeUrl) return window.AFS_portalHomeUrl();
     return (window.__AFS_BASE_PATH__ || '') + '/dashboard/';
   }
 
@@ -207,26 +207,10 @@
 
   /* ── Auth ── */
 
-  function onDocumentReady(fn) {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', fn);
-    } else {
-      fn();
-    }
-  }
-
-  async function initAuth() {
-    const fallbackLink = $('#login-fallback-link');
-    if (fallbackLink) fallbackLink.href = portalSignInUrl();
+  async function setupAFSAuth() {
     const auth = await waitForFB();
-    if (!auth) {
-      logErr('initAuth', new Error('Firebase Auth não inicializou'));
-      $('#login-status').textContent = 'Não foi possível verificar a sessão. Redirecionando…';
-      window.location.replace(portalSignInUrl());
-      return;
-    }
-    const { onAuthStateChanged, signInWithEmailAndPassword, signOut } = await getAuthMod();
-
+    if (!auth) return;
+    const { signInWithEmailAndPassword, signOut } = await getAuthMod();
     window.AFSAuth = {
       signIn: function (email, password) {
         return signInWithEmailAndPassword(auth, email, password);
@@ -236,30 +220,6 @@
       },
       currentUser: function () { return auth.currentUser; },
     };
-
-    onAuthStateChanged(auth, function (user) {
-      if (user && ALLOWED_EMAILS.includes((user.email || '').toLowerCase())) {
-        $('#afs-login').classList.add('hidden');
-        $('#afs-app').classList.remove('hidden');
-        bootstrapApp();
-      } else if (user) {
-        signOut(auth).then(function () {
-          Toast()?.error('Acesso restrito a usuários autorizados.');
-          window.location.href = portalHomeUrl();
-        });
-      } else {
-        teardownApp();
-        $('#login-status').textContent = 'Redirecionando para o login do portal…';
-        const signIn = portalSignInUrl();
-        const fallback = $('#login-fallback');
-        const fallbackLink = $('#login-fallback-link');
-        if (fallback && fallbackLink) {
-          fallback.classList.remove('hidden');
-          fallbackLink.href = signIn;
-        }
-        window.location.replace(signIn);
-      }
-    });
   }
 
   function teardownApp() {
@@ -1569,8 +1529,16 @@
     initSearch();
   }
 
-  onDocumentReady(function () {
-    bindEvents();
-    initAuth();
-  });
+  let appBooted = false;
+  window.AFS_bootApp = async function () {
+    if (appBooted) return;
+    appBooted = true;
+    await setupAFSAuth();
+    try {
+      bindEvents();
+    } catch (e) {
+      logErr('bindEvents', e);
+    }
+    await bootstrapApp();
+  };
 })();
