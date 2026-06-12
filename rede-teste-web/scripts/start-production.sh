@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
 if [ -n "$DATABASE_URL" ]; then
-  npx prisma db push --skip-generate
+  npx prisma db push
 fi
 exec node server.js
