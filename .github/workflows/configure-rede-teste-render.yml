@@ -27,24 +27,21 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Skip when Render API key is missing
-        if: ${{ secrets.RENDER_API_KEY == '' }}
-        run: |
-          echo "::warning::Secret RENDER_API_KEY ausente — configure em GitHub → Settings → Secrets."
-          echo "Crie a key em https://dashboard.render.com/u/settings#api-keys"
-          exit 0
-
       - name: Write .env.render from secrets
-        if: ${{ secrets.RENDER_API_KEY != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.REDE_TESTE_DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.REDE_TESTE_AUTH_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.REDE_TESTE_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.REDE_TESTE_SUPABASE_SECRET_KEY }}
         run: |
           cat > rede-teste-web/.env.render <<EOF
-          DATABASE_URL=${{ secrets.REDE_TESTE_DATABASE_URL }}
-          BETTER_AUTH_SECRET=${{ secrets.REDE_TESTE_AUTH_SECRET }}
+          DATABASE_URL=${DATABASE_URL}
+          BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
           BETTER_AUTH_URL=https://rede-teste.onrender.com
           NEXT_PUBLIC_SUPABASE_URL=https://diuudxdcemegubuajvql.supabase.co
           SUPABASE_URL=https://diuudxdcemegubuajvql.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.REDE_TESTE_SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_SECRET_KEY=${{ secrets.REDE_TESTE_SUPABASE_SECRET_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+          SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
           SUPABASE_STORAGE_BUCKET=advforte
           NEXT_PUBLIC_PORTAL_URL=https://linduro.github.io/App-Contabilidade
           FIREBASE_PROJECT_ID=contabilidade-ebed6
@@ -52,7 +49,12 @@ jobs:
           EOF
 
       - name: Push env vars to Render and deploy
-        if: ${{ secrets.RENDER_API_KEY != '' }}
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: node scripts/push-rede-teste-render-env.mjs
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "::warning::Secret RENDER_API_KEY ausente."
+            echo "Crie em https://dashboard.render.com/u/settings#api-keys e adicione em GitHub → Settings → Secrets."
+            exit 0
+          fi
+          node scripts/push-rede-teste-render-env.mjs
