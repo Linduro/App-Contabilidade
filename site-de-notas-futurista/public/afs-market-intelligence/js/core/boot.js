@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { register, registerPrefix, start, isLegacyRoute, parseHash } from './router.js';
-import { seedIfEmpty } from '../data/seed.js';
+import { seedIfEmpty } from '../seed-data.js';
 import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
