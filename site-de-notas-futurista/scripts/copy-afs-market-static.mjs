@@ -129,5 +129,11 @@ const bootText = fs.readFileSync(bootPath, "utf8")
 if (!bootText.includes("from './seed-data.js'")) {
   throw new Error("Falha no build AFS: boot.js deve importar ./seed-data.js")
 }
+if (bootText.includes("await go()")) {
+  throw new Error("Falha no build AFS: boot.js com await go() obsoleto")
+}
+if (!bootText.includes("const navigate = start")) {
+  throw new Error("Falha no build AFS: boot.js deve usar const navigate = start(...)")
+}
 
 console.log("AFS Market Intelligence static assets copied to public/afs-market-intelligence/")

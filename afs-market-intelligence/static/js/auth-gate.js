@@ -87,9 +87,10 @@ export function startAuthGate(onAuthorized) {
       const email = (user && user.email ? user.email : '').toLowerCase();
       if (user && ALLOWED_EMAILS.includes(email)) {
         setLoginStatus('Sessão válida. Carregando…');
-        document.getElementById('afs-login')?.classList.add('hidden');
-        document.getElementById('app-root')?.classList.remove('hidden');
-        Promise.resolve(onAuthorized()).catch(function (err) {
+        Promise.resolve(onAuthorized()).then(function () {
+          document.getElementById('afs-login')?.classList.add('hidden');
+          document.getElementById('app-root')?.classList.remove('hidden');
+        }).catch(function (err) {
           console.error('[AFS-ERROR] boot', err);
           const detail = err && err.message ? err.message : String(err);
           setLoginStatus('Erro ao carregar: ' + detail);

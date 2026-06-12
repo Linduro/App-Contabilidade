@@ -93,12 +93,13 @@ export async function bootApp() {
 
   registerAllRoutes();
 
-  await start(function (path) {
+  const navigate = start(function (path) {
     refreshChrome(path);
     if (isLegacyRoute(path)) {
       document.getElementById('app-root')?.classList.add('hidden');
     }
   });
+  await navigate();
 
   store.onChange(function () {
     const { path } = parseHash();

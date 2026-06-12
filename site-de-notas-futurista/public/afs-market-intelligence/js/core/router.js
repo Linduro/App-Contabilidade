@@ -48,9 +48,10 @@ export function start(onRoute) {
     const mountEl = document.getElementById('l2-content');
     const path = await dispatch(mountEl);
     onRoute?.(path);
+    return path;
   }
   window.addEventListener('hashchange', go);
-  return go();
+  return go;
 }
 
 export function navigate(path) {
