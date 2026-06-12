@@ -146,6 +146,28 @@ function isValidPhotoUrl(url) {
     return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//');
 }
 
+/** Fotos persistidas na avaliação (independente da planilha) */
+function photosFromEvaluation(ev) {
+    if (!ev) return [];
+    if (ev.photos && Array.isArray(ev.photos)) {
+        return ev.photos
+            .map(p => ({
+                url: typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(p.url) : p.url,
+                type: p.type || p.category || 'Foto'
+            }))
+            .filter(p => isValidPhotoUrl(p.url));
+    }
+    const list = [];
+    const add = (url, type) => {
+        const u = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(url) : url;
+        if (isValidPhotoUrl(u)) list.push({ url: u, type });
+    };
+    add(ev.photo_url, 'Foto do Bem');
+    add(ev.photo_spec, 'Foto Especificações');
+    add(ev.photo_tag, 'Foto da TAG');
+    return list;
+}
+
 function getActiveSpreadsheetName() {
     return state.spreadsheetData?.file_name || '';
 }
@@ -1149,6 +1171,7 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
 
     let statusColor = 'var(--text-color)';
     if (data.status === 'Concluído') statusColor = 'var(--status-ok)';
+    if (data.status && data.status.includes('Concluído')) statusColor = 'var(--status-ok)';
     if (data.status && data.status.includes('Erro')) statusColor = 'var(--status-error)';
     if (data.status === 'Avaliando') statusColor = 'var(--status-info)';
 
@@ -1169,7 +1192,7 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
     const ativoText = rowEl.dataset.ativo || data.ativo || data.valuation?.ativo || '';
     const ctrlEsc = (rowEl.dataset.control || '').replace(/'/g, "\\'");
 
-    const btnHtml = data.status === 'Concluído' && rowEl.dataset.eval_id ?
+    const btnHtml = (data.status === 'Concluído' || (data.status && data.status.includes('Concluído'))) && rowEl.dataset.eval_id ?
         `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${rowEl.dataset.eval_id}, ${data.row}, '${ctrlEsc}')">Revisar</button>` :
         `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
 
@@ -1193,7 +1216,8 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
             rowEl.dataset.photoUrl,
             rowEl.dataset.photoSpec,
             rowEl.dataset.photoTag,
-            rowEl.dataset.description
+            rowEl.dataset.description,
+            data.photos || null
         );
     };
 
@@ -1207,7 +1231,8 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
             normalizePhotoUrl(data.photo_url) || rowEl.dataset.photoUrl,
             normalizePhotoUrl(data.photo_spec) || rowEl.dataset.photoSpec,
             normalizePhotoUrl(data.photo_tag) || rowEl.dataset.photoTag,
-            data.description || rowEl.dataset.description
+            data.description || rowEl.dataset.description,
+            data.photos || null
         );
         updateSideConservationAge(data);
         updateSideValuation(data);
@@ -1285,9 +1310,9 @@ async function loadSpreadsheetRowsForEvaluation() {
             const descText = descLetter ? row[descLetter] : "Item sem descrição";
             const assetText = assetLetter ? row[assetLetter] : '';
             const rowPhotos = resolveRowPhotosForDisplay(row, mappings, photoMeta);
-            const fotoUrl = rowPhotos[0]?.url || "Sem foto";
-            const fotoSpec = rowPhotos[1]?.url || "Sem foto especificação";
-            const fotoTag = rowPhotos[2]?.url || "Sem foto tag";
+            const fotoUrl = rowPhotos.find(p => /bem/i.test(p.type || ''))?.url || rowPhotos[0]?.url || "Sem foto";
+            const fotoTag = rowPhotos.find(p => /tag/i.test(p.type || ''))?.url || "Sem foto tag";
+            const fotoSpec = rowPhotos.find(p => /espec/i.test(p.type || ''))?.url || "Sem foto especificação";
             const link1Val = link1Letter ? row[link1Letter] : null;
 
             const existingEval = evalIndex[`r:${rowIdx}`] || (controlVal != null ? evalIndex[`c:${controlVal}`] : null);
@@ -1501,7 +1526,7 @@ async function openReviewModal(evalId, row, control) {
     // Hide correction block
     cancelCorrection();
     
-    // Show modal
+    // Show modal (above gallery)
     document.getElementById('reviewModal').style.display = 'flex';
     
     try {
@@ -1653,6 +1678,9 @@ async function submitReviewFeedback(accepted, reEvaluate = false) {
             closeReviewModal();
             loadSpreadsheetRowsForEvaluation();
             loadSpreadsheetRegistry();
+            if (document.getElementById('galleryModal')?.style.display === 'flex') {
+                openGalleryModal();
+            }
         } else {
             showAlert(data.message || 'Erro ao processar feedback.', 'error');
         }
@@ -1747,6 +1775,7 @@ async function openGalleryModal() {
                     <td>${fmtNum(ev.value_used)}</td>
                     <td>
                         <button class="btn btn-secondary btn-sm" onclick="openReviewModal(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${(ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'")}')">Revisar</button>
+                        <button class="btn btn-secondary btn-sm" onclick="openGalleryReEvaluate(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${(ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'")}')" style="margin-left:4px;background:var(--status-info);color:#fff;border:none;">Re-avaliar</button>
                     </td>
                 `;
                 
@@ -1778,15 +1807,19 @@ function closeGalleryModal() {
     document.getElementById('galleryModal').style.display = 'none';
 }
 
+function openGalleryReEvaluate(evalId, row, control) {
+    if (!evalId) return;
+    openReviewModal(evalId, row, control);
+    showCorrectionBlock();
+    const block = document.getElementById('correctionFormBlock');
+    if (block) block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function loadGallerySidePanelDetails(ev) {
-    document.getElementById('galleryActiveItem').textContent = `ID: ${ev.id}`;
+    document.getElementById('galleryActiveItem').textContent = `ID: ${ev.id}${ev.control ? ` · Controle ${ev.control}` : ''}`;
     document.getElementById('galleryDescOriginal').textContent = ev.asset_description || 'Sem descrição';
     
-    galleryPhotos = [];
-    if (isValidPhotoUrl(ev.photo_url)) galleryPhotos.push({ url: ev.photo_url, type: 'Foto do Bem' });
-    if (isValidPhotoUrl(ev.photo_spec)) galleryPhotos.push({ url: ev.photo_spec, type: 'Foto Especificações' });
-    if (isValidPhotoUrl(ev.photo_tag)) galleryPhotos.push({ url: ev.photo_tag, type: 'Foto da TAG' });
-    
+    galleryPhotos = photosFromEvaluation(ev);
     currentGalleryPhotoIndex = 0;
     updateGalleryPhotoUI();
     
@@ -2009,13 +2042,11 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
                 raciocinio_visual: ev.reasoning
             });
 
-            // Atualizar galeria com fotos disponíveis (pula slots vazios)
-            sidePhotos = [];
-            const evPhotos = [];
-            if (isValidPhotoUrl(ev.photo_url)) evPhotos.push({ url: ev.photo_url, type: 'Foto do Bem' });
-            if (isValidPhotoUrl(ev.photo_spec)) evPhotos.push({ url: ev.photo_spec, type: 'Foto Especificações' });
-            if (isValidPhotoUrl(ev.photo_tag)) evPhotos.push({ url: ev.photo_tag, type: 'Foto da TAG' });
-            sidePhotos = evPhotos.length ? evPhotos : (Array.isArray(photosFromRow) ? photosFromRow.filter(p => isValidPhotoUrl(p.url)) : []);
+            // Atualizar galeria com fotos persistidas na avaliação
+            sidePhotos = photosFromEvaluation(ev);
+            if (!sidePhotos.length && Array.isArray(photosFromRow)) {
+                sidePhotos = photosFromRow.filter(p => isValidPhotoUrl(p.url));
+            }
             currentSidePhotoIndex = 0;
             updateSidePhotoUI();
             
@@ -2035,7 +2066,20 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
 }
 
 // ---------- Download & Spreadsheet Registry ----------
-function downloadResults() {
+async function downloadResults() {
+    if (!hasRemoteApi()) {
+        try {
+            if (typeof browserExportSpreadsheet === 'function') {
+                browserExportSpreadsheet();
+                showAlert('Planilha exportada com os resultados da IA.', 'success');
+            } else {
+                showAlert('Exportação indisponível no modo navegador.', 'error');
+            }
+        } catch (e) {
+            showAlert('Erro ao exportar: ' + e.message, 'error');
+        }
+        return;
+    }
     window.location.href = downloadFileUrl('/api/download-excel');
 }
 

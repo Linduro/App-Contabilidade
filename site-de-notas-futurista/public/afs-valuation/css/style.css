@@ -1188,6 +1188,7 @@ body {
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    max-height: min(70vh, 600px);
 }
 
 .gallery-modal-list {
@@ -1195,16 +1196,23 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 0;
+    max-height: 100%;
 }
 
 .gallery-table-wrap {
     flex: 1;
-    overflow: auto;
+    overflow-y: auto !important;
+    overflow-x: auto;
     background: var(--bg-input);
     border-radius: 8px;
     border: 1px solid var(--border-subtle);
-    min-height: 280px;
+    min-height: 200px;
+    max-height: min(58vh, 520px);
+}
+
+#reviewModal {
+    z-index: 10001;
 }
 
 .gallery-modal-detail {

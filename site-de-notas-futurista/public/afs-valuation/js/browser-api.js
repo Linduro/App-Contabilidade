@@ -364,6 +364,15 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok' };
     }
 
+    if (path === '/api/download-excel' && method === 'GET') {
+        try {
+            browserExportSpreadsheet();
+            return { status: 'ok' };
+        } catch (e) {
+            return { status: 'error', message: e.message || String(e) };
+        }
+    }
+
     return { status: 'error', message: `Rota não suportada no modo navegador: ${path}` };
 }
 
@@ -405,8 +414,70 @@ function afsIsRowPendingEvaluation(row, s, mappings) {
     return true;
 }
 
+function afsApplyEvaluationToRow(row, ev, mappings) {
+    if (!row || !ev || !mappings) return;
+    const letter = (field) => {
+        const m = mappings[field];
+        return typeof m === 'string' ? m : m?.letter || '';
+    };
+    const set = (field, val) => {
+        const l = letter(field);
+        if (l && val != null && val !== '') row[l] = val;
+    };
+    set('asset_output', ev.asset_normalized);
+    set('category_output', ev.category_normalized);
+    set('value_used', ev.value_used);
+    set('value_new', ev.value_new);
+    set('value_fipe', ev.value_fipe);
+    set('methodology', ev.methodology);
+    set('age_output', ev.apparent_age);
+    set('conservation_output', ev.conservation_state);
+    const l1 = letter('link1');
+    if (l1 && ev.links) {
+        const parts = String(ev.links).split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
+        if (parts[0]) row[l1] = parts[0];
+    }
+    const l2 = letter('link2');
+    if (l2 && ev.links) {
+        const parts = String(ev.links).split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
+        if (parts[1]) row[l2] = parts[1];
+    }
+    const descOut = letter('desc_output');
+    if (descOut) {
+        const txt = [ev.asset_description, ev.reasoning].filter(Boolean).join('\n\n');
+        if (txt) row[descOut] = txt;
+    }
+}
+
+function browserExportSpreadsheet() {
+    const s = afsLoadState();
+    if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
+    if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada');
+    const mappings = afsGetActiveMappings(s);
+    const spreadsheet = s.spreadsheet;
+    const evalByRow = {};
+    (s.evaluations || []).forEach(ev => {
+        if (ev.row_index != null) evalByRow[ev.row_index] = ev;
+    });
+    const headers = spreadsheet.headers || [];
+    const headerNames = headers.map(h => h.name || h.letter);
+    const dataRows = spreadsheet.rows.map(srcRow => {
+        const row = { ...srcRow };
+        const ev = evalByRow[srcRow._row_index];
+        if (ev) afsApplyEvaluationToRow(row, ev, mappings);
+        return headers.map(h => row[h.letter] ?? '');
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headerNames, ...dataRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resultados');
+    const baseName = (spreadsheet.file_name || 'planilha').replace(/\.xlsx?$/i, '');
+    XLSX.writeFile(wb, `${baseName}-afs-resultado.xlsx`);
+}
+
 window.afsMarkRowEvaluated = afsMarkRowEvaluated;
 window.afsIsRowPendingEvaluation = afsIsRowPendingEvaluation;
+window.afsApplyEvaluationToRow = afsApplyEvaluationToRow;
+window.browserExportSpreadsheet = browserExportSpreadsheet;
 window.browserHandleUpload = browserHandleUpload;
 window.afsLoadState = afsLoadState;
 window.afsGeminiRequest = afsGeminiRequest;

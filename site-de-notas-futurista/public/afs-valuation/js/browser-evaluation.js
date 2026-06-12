@@ -61,6 +61,104 @@ function parseGeminiJson(text) {
     }
 }
 
+function afsPhotosForStorage(photos) {
+    return (photos || [])
+        .filter(p => p?.url && /^https?:\/\//i.test(String(p.url)))
+        .map(p => ({
+            url: p.url,
+            type: p.type || 'Foto',
+            category: p.category || p.type || 'Foto',
+            key: p.key || null
+        }));
+}
+
+function afsPhotoUrlsFromList(photos) {
+    const list = photos || [];
+    const find = (re) => list.find(p => re.test(String(p.category || p.type || '')));
+    return {
+        fotoUrl: find(/bem/i)?.url || list[0]?.url || null,
+        fotoSpec: find(/espec/i)?.url || null,
+        fotoTag: find(/tag/i)?.url || null
+    };
+}
+
+function afsNormalizeDescForMatch(text) {
+    return String(text || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
+        .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function afsDescSimilarity(a, b) {
+    const na = afsNormalizeDescForMatch(a);
+    const nb = afsNormalizeDescForMatch(b);
+    if (!na || !nb) return 0;
+    if (na === nb) return 1;
+    const wordsA = na.split(' ').filter(w => w.length > 2);
+    const wordsB = nb.split(' ').filter(w => w.length > 2);
+    if (!wordsA.length || !wordsB.length) return 0;
+    const common = wordsA.filter(w => wordsB.includes(w));
+    return common.length / Math.max(wordsA.length, wordsB.length);
+}
+
+function afsFindReusableEvaluation(row, descricao, s, spreadsheet, mappings) {
+    const descLetter = typeof mappings.desc_original === 'string' ? mappings.desc_original : mappings.desc_original?.letter;
+    const assetLetter = typeof mappings.asset_output === 'string' ? mappings.asset_output : mappings.asset_output?.letter;
+    const threshold = 0.72;
+
+    for (const ev of s.evaluations || []) {
+        if (ev.row_index === row._row_index) continue;
+
+        let score = afsDescSimilarity(ev.asset_description, descricao);
+
+        const otherRow = spreadsheet.rows?.find(r => r._row_index === ev.row_index);
+        if (otherRow && descLetter) {
+            score = Math.max(score, afsDescSimilarity(otherRow[descLetter], descricao));
+        }
+
+        if (ev.asset_normalized) {
+            score = Math.max(score, afsDescSimilarity(ev.asset_normalized, descricao));
+            if (assetLetter && row[assetLetter]) {
+                if (String(ev.asset_normalized).toLowerCase() === String(row[assetLetter]).toLowerCase()) {
+                    score = Math.max(score, 0.92);
+                }
+            }
+        }
+
+        if (score >= threshold) return ev;
+    }
+    return null;
+}
+
+function afsCloneEvaluationForRow(sourceEv, rowIdx, controlVal, photos, newId, descricao) {
+    const urls = afsPhotoUrlsFromList(photos);
+    const storedPhotos = afsPhotosForStorage(photos);
+    return {
+        id: newId,
+        row_index: rowIdx,
+        control: controlVal,
+        asset_description: sourceEv.asset_description || descricao,
+        asset_normalized: sourceEv.asset_normalized,
+        category_normalized: sourceEv.category_normalized,
+        methodology: sourceEv.methodology ? `${sourceEv.methodology} (reutilizado)` : 'Reutilizado de item similar',
+        value_new: sourceEv.value_new,
+        value_used: sourceEv.value_used,
+        value_fipe: sourceEv.value_fipe,
+        apparent_age: sourceEv.apparent_age,
+        conservation_state: sourceEv.conservation_state,
+        links: sourceEv.links,
+        reasoning: sourceEv.reasoning
+            ? `[Reutilizado do controle ${sourceEv.control ?? sourceEv.row_index}]\n${sourceEv.reasoning}`
+            : `[Reutilizado do controle ${sourceEv.control ?? sourceEv.row_index}]`,
+        photo_url: urls.fotoUrl || 'Sem foto',
+        photo_spec: urls.fotoSpec || 'Sem foto especificação',
+        photo_tag: urls.fotoTag || 'Sem foto tag',
+        photos: storedPhotos.length ? storedPhotos : (sourceEv.photos || []),
+        reused_from: sourceEv.id,
+        marca_modelo: sourceEv.marca_modelo,
+        confianca_identificacao: sourceEv.confianca_identificacao,
+        created_at: new Date().toISOString()
+    };
+}
+
 function afsCollectImageUrls(row, mappings, spreadsheet) {
     const resolved = typeof afsResolveRowPhotos === 'function' && spreadsheet
         ? afsResolveRowPhotos(row, spreadsheet.headers, spreadsheet.photo_lookup || {}, mappings)
@@ -121,9 +219,8 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     const photos = typeof afsCollectPhotosForRow === 'function'
         ? afsCollectPhotosForRow(resolvedRow, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers)
         : [];
-    const fotoUrl = photos[0]?.url || normalizePhotoUrl(letter('photo_original') ? resolvedRow[letter('photo_original')] : null) || 'Sem foto';
-    const fotoSpec = photos[1]?.url || normalizePhotoUrl(letter('photo_spec') ? resolvedRow[letter('photo_spec')] : null) || 'Sem foto especificação';
-    const fotoTag = photos[2]?.url || normalizePhotoUrl(letter('photo_tag') ? resolvedRow[letter('photo_tag')] : null) || 'Sem foto tag';
+    const { fotoUrl, fotoSpec, fotoTag } = afsPhotoUrlsFromList(photos);
+    const photosStored = afsPhotosForStorage(photos);
 
     let totalTokens = 0;
     let visionData = {};
@@ -185,9 +282,10 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         conservation_state: visionData.estado_conservacao ?? null,
         links: (marketData.links_comparativos || []).join(','),
         reasoning: marketData.raciocinio_detalhado || visionData.raciocinio_visual || '',
-        photo_url: fotoUrl,
-        photo_spec: fotoSpec,
-        photo_tag: fotoTag,
+        photo_url: fotoUrl || 'Sem foto',
+        photo_spec: fotoSpec || 'Sem foto especificação',
+        photo_tag: fotoTag || 'Sem foto tag',
+        photos: photosStored,
         marca_modelo: visionData.marca_modelo || null,
         confianca_identificacao: visionData.confianca_identificacao ?? null,
         created_at: new Date().toISOString()
@@ -203,7 +301,8 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         visionData,
         marketData,
         evaluation,
-        tokens: totalTokens
+        tokens: totalTokens,
+        photos: photosStored
     };
 }
 
@@ -265,9 +364,11 @@ async function browserRunEvaluation(options, onProgress) {
         const photos = typeof afsCollectPhotosForRow === 'function'
             ? afsCollectPhotosForRow(row, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers)
             : [];
-        const fotoUrl = photos[0]?.url || 'Sem foto';
-        const fotoSpec = photos[1]?.url || 'Sem foto especificação';
-        const fotoTag = photos[2]?.url || 'Sem foto tag';
+        const photoUrls = afsPhotoUrlsFromList(photos);
+        const fotoUrl = photoUrls.fotoUrl || 'Sem foto';
+        const fotoSpec = photoUrls.fotoSpec || 'Sem foto especificação';
+        const fotoTag = photoUrls.fotoTag || 'Sem foto tag';
+        const photosStored = afsPhotosForStorage(photos);
 
         const basePayload = {
             row: rowIdx,
@@ -276,6 +377,7 @@ async function browserRunEvaluation(options, onProgress) {
             photo_url: fotoUrl,
             photo_spec: fotoSpec,
             photo_tag: fotoTag,
+            photos: photosStored,
             tokens: totalTokens
         };
 
@@ -289,6 +391,50 @@ async function browserRunEvaluation(options, onProgress) {
         }
 
         const itemNum = completedCount + 1;
+
+        const similarEv = afsFindReusableEvaluation(row, descricao, s, spreadsheet, mappings);
+        if (similarEv) {
+            onProgress({
+                ...basePayload,
+                status: 'Avaliando',
+                stepLabel: `Item ${itemNum}/${totalPending}: reutilizando avaliação similar (controle ${similarEv.control ?? similarEv.row_index})...`,
+                overallPercent: Math.round((completedCount / totalPending) * 100),
+                itemPercent: 40
+            });
+
+            const evaluation = afsCloneEvaluationForRow(similarEv, rowIdx, controlVal, photos, evalIdCounter++, descricao);
+            s.evaluations = s.evaluations || [];
+            s.evaluations.unshift(evaluation);
+
+            if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
+            if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, evaluation, mappings);
+            if (options.runAtivo && letter('asset_output') && evaluation.asset_normalized) {
+                row[letter('asset_output')] = evaluation.asset_normalized;
+            }
+            if (options.runCategoria && letter('category_output') && evaluation.category_normalized) {
+                row[letter('category_output')] = evaluation.category_normalized;
+            }
+            afsSaveState(s);
+            completedCount++;
+
+            onProgress({
+                ...basePayload,
+                status: 'Concluído (reutilizado)',
+                tokens: totalTokens,
+                eval_id: evaluation.id,
+                photos: evaluation.photos,
+                ativo: evaluation.asset_normalized,
+                categoria: evaluation.category_normalized,
+                apparent_age: evaluation.apparent_age,
+                conservation_state: evaluation.conservation_state,
+                valuation: { ativo: evaluation.asset_normalized, categoria: evaluation.category_normalized },
+                stepLabel: `Item ${itemNum}/${totalPending}: concluído (reutilizado) ✓`,
+                overallPercent: Math.round((completedCount / totalPending) * 100),
+                itemPercent: 100
+            });
+            continue;
+        }
+
         onProgress({
             ...basePayload,
             status: 'Avaliando',
@@ -316,6 +462,9 @@ async function browserRunEvaluation(options, onProgress) {
             if (typeof afsMarkRowEvaluated === 'function') {
                 afsMarkRowEvaluated(s, rowIdx);
             }
+            if (typeof afsApplyEvaluationToRow === 'function') {
+                afsApplyEvaluationToRow(row, evaluation, mappings);
+            }
 
             if (options.runAtivo && letter('asset_output') && result.evaluation.asset_normalized) {
                 row[letter('asset_output')] = result.evaluation.asset_normalized;
@@ -332,6 +481,7 @@ async function browserRunEvaluation(options, onProgress) {
                 status: 'Concluído',
                 tokens: totalTokens,
                 eval_id: evaluation.id,
+                photos: evaluation.photos || result.photos,
                 ativo: result.evaluation.asset_normalized,
                 categoria: result.evaluation.category_normalized,
                 apparent_age: result.evaluation.apparent_age,
@@ -400,12 +550,13 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
         s.evaluations[evIdx] = { ...s.evaluations[evIdx], ...updated };
     }
     if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
+    if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, updated, mappings);
 
     const link1Letter = mappings.link1;
     if (link1Letter) row[link1Letter] = '';
 
     afsSaveState(s);
-    return { status: 'ok', evaluation: updated, tokens: result.tokens };
+    return { status: 'ok', evaluation: s.evaluations[evIdx] || updated, tokens: result.tokens };
 }
 
 window.browserRunEvaluation = browserRunEvaluation;
