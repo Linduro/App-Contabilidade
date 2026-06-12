@@ -12,11 +12,8 @@ service cloud.firestore {
     function isAdmin() {
       return isAuth() && isAdminEmail(request.auth.token.email);
     }
-    function hasAdminRoleClaim() {
-      return isAuth() && request.auth.token.role == 'admin';
-    }
     function isAfsMarketAdmin() {
-      return isAdmin() || hasAdminRoleClaim();
+      return isAdmin();
     }
     function isMarketLead() {
       return resource.data.keys().hasAny(['cnpj_basico', 'perfil_icp', 'regime_tributario']);

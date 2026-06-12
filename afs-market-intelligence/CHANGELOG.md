@@ -84,4 +84,5 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - **Bloco 4:** Execução por etapa individual + animação de progresso
 - **Bloco 5:** Tempo médio entre transições no histórico (por lead)
 - **Bloco 8:** Botão Editar parceiro + e-mail/telefone no modal
-- **Bloco 11:** `syncAfsAdminClaims` (Cloud Function) + `role == admin` nas rules + `[AFS-ERROR]` em todos os catches
+- **Bloco 11:** Admin por e-mail nas rules (plano Spark, sem Blaze) + `[AFS-ERROR]` em todos os catches
+- **CI:** workflows Cloud Run ignoram deploy quando `FIREBASE_SERVICE_ACCOUNT` não está configurado

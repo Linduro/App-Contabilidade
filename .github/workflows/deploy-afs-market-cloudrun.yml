@@ -1,5 +1,9 @@
 name: Deploy AFS Market Intelligence (Cloud Run)
 
+# Opcional: exige secret FIREBASE_SERVICE_ACCOUNT (JSON da service account GCP).
+# Sem o secret, o job termina em verde e o app segue no plano Spark (Firestore direto).
+# Plano Spark não suporta Cloud Functions; admin AFS usa e-mail nas firestore.rules.
+
 on:
   push:
     branches: [main]
@@ -22,20 +26,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip when GCP credentials are not configured
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT == '' }}
+        run: |
+          echo "FIREBASE_SERVICE_ACCOUNT não configurado — deploy Cloud Run ignorado."
+          echo "O AFS Market funciona no Spark via Firestore (browser-api.js)."
+
       - name: Authenticate to Google Cloud
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@v2
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
       - name: Enable required APIs
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         run: |
           gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
 
       - name: Deploy to Cloud Run
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         working-directory: afs-market-intelligence
         run: |
           gcloud run deploy "${{ env.SERVICE_NAME }}" \
@@ -51,6 +65,7 @@ jobs:
             --quiet
 
       - name: Resolve service URL
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         id: service
         run: |
           URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" \
@@ -60,6 +75,7 @@ jobs:
           echo "AFS Market API URL: ${URL}"
 
       - name: Update config.json for GitHub Pages
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         run: |
           node -e "
             const fs = require('fs');
@@ -69,6 +85,7 @@ jobs:
           "
 
       - name: Commit config.json
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

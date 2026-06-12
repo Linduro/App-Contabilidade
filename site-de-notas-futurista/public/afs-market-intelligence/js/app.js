@@ -246,18 +246,7 @@
     if (unsubPipeline) { unsubPipeline(); unsubPipeline = null; }
   }
 
-  async function syncAdminClaims() {
-    try {
-      const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js');
-      const { firebaseApp } = await import('./firebase-config.js');
-      await httpsCallable(getFunctions(firebaseApp), 'syncAfsAdminClaims')();
-    } catch (e) {
-      logErr('syncAdminClaims', e);
-    }
-  }
-
   async function bootstrapApp() {
-    await syncAdminClaims();
     await waitForAPI();
     renderPipelineSteps();
     buildKanbanBoard();

@@ -76,12 +76,9 @@ service cloud.firestore {
       return request.resource.data.keys().hasAny(['cnpj_basico', 'perfil_icp']);
     }
 
-    function hasAdminRoleClaim() {
-      return request.auth != null && request.auth.token.role == 'admin';
-    }
-
+    // Admin AFS no plano Spark: e-mail em isAdmin() (sem Cloud Functions / custom claims).
     function isAfsMarketAdmin() {
-      return isAdmin() || hasAdminRoleClaim();
+      return isAdmin();
     }
 
     match /leads/{docId} {
