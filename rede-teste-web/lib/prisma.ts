@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
+import { createPgPool } from './pg-connection';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -9,27 +9,11 @@ declare global {
   var __prismaUrl: string | undefined;
 }
 
-function stripSslQueryParams(url: string): string {
-  return url
-    .replace(/([?&])sslmode=[^&]*/g, "$1")
-    .replace(/([?&])uselibpqcompat=[^&]*/g, "$1")
-    .replace(/\?&/, "?")
-    .replace(/[?&]$/, "");
-}
-
 function createPrisma(): PrismaClient {
   const url =
     process.env.DATABASE_URL ??
     "postgresql://127.0.0.1:5432/portal?schema=public";
-  const useSupabaseSsl = url.includes("supabase.co");
-  const pool = new pg.Pool({
-    connectionString: useSupabaseSsl ? stripSslQueryParams(url) : url,
-    ...(useSupabaseSsl ? { ssl: { rejectUnauthorized: false } } : {}),
-    max: useSupabaseSsl ? 12 : 20,
-    min: useSupabaseSsl ? 2 : 0,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: useSupabaseSsl ? 15_000 : 5_000,
-  });
+  const pool = createPgPool(url);
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

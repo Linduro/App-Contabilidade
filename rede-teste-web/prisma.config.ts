@@ -2,7 +2,7 @@ import "dotenv/config";
 import path from "node:path";
 import { defineConfig } from "prisma/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import pg from "pg";
+import { createPgPool } from "./lib/pg-connection";
 
 const databaseUrl =
   process.env.DATABASE_URL ??
@@ -15,9 +15,6 @@ export default defineConfig({
     url: databaseUrl,
   },
   migrate: {
-    adapter: () => {
-      const pool = new pg.Pool({ connectionString: databaseUrl });
-      return new PrismaPg(pool);
-    },
+    adapter: () => new PrismaPg(createPgPool(databaseUrl)),
   },
 });
