@@ -1,3 +1,12 @@
+import {
+  CAPA_EMPRESA_PLACEHOLDER,
+  extractComarcaFromOrgao,
+  extractOrgao,
+  extractPartes,
+  extractValorCausa,
+  hasPartesMetadata,
+} from "@/lib/datajud/metadata"
+
 export function extractClasse(source: Record<string, unknown>) {
   const c = (source.classe || source.classeProcessual || {}) as Record<string, unknown>
   const codigo = c.codigo ?? c.code ?? c.numero ?? null
@@ -41,8 +50,7 @@ function isPoloPassivo(parte: Record<string, unknown>) {
 
 function hasAdvogadoConstituido(source: Record<string, unknown>) {
   if (Array.isArray(source.advogados) && source.advogados.length) return true
-  const partes = (source.partes || (source.dadosBasicos as Record<string, unknown>)?.partes || []) as Record<string, unknown>[]
-  for (const parte of partes) {
+  for (const parte of extractPartes(source)) {
     if (!isPoloPassivo(parte)) continue
     const reps = (parte.advogados || parte.representantes || []) as unknown[]
     if (Array.isArray(reps) && reps.length) return true
@@ -52,19 +60,47 @@ function hasAdvogadoConstituido(source: Record<string, unknown>) {
 
 export function parseTrabalhistaSource(source: Record<string, unknown>, trt: number) {
   const numeroProcesso = normalizeProcesso(source.numeroProcesso)
-  if (!numeroProcesso || hasAdvogadoConstituido(source)) return null
+  if (!numeroProcesso) return null
 
-  const partes = (source.partes || (source.dadosBasicos as Record<string, unknown>)?.partes || []) as Record<string, unknown>[]
+  const orgao = extractOrgao(source)
+  const vara = String(orgao.nome || orgao.nomeOrgao || `TRT-${trt}`)
+  const comarca = extractComarcaFromOrgao(orgao, vara)
+  const assuntos = extractAssuntos(source)
+  const { codigo: classe_codigo, nome: classe_nome } = extractClasse(source)
+  const valor = extractValorCausa(source)
+  const capaApenas = !hasPartesMetadata(source)
+
+  if (capaApenas) {
+    return {
+      numero_processo: numeroProcesso,
+      numero_processo_formatado: String(source.numeroProcesso || numeroProcesso),
+      empresa: CAPA_EMPRESA_PLACEHOLDER,
+      cnpj: null as string | null,
+      vara,
+      comarca,
+      tribunal: `TRT-${trt}`,
+      valor_causa: valor ?? 0,
+      data_ajuizamento: (source.dataAjuizamento || source.dataHoraAjuizamento || null) as string | null,
+      ultima_movimentacao: null,
+      sem_movimentacao_posterior: true,
+      setor: /agro|fazenda|pecu/i.test(assuntos) ? "agro" : "outros",
+      comarca_interior: true,
+      classe_codigo,
+      classe_nome,
+      assuntos,
+      capa_datajud: true,
+      dados_brutos: { datajud: source, trt },
+    }
+  }
+
+  if (hasAdvogadoConstituido(source)) return null
+
+  const partes = extractPartes(source)
   const reusPj = partes.filter((p) => isPoloPassivo(p) && isPessoaJuridica(p))
   if (!reusPj.length) return null
 
   const reu = reusPj[0]
-  const orgao = (source.orgaoJulgador || {}) as Record<string, unknown>
-  const vara = String(orgao.nome || orgao.nomeOrgao || `TRT-${trt}`)
-  const comarca = String(orgao.municipioNome || orgao.nomeMunicipio || vara)
-  const assuntos = extractAssuntos(source)
   const empresa = String(reu.nome || "Empresa não identificada").trim()
-  const { codigo: classe_codigo, nome: classe_nome } = extractClasse(source)
 
   return {
     numero_processo: numeroProcesso,
@@ -74,7 +110,7 @@ export function parseTrabalhistaSource(source: Record<string, unknown>, trt: num
     vara,
     comarca,
     tribunal: `TRT-${trt}`,
-    valor_causa: parseFloat(String(source.valorCausa || source.valor || 0)) || 0,
+    valor_causa: valor ?? 0,
     data_ajuizamento: (source.dataAjuizamento || source.dataHoraAjuizamento || null) as string | null,
     ultima_movimentacao: null,
     sem_movimentacao_posterior: true,
@@ -83,6 +119,7 @@ export function parseTrabalhistaSource(source: Record<string, unknown>, trt: num
     classe_codigo,
     classe_nome,
     assuntos,
+    capa_datajud: false,
     dados_brutos: { datajud: source, trt },
   }
 }

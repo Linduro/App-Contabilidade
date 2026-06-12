@@ -7,10 +7,17 @@ import * as dotenv from "dotenv"
 
 dotenv.config()
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY ?? "0x0000000000000000000000000000000000000000000000000000000000000001"
 const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY ?? ""
 
-const accounts = PRIVATE_KEY ? [PRIVATE_KEY] : []
+function resolveDeployAccounts(): string[] {
+  const pk = process.env.PRIVATE_KEY?.trim()
+  if (pk && /^0x[0-9a-fA-F]{64}$/.test(pk)) {
+    return [pk]
+  }
+  return []
+}
+
+const accounts = resolveDeployAccounts()
 
 const config: HardhatUserConfig = {
   solidity: {

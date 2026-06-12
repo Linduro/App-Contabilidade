@@ -7,7 +7,7 @@ import {
   updateExecucaoStatus,
 } from "@/lib/execucoes-rurais/client"
 import { runExecucoesCollectInBrowser } from "@/lib/execucoes-rurais/collect-client"
-import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/normalize"
 import type { ExecucaoFilters, ExecucaoRural, ExecucaoStatus } from "@/lib/execucoes-rurais/types"
 import { DEFAULT_EXECUCAO_FILTERS } from "@/lib/execucoes-rurais/types"
 import { useRegionalFilters } from "@/hooks/use-regional-filters"
@@ -58,16 +58,11 @@ export function useExecucoesRuraisDashboard(enabled: boolean) {
     setCollectMessage(null)
     setError(null)
     try {
-      const result = await runExecucoesCollectInBrowser(
-        userId,
-        {
-          dataDe: filters.dataDe || undefined,
-          dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
-          natureza: filters.natureza,
-        },
-        regionalFilters,
-      )
+      const result = await runExecucoesCollectInBrowser(userId, {
+        dataDe: filters.dataDe || undefined,
+        dataAte: filters.dataAte || undefined,
+        daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
+      })
       setCollectMessage(result.mensagem ?? "Busca concluída.")
       await load()
     } catch (e) {
@@ -76,7 +71,7 @@ export function useExecucoesRuraisDashboard(enabled: boolean) {
     } finally {
       setCollecting(false)
     }
-  }, [userId, filters, regionalFilters, load])
+  }, [userId, filters.dataDe, filters.dataAte, load])
 
   const changeStatus = useCallback(async (id: string, status: ExecucaoStatus) => {
     await updateExecucaoStatus(id, status)

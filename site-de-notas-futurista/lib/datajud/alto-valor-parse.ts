@@ -1,4 +1,12 @@
 import { ALTO_VALOR_MIN, CLASSES_EXECUCAO_ALTO_VALOR } from "@/lib/datajud/alto-valor-constants"
+import {
+  CAPA_EXECUTADO_PLACEHOLDER,
+  extractComarcaFromOrgao,
+  extractOrgao,
+  extractPartes,
+  extractValorCausa,
+  hasPartesMetadata,
+} from "@/lib/datajud/metadata"
 import { extractClasse } from "@/lib/datajud/trabalhista-parse"
 
 const CLASSES_SET = new Set<number>(CLASSES_EXECUCAO_ALTO_VALOR)
@@ -26,10 +34,44 @@ export function parseAltoValorSource(source: Record<string, unknown>, tribunalLa
   const { codigo: classeCodigo } = extractClasse(source)
   if (classeCodigo == null || !CLASSES_SET.has(classeCodigo)) return null
 
-  const valor = parseFloat(String(source.valorCausa || source.valor || 0))
-  if (!Number.isFinite(valor) || valor < ALTO_VALOR_MIN) return null
+  const valor = extractValorCausa(source)
+  const capaApenas = !hasPartesMetadata(source)
 
-  const partes = (source.partes || []) as Record<string, unknown>[]
+  if (!capaApenas && valor != null && valor < ALTO_VALOR_MIN) return null
+
+  const orgao = extractOrgao(source)
+  const numeroProcesso = String(source.numeroProcesso || "").replace(/\D/g, "")
+  if (!numeroProcesso) return null
+
+  const vara = String(orgao.nome || orgao.nomeOrgao || tribunalLabel)
+  const comarca = extractComarcaFromOrgao(orgao, vara)
+
+  if (capaApenas) {
+    return {
+      numeroProcesso,
+      processo: String(source.numeroProcesso || numeroProcesso),
+      tribunal: tribunalLabel,
+      vara,
+      comarca,
+      valorCausa: valor,
+      exequente: null as string | null,
+      executado: CAPA_EXECUTADO_PLACEHOLDER,
+      cnpjCpf: "",
+      tipoExecutado: "PF" as const,
+      dataAjuizamento: (source.dataAjuizamento || null) as string | null,
+      ultimoMovimento: (source.dataUltimaAtualizacao ||
+        source.dataHoraUltimaAtualizacao ||
+        source.dataAjuizamento ||
+        null) as string | null,
+      temAdvogado: false,
+      classeCodigo,
+      comarcaInterior: true,
+      capaDatajud: true,
+      dadosBrutos: source,
+    }
+  }
+
+  const partes = extractPartes(source)
   const executadoParte = partes.find(isPoloPassivo)
   if (!executadoParte || !executadoSemAdvogado(executadoParte)) return null
 
@@ -38,18 +80,18 @@ export function parseAltoValorSource(source: Record<string, unknown>, tribunalLa
     if (!executadoSemAdvogado(parte)) return null
   }
 
+  if (valor != null && valor < ALTO_VALOR_MIN) return null
+
   const exequenteParte = partes.find((p) => !isPoloPassivo(p))
-  const executado = String(executadoParte.nome || "Executado não identificado").trim()
+  const executado = String(executadoParte.nome || CAPA_EXECUTADO_PLACEHOLDER).trim()
   const cnpjCpf = extractDoc(executadoParte)
-  const orgao = (source.orgaoJulgador || {}) as Record<string, unknown>
-  const numeroProcesso = String(source.numeroProcesso || "").replace(/\D/g, "")
 
   return {
     numeroProcesso,
     processo: String(source.numeroProcesso || numeroProcesso),
     tribunal: tribunalLabel,
-    vara: String(orgao.nome || orgao.nomeOrgao || tribunalLabel),
-    comarca: String(orgao.municipioNome || orgao.nomeMunicipio || orgao.nome || "—"),
+    vara,
+    comarca,
     valorCausa: valor,
     exequente: exequenteParte ? String(exequenteParte.nome || "") : null,
     executado,
@@ -58,10 +100,14 @@ export function parseAltoValorSource(source: Record<string, unknown>, tribunalLa
       ? "PJ"
       : "PF") as "PF" | "PJ",
     dataAjuizamento: (source.dataAjuizamento || null) as string | null,
-    ultimoMovimento: (source.dataUltimaAtualizacao || source.dataHoraUltimaAtualizacao || source.dataAjuizamento || null) as string | null,
+    ultimoMovimento: (source.dataUltimaAtualizacao ||
+      source.dataHoraUltimaAtualizacao ||
+      source.dataAjuizamento ||
+      null) as string | null,
     temAdvogado: false,
     classeCodigo,
     comarcaInterior: true,
+    capaDatajud: false,
     dadosBrutos: source,
   }
 }

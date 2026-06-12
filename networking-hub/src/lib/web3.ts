@@ -1,7 +1,31 @@
-import { createPublicClient, http, type Address, getAddress, isAddress } from "viem"
-import { polygon, polygonAmoy } from "viem/chains"
-import { getEnv } from "./env.js"
-import { credentialNftAbi, reputationSbtAbi, serviceEscrowAbi } from "./abis.js"
+import { createPublicClient, http, type Address, getAddress, isAddress, parseAbi } from "viem"
+import { polygonAmoy } from "viem/chains"
+import { getEnv, isWeb3Enabled as envWeb3Enabled } from "./env.js"
+import { getContractAddresses } from "./contract-addresses.js"
+import serviceEscrowAbi from "./abis/ServiceEscrow.abi.json" with { type: "json" }
+import reputationSbtAbi from "./abis/ReputationSBT.abi.json" with { type: "json" }
+import credentialNftAbi from "./abis/CredentialNFT.abi.json" with { type: "json" }
+
+type OnChainCredential = {
+  tokenId: bigint
+  recipient: Address
+  credentialType: string
+  institution: string
+  title: string
+  issueDate: bigint
+  expiryDate: bigint
+  metadataURI: string
+  revoked: boolean
+}
+
+const ALCHEMY_URL =
+  process.env.WEB3_RPC_URL ??
+  `https://polygon-amoy.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY ?? ""}`
+
+export const publicClient = createPublicClient({
+  chain: polygonAmoy,
+  transport: http(getEnv().WEB3_RPC_URL ?? ALCHEMY_URL),
+})
 
 export function normalizeWallet(address: string): Address {
   if (!isAddress(address)) {
@@ -10,71 +34,55 @@ export function normalizeWallet(address: string): Address {
   return getAddress(address)
 }
 
-function getChain() {
-  const env = getEnv()
-  const chainId = env.WEB3_CHAIN_ID ?? 80002
-  return chainId === polygon.id ? polygon : polygonAmoy
+function requireAddress(addr: string, label: string): Address {
+  if (!isWeb3Enabled()) {
+    throw new Error("Integração on-chain desativada (WEB3_ENABLED=false)")
+  }
+  if (!addr || !isAddress(addr)) {
+    throw new Error(`${label} não configurado. Defina endereços em deployments/amoy.json`)
+  }
+  return getAddress(addr)
 }
 
-export function getPublicClient() {
-  const env = getEnv()
-  const chain = getChain()
-  const rpcUrl =
-    env.WEB3_RPC_URL ??
-    (chain.id === polygon.id
-      ? "https://polygon-rpc.com"
-      : "https://rpc-amoy.polygon.technology")
-
-  return createPublicClient({
-    chain,
-    transport: http(rpcUrl),
-  })
+/** Lê dados on-chain só quando WEB3_ENABLED=true e contratos estão completos. */
+export function isWeb3Enabled(): boolean {
+  return envWeb3Enabled()
 }
 
 export function isWeb3Configured(): boolean {
-  const env = getEnv()
-  return Boolean(env.REPUTATION_SBT_ADDRESS && env.CREDENTIAL_NFT_ADDRESS)
+  if (!isWeb3Enabled()) return false
+  const a = getContractAddresses()
+  return Boolean(a.reputationSbt && a.credentialNft && a.serviceEscrow)
 }
 
-export async function getReputationScore(walletAddress: string) {
-  const env = getEnv()
-  if (!env.REPUTATION_SBT_ADDRESS) {
-    return { averageScaled: 0, total: 0, stars: 0, configured: false }
-  }
-
-  const client = getPublicClient()
+export async function getReputationScore(
+  walletAddress: string
+): Promise<{ average: number; total: number }> {
+  const { reputationSbt } = getContractAddresses()
   const address = normalizeWallet(walletAddress)
 
-  const [averageScaled, total] = await client.readContract({
-    address: env.REPUTATION_SBT_ADDRESS as Address,
+  const [averageScaled, total] = (await publicClient.readContract({
+    address: requireAddress(reputationSbt, "ReputationSBT"),
     abi: reputationSbtAbi,
     functionName: "getReputationScore",
     args: [address],
-  })
-
-  const stars = total > 0n ? Math.round(Number(averageScaled) / 100) : 0
+  })) as readonly [bigint, bigint]
 
   return {
-    averageScaled: Number(averageScaled),
+    average: Number(total) > 0 ? Number(averageScaled) / 100 : 0,
     total: Number(total),
-    stars,
-    configured: true,
   }
 }
 
 export async function verifyCredential(tokenId: number) {
-  const env = getEnv()
-  if (!env.CREDENTIAL_NFT_ADDRESS) {
-    return { isValid: false, configured: false as const }
-  }
+  const { credentialNft } = getContractAddresses()
 
-  const client = getPublicClient()
-  const [isValid, credential] = await client.readContract({
-    address: env.CREDENTIAL_NFT_ADDRESS as Address,
+  const [isValid, credential] = (await publicClient.readContract({
+    address: requireAddress(credentialNft, "CredentialNFT"),
     abi: credentialNftAbi,
     functionName: "verifyCredential",
     args: [BigInt(tokenId)],
-  })
+  })) as readonly [boolean, OnChainCredential]
 
   return {
     isValid,
@@ -89,73 +97,62 @@ export async function verifyCredential(tokenId: number) {
       metadataURI: credential.metadataURI,
       revoked: credential.revoked,
     },
-    configured: true as const,
   }
 }
 
 export async function getCredentialsByWallet(walletAddress: string) {
-  const env = getEnv()
-  if (!env.CREDENTIAL_NFT_ADDRESS) {
-    return { credentials: [], configured: false }
-  }
-
-  const client = getPublicClient()
+  const { credentialNft } = getContractAddresses()
   const address = normalizeWallet(walletAddress)
-  const rows = await client.readContract({
-    address: env.CREDENTIAL_NFT_ADDRESS as Address,
+
+  const rows = (await publicClient.readContract({
+    address: requireAddress(credentialNft, "CredentialNFT"),
     abi: credentialNftAbi,
     functionName: "getCredentialsByRecipient",
     args: [address],
-  })
+  })) as readonly OnChainCredential[]
 
-  const credentials = await Promise.all(
-    rows.map(async (row) => {
-      const verified = await verifyCredential(Number(row.tokenId))
-      return {
-        tokenId: Number(row.tokenId),
-        credentialType: row.credentialType,
-        institution: row.institution,
-        title: row.title,
-        issueDate: Number(row.issueDate),
-        expiryDate: Number(row.expiryDate),
-        metadataURI: row.metadataURI,
-        revoked: row.revoked,
-        isValid: verified.isValid,
-      }
-    })
-  )
-
-  return { credentials, configured: true }
-}
-
-export async function getServicesByProvider(walletAddress: string) {
-  const env = getEnv()
-  if (!env.SERVICE_ESCROW_ADDRESS) {
-    return { services: [], configured: false }
+  const credentials = []
+  for (const row of rows) {
+    const verified = await verifyCredential(Number(row.tokenId))
+    if (verified.isValid) {
+      credentials.push({
+        ...verified.credential,
+        polygonscanUrl: `https://amoy.polygonscan.com/nft/${credentialNft}/${row.tokenId}`,
+      })
+    }
   }
 
-  const client = getPublicClient()
-  const address = normalizeWallet(walletAddress)
-  const rows = await client.readContract({
-    address: env.SERVICE_ESCROW_ADDRESS as Address,
-    abi: serviceEscrowAbi,
-    functionName: "getServicesByProvider",
-    args: [address],
+  return credentials
+}
+
+export async function getProviderServices(walletAddress: string) {
+  const { serviceEscrow } = getContractAddresses()
+  const provider = normalizeWallet(walletAddress)
+  const escrowAddress = requireAddress(serviceEscrow, "ServiceEscrow")
+
+  const logs = await publicClient.getContractEvents({
+    address: escrowAddress,
+    abi: parseAbi([
+      "event ServiceCreated(uint256 indexed serviceId, address indexed provider, string title, uint256 amount)",
+    ]),
+    eventName: "ServiceCreated",
+    args: { provider },
+    fromBlock: 0n,
+    toBlock: "latest",
   })
 
-  const services = rows.map((s) => ({
-    id: Number(s.id),
-    provider: s.provider,
-    client: s.client,
-    amount: s.amount.toString(),
-    status: Number(s.status),
-    title: s.title,
-    description: s.description,
-    createdAt: Number(s.createdAt),
-    deadline: Number(s.deadline),
-    clientApproved: s.clientApproved,
-    hasDispute: s.hasDispute,
+  return logs.map((log) => ({
+    serviceId: Number(log.args.serviceId),
+    provider: log.args.provider,
+    title: log.args.title,
+    amount: log.args.amount?.toString(),
+    transactionHash: log.transactionHash,
+    blockNumber: Number(log.blockNumber),
   }))
+}
 
-  return { services, configured: true }
+/** Alias legado */
+export async function getServicesByProvider(walletAddress: string) {
+  const events = await getProviderServices(walletAddress)
+  return { services: events, configured: true }
 }

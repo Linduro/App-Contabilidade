@@ -1,17 +1,11 @@
-import { drizzle } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
-import { getEnv } from "../lib/env.js"
-import * as schema from "./schema.js"
+import type { AppDatabase } from "./setup.js"
+import { getDb } from "./setup.js"
 
-const env = getEnv()
+export { initDatabase, closeDb, getDb } from "./setup.js"
 
-const client = postgres(env.DATABASE_URL, {
-  max: 10,
-  prepare: false,
+/** Proxy para módulos que importam `db` após `initDatabase()`. */
+export const db = new Proxy({} as AppDatabase, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getDb() as object, prop, receiver)
+  },
 })
-
-export const db = drizzle(client, { schema })
-
-export async function closeDb(): Promise<void> {
-  await client.end()
-}

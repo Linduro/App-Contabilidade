@@ -1,4 +1,5 @@
-import { runCollectAndMatch } from "../jobs/collectAndMatch.js";
+import "dotenv/config";
+import { runCollectAndMatch } from "../src/jobs/collectAndMatch.js";
 
 runCollectAndMatch()
   .then((stats) => {

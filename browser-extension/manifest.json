@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Captação Advocacia — PNCP & TJSP",
+  "version": "0.1.5",
+  "description": "Painel lateral: licitações jurídicas no PNCP e execuções bancárias (TJSP) com indicador de partes sem advogado.",
+  "permissions": ["storage", "sidePanel", "activeTab", "scripting", "tabs"],
+  "host_permissions": [
+    "*://pncp.gov.br/*",
+    "*://*.pncp.gov.br/*",
+    "*://esaj.tjsp.jus.br/*",
+    "*://*.tjsp.jus.br/*",
+    "*://eproc-consulta.tjsp.jus.br/*",
+    "*://eproc1g.tjsp.jus.br/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/index.html"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Dr. Pitoco — Captação Advocacia",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://pncp.gov.br/*", "*://*.pncp.gov.br/*"],
+      "js": ["lib/pncp-url.js", "content/pncp.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://esaj.tjsp.jus.br/*"],
+      "js": ["lib/banks.js", "lib/esaj-parse.js", "content/esaj.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://eproc-consulta.tjsp.jus.br/*",
+        "*://eproc1g.tjsp.jus.br/*"
+      ],
+      "js": ["lib/banks.js", "content/eproc.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

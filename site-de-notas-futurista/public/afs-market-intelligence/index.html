@@ -59,9 +59,10 @@
                 break;
             } catch (_) {}
         }
-        const { startAuthGate } = await import('./js/auth-gate.js?v=6');
+        const buildTag = window.__AFS_BUILD__ || Date.now();
+        const { startAuthGate } = await import('./js/auth-gate.js?v=7');
         startAuthGate(async function () {
-            const { bootApp } = await import('./js/core/boot.js?v=3');
+            const { bootApp } = await import('./js/core/boot.js?b=' + buildTag);
             await bootApp();
         });
     } catch (err) {

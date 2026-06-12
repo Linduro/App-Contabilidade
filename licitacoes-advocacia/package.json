@@ -16,7 +16,9 @@
     "build:frontend": "npm run build -w frontend",
     "build:backend": "npm run build -w backend",
     "start:backend": "npm run start -w backend",
-    "test:pipeline": "npm run test:pipeline -w backend"
+    "test:pipeline": "npm run test:pipeline -w backend",
+    "job:collect": "npm run job:collect -w backend",
+    "setup:python": "npm run setup:python -w backend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

@@ -13,6 +13,7 @@ function getSupabaseAdmin() {
 
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
     process.env.LICITACOES_SUPABASE_SERVICE_ROLE_KEY ||
     functions.config().licitacoes?.service_role_key
 

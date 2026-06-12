@@ -7,7 +7,7 @@ import {
   updateLeadStatus,
 } from "@/lib/trabalhista-leads/client"
 import { runTrabalhistaCollectInBrowser } from "@/lib/trabalhista-leads/collect-client"
-import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/normalize"
 import { useRegionalFilters } from "@/hooks/use-regional-filters"
 import { matchesRegionalFilter } from "@/lib/regional-filters/regioes"
 import {
@@ -75,16 +75,11 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
     setCollectMessage(null)
     setError(null)
     try {
-      const result = await runTrabalhistaCollectInBrowser(
-        userId,
-        {
-          dataDe: filters.dataDe || undefined,
-          dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
-          natureza: filters.natureza,
-        },
-        regionalFilters,
-      )
+      const result = await runTrabalhistaCollectInBrowser(userId, {
+        dataDe: filters.dataDe || undefined,
+        dataAte: filters.dataAte || undefined,
+        daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
+      })
       setCollectMessage(result.mensagem ?? "Busca concluída.")
       await loadData()
     } catch (err) {
@@ -93,7 +88,7 @@ export function useTrabalhistaLeadsDashboard(enabled: boolean) {
     } finally {
       setCollecting(false)
     }
-  }, [userId, filters, regionalFilters, loadData])
+  }, [userId, filters.dataDe, filters.dataAte, loadData])
 
   const changeStatus = useCallback(
     async (leadId: string, status: LeadStatus) => {

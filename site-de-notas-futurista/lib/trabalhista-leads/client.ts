@@ -9,12 +9,20 @@ import {
 import { db } from "@/lib/firebase"
 import { matchesDataRange } from "@/lib/datajud/date-range"
 import { matchesNaturezaCodigo, NATUREZAS_TRABALHISTA } from "@/lib/datajud/naturezas"
+import { matchesCaptacaoFilter } from "@/lib/datajud/captacao-filter"
+import type { AdvogadoStatus } from "@/lib/datajud/advogado-detect"
 import type {
   Lead,
   LeadFilters,
   LeadStatus,
   TrabalhistaStats,
 } from "@/lib/trabalhista-leads/types"
+
+function mapAdvogadoStatus(raw: unknown): AdvogadoStatus {
+  if (raw === true) return true
+  if (raw === false) return false
+  return null
+}
 
 function mapLead(id: string, data: Record<string, unknown>): Lead {
   return {
@@ -43,6 +51,9 @@ function mapLead(id: string, data: Record<string, unknown>): Lead {
     municipio: (data.municipio as string) ?? null,
     uf: (data.uf as string) ?? null,
     processos_simultaneos: Number(data.processos_simultaneos ?? 0),
+    capa_datajud: Boolean(data.capa_datajud),
+    tem_advogado: mapAdvogadoStatus(data.tem_advogado),
+    reu_pj: data.reu_pj === true ? true : data.reu_pj === false ? false : null,
     created_at: String(data.created_at ?? ""),
     updated_at: String(data.updated_at ?? ""),
   }
@@ -90,6 +101,14 @@ export function filterLeads(leads: Lead[], filters: LeadFilters): Lead[] {
     const valor = lead.valor_causa ?? 0
     if (min != null && !Number.isNaN(min) && valor < min) return false
     if (max != null && !Number.isNaN(max) && valor > max) return false
+    if (
+      !matchesCaptacaoFilter(lead.tem_advogado, lead.capa_datajud, filters.captacao)
+    ) {
+      return false
+    }
+    if (filters.reuPj === "pj" && lead.reu_pj !== true) return false
+    if (filters.reuPj === "pf" && lead.reu_pj !== false) return false
+    if (filters.reuPj === "desconhecido" && lead.reu_pj != null) return false
     return true
   })
 }

@@ -2,14 +2,25 @@ import { eq } from "drizzle-orm"
 import { db } from "../../db/index.js"
 import { profiles } from "../../db/schema.js"
 import {
-  getCredentialsByWallet,
   getReputationScore,
-  getServicesByProvider,
-  normalizeWallet,
+  getCredentialsByWallet,
+  getProviderServices,
   verifyCredential,
+  normalizeWallet,
+  isWeb3Configured,
+  isWeb3Enabled,
 } from "../../lib/web3.js"
 import { getProfileByUserId, ProfileServiceError } from "../profile/profile.service.js"
 import type { LinkWalletInput } from "./web3.schema.js"
+
+export {
+  getReputationScore,
+  getCredentialsByWallet,
+  getProviderServices,
+  verifyCredential,
+  isWeb3Configured,
+  isWeb3Enabled,
+}
 
 export async function linkWalletToProfile(userId: string, input: LinkWalletInput) {
   const profile = await getProfileByUserId(userId)
@@ -29,12 +40,6 @@ export async function linkWalletToProfile(userId: string, input: LinkWalletInput
     throw new Error("Falha ao vincular wallet")
   }
 
-  return updated
-}
-
-export {
-  getReputationScore,
-  getCredentialsByWallet,
-  getServicesByProvider,
-  verifyCredential,
+  const { embedding: _e, userId: _u, ...publicProfile } = updated
+  return publicProfile
 }

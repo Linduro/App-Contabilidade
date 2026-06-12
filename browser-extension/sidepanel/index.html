@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Captação Advocacia</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>Dr. Pitoco</h1>
+      <p id="site-label" class="muted">Abra o PNCP ou o TJSP</p>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" class="tab active" data-tab="pncp">PNCP</button>
+      <button type="button" class="tab" data-tab="esaj">e-SAJ</button>
+      <button type="button" class="tab" data-tab="eproc">eProc</button>
+      <button type="button" class="tab" data-tab="salvos">Salvos</button>
+    </nav>
+
+    <main>
+      <section id="panel-pncp" class="panel active">
+        <p class="hint">
+          Corrige links quebrados (<code>/compras</code> → <code>/editais</code>) e lista editais jurídicos na página.
+        </p>
+        <div class="row">
+          <input id="pncp-termo" type="text" value="advocacia" placeholder="Termo de busca" />
+          <button type="button" id="btn-pncp-search" class="primary">Buscar no PNCP</button>
+        </div>
+        <div class="actions">
+          <button type="button" id="btn-pncp-fix">Corrigir links da página</button>
+          <button type="button" id="btn-pncp-scan">Varredura jurídica</button>
+        </div>
+        <div id="pncp-results" class="results"></div>
+      </section>
+
+      <section id="panel-esaj" class="panel">
+        <p class="hint">
+          1) Busque o banco manualmente no e-SAJ. 2) Na <strong>lista de resultados</strong>, clique em varrer — a extensão analisa vários processos em paralelo e mostra aqui os que têm banco exequente e executado sem advogado (com link para abrir).
+        </p>
+        <div id="esaj-progress" class="progress hidden">
+          <div class="progress-bar"><div id="esaj-progress-fill" class="progress-fill"></div></div>
+          <p id="esaj-progress-text" class="muted"></p>
+        </div>
+        <div class="actions">
+          <button type="button" id="btn-esaj-crawl" class="primary">Varrer execuções</button>
+          <button type="button" id="btn-esaj-stop" class="danger hidden">Parar</button>
+          <button type="button" id="btn-esaj-open">Abrir busca cpopg</button>
+        </div>
+        <div id="esaj-results" class="results"></div>
+      </section>
+
+      <section id="panel-eproc" class="panel">
+        <p class="hint warn">
+          eProc usa Cloudflare Turnstile. A extensão só preenche campos — você resolve o captcha e consulta.
+        </p>
+        <label class="field">
+          <span>Nº processo (CNJ)</span>
+          <input id="eproc-numero" type="text" placeholder="0000000-00.0000.0.00.0000" />
+        </label>
+        <div class="actions">
+          <button type="button" id="btn-eproc-fill" class="primary">Preencher número</button>
+          <button type="button" id="btn-eproc-open">Abrir consulta pública</button>
+          <button type="button" id="btn-eproc-scan">Analisar página</button>
+        </div>
+        <div id="eproc-results" class="results"></div>
+      </section>
+
+      <section id="panel-salvos" class="panel">
+        <div class="actions">
+          <button type="button" id="btn-salvos-refresh">Atualizar lista</button>
+          <button type="button" id="btn-salvos-clear" class="danger">Limpar tudo</button>
+        </div>
+        <div id="salvos-list" class="results"></div>
+      </section>
+    </main>
+
+    <footer class="footer muted">
+      <span id="status">Pronto</span>
+    </footer>
+    <script src="panel.js"></script>
+  </body>
+</html>

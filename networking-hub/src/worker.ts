@@ -1,9 +1,17 @@
-import { getEnv } from "./lib/env.js"
+import { bootstrap } from "./bootstrap.js"
+import { isInlineQueue } from "./lib/env.js"
 import { startEmbeddingWorker } from "./modules/matching/embedding.job.js"
 import { closeRedis } from "./lib/redis.js"
 import { closeDb } from "./db/index.js"
 
-getEnv()
+await bootstrap()
+
+if (isInlineQueue()) {
+  console.info(
+    "[worker] Modo local com fila inline — worker Redis não é necessário. Use apenas: npm run dev"
+  )
+  process.exit(0)
+}
 
 const worker = startEmbeddingWorker()
 

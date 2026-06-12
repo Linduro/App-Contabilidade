@@ -1,4 +1,4 @@
-import * as store from './core/store.js';
+import * as store from './store.js';
 
 const USERS = [
   { id: 'u_owner', nome: 'Cartoon HQ', email: 'cartoonhq@gmail.com', papel: 'admin' },
@@ -160,7 +160,7 @@ export function seedIfEmpty() {
 
   if (db.meta.seededAt && db.meta.seedVersion < 4) {
     applySeedV4(db);
-    store.setMeta({ seedVersion: 4 });
+    db.meta.seedVersion = 4;
     store.replaceDb(db);
     return true;
   }

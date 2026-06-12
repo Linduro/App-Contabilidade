@@ -19,6 +19,7 @@ import {
   getStatusLabel,
   parseCategories,
 } from "@/lib/licitacoes/formatters";
+import { normalizePncpPortalUrl } from "@/lib/licitacoes/pncp-url";
 import type { Match } from "@/lib/licitacoes/types";
 
 interface MatchDetailModalProps {
@@ -50,6 +51,8 @@ export function MatchDetailModal({
     licitacao.descricao ??
     licitacao.objeto ??
     "Descrição não disponível para esta licitação.";
+
+  const editalUrl = normalizePncpPortalUrl(licitacao.url_fonte);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -105,12 +108,12 @@ export function MatchDetailModal({
         <DialogFooter className="gap-2 sm:justify-between">
           <Button variant="outline" asChild>
             <a
-              href={licitacao.url_fonte}
+              href={editalUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
               <ExternalLink className="h-4 w-4" />
-              Ver edital no Licitita
+              Ver edital no PNCP
             </a>
           </Button>
 

@@ -106,4 +106,41 @@ if (fs.existsSync(examplePath)) {
   fs.copyFileSync(examplePath, path.join(outDir, "config.json.example"))
 }
 
-console.log("AFS Market Intelligence static assets copied to public/afs-market-intelligence/")
+// Remove cópia legada em js/seed-data.js (agora vive em js/core/seed-data.js)
+const legacySeed = path.join(outDir, "js", "seed-data.js")
+if (fs.existsSync(legacySeed) && fs.existsSync(path.join(outDir, "js", "core", "seed-data.js"))) {
+  fs.unlinkSync(legacySeed)
+  console.warn("Removido js/seed-data.js legado (use js/core/seed-data.js)")
+}
+
+const coreSeed = path.join(outDir, "js", "core", "seed-data.js")
+if (!fs.existsSync(coreSeed)) {
+  throw new Error("Falha no build AFS: js/core/seed-data.js ausente")
+}
+const coreSeedText = fs.readFileSync(coreSeed, "utf8")
+if (!coreSeedText.includes("from './store.js'")) {
+  throw new Error("Falha no build AFS: import inválido em core/seed-data.js")
+}
+
+const bootPath = path.join(outDir, "js", "core", "boot.js")
+const bootText = fs.readFileSync(bootPath, "utf8")
+if (!bootText.includes("from './seed-data.js'")) {
+  throw new Error("Falha no build AFS: boot.js deve importar ./seed-data.js")
+}
+
+const buildId = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")
+const indexPath = path.join(outDir, "index.html")
+let indexHtml = fs.readFileSync(indexPath, "utf8")
+indexHtml = indexHtml.replace(
+  /window\.__AFS_BUILD__\s*=\s*[^;]+;/,
+  `window.__AFS_BUILD__="${buildId}";`,
+)
+if (!indexHtml.includes("__AFS_BUILD__")) {
+  indexHtml = indexHtml.replace(
+    "</head>",
+    `    <script>window.__AFS_BUILD__="${buildId}";</script>\n</head>`,
+  )
+}
+fs.writeFileSync(indexPath, indexHtml, "utf8")
+
+console.log("AFS Market Intelligence static assets copied to public/afs-market-intelligence/ (build " + buildId + ")")

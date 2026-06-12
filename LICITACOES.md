@@ -49,14 +49,29 @@ npm run seed:firestore
 
 Isso cria especialidades + owner `cartoonhq@gmail.com`.
 
-### 3. Coleta de licitações (opcional)
+### 3. Coleta de licitações (quando quiser)
+
+**Setup (uma vez):**
 
 ```powershell
-cd licitacoes-advocacia/backend
+cd licitacoes-advocacia\backend
+copy .env.example .env
+# Edite .env → GOOGLE_APPLICATION_CREDENTIALS=C:\caminho\chave-firebase.json
 npm run setup:python
-$env:GOOGLE_APPLICATION_CREDENTIALS="C:\caminho\service-account.json"
-npm run job:collect
 ```
+
+Service account: Firebase Console → Project Settings → Service accounts → Generate new private key.
+
+**Caçar licitações na hora:**
+
+```powershell
+cd licitacoes-advocacia\backend
+.\coletar.ps1
+```
+
+Ou, da pasta `licitacoes-advocacia`: `npm run job:collect`
+
+Depois atualize o dashboard no navegador (F5).
 
 ## URL
 

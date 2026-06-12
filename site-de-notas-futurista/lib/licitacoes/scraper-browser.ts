@@ -10,6 +10,13 @@ export interface LicititaItem {
   tipo: string
   area: string
   fonte: string
+  pncp?: {
+    numero_controle_pncp?: string
+    orgao_cnpj?: string
+    ano?: string
+    numero_sequencial?: string
+    item_url?: string
+  }
 }
 
 const BASE_URL = "https://www.licitita.com.br"

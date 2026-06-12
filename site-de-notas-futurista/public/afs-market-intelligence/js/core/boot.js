@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import { register, registerPrefix, start, isLegacyRoute, parseHash } from './router.js';
-import { seedIfEmpty } from '../seed-data.js';
+import { seedIfEmpty } from './seed-data.js';
 import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
@@ -75,28 +75,33 @@ function refreshChrome(path) {
 }
 
 export async function bootApp() {
-  if (!location.hash || location.hash === '#') location.hash = '#/apps';
-  seedIfEmpty();
-  const imp = await importFirestoreOnceIfNeeded();
-  if (imp.imported && window.AFSToast) {
-    window.AFSToast.success('Importados ' + imp.leads + ' leads do Firestore');
-  }
-
-  registerAllRoutes();
-
-  const go = await start(function (path) {
-    refreshChrome(path);
-    if (isLegacyRoute(path)) {
-      document.getElementById('app-root')?.classList.add('hidden');
+  try {
+    if (!location.hash || location.hash === '#') location.hash = '#/apps';
+    seedIfEmpty();
+    const imp = await importFirestoreOnceIfNeeded();
+    if (imp.imported && window.AFSToast) {
+      window.AFSToast.success('Importados ' + imp.leads + ' leads do Firestore');
     }
-  });
 
-  store.onChange(function () {
-    const { path } = parseHash();
-    if (!isLegacyRoute(path)) refreshChrome(path);
-  });
+    registerAllRoutes();
 
-  await go();
+    const go = await start(function (path) {
+      refreshChrome(path);
+      if (isLegacyRoute(path)) {
+        document.getElementById('app-root')?.classList.add('hidden');
+      }
+    });
+
+    store.onChange(function () {
+      const { path } = parseHash();
+      if (!isLegacyRoute(path)) refreshChrome(path);
+    });
+
+    await go();
+  } catch (err) {
+    console.error('[AFS-ERROR] bootApp', err);
+    throw err;
+  }
 }
 
 window.AFS_BOOT = bootApp;

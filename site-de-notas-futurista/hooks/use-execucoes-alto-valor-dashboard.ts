@@ -7,7 +7,7 @@ import {
   updateAltoValorStatus,
 } from "@/lib/execucoes-alto-valor/client"
 import { runAltoValorCollectInBrowser } from "@/lib/execucoes-alto-valor/collect-client"
-import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/triage"
+import { DATAJUD_SEARCH_DAYS } from "@/lib/datajud/normalize"
 import {
   DEFAULT_ALTO_VALOR_FILTERS,
   type ExecucaoAltoValor,
@@ -59,15 +59,11 @@ export function useExecucoesAltoValorDashboard(enabled: boolean) {
     setCollectMessage(null)
     setError(null)
     try {
-      const result = await runAltoValorCollectInBrowser(
-        userId,
-        {
-          dataDe: filters.dataDe || undefined,
-          dataAte: filters.dataAte || undefined,
-          daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
-        },
-        regionalFilters,
-      )
+      const result = await runAltoValorCollectInBrowser(userId, {
+        dataDe: filters.dataDe || undefined,
+        dataAte: filters.dataAte || undefined,
+        daysBack: filters.dataDe ? undefined : DATAJUD_SEARCH_DAYS,
+      })
       setCollectMessage(result.mensagem ?? "Busca concluída.")
       await load()
     } catch (e) {
@@ -76,7 +72,7 @@ export function useExecucoesAltoValorDashboard(enabled: boolean) {
     } finally {
       setCollecting(false)
     }
-  }, [userId, filters, regionalFilters, load])
+  }, [userId, filters.dataDe, filters.dataAte, load])
 
   const changeStatus = useCallback(async (id: string, status: ExecucaoAltoValorStatus) => {
     await updateAltoValorStatus(id, status)

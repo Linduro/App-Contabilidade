@@ -4,6 +4,7 @@ import type { LeadFilters } from "@/lib/trabalhista-leads/types"
 import { LEAD_STATUS_LABELS } from "@/lib/trabalhista-leads/types"
 import { NATUREZAS_TRABALHISTA } from "@/lib/datajud/naturezas"
 import { DatajudFilterFields } from "@/components/datajud/DatajudFilterFields"
+import { CaptacaoFilterField } from "@/components/datajud/CaptacaoFilterField"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -20,6 +21,29 @@ export function LeadFiltersBar({ filters, onChange }: LeadFiltersBarProps) {
         onChange={onChange}
         naturezas={NATUREZAS_TRABALHISTA}
       />
+      <CaptacaoFilterField
+        value={filters.captacao}
+        onChange={(captacao) => onChange({ ...filters, captacao })}
+      />
+      <div className="space-y-1.5">
+        <Label htmlFor="filtro-reu-pj">Tipo de réu</Label>
+        <select
+          id="filtro-reu-pj"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.reuPj}
+          onChange={(e) =>
+            onChange({
+              ...filters,
+              reuPj: e.target.value as LeadFilters["reuPj"],
+            })
+          }
+        >
+          <option value="all">Todos</option>
+          <option value="pj">Pessoa jurídica</option>
+          <option value="pf">Pessoa física</option>
+          <option value="desconhecido">A identificar (capa)</option>
+        </select>
+      </div>
       <div className="space-y-1.5">
         <Label htmlFor="filtro-comarca">Comarca / Vara</Label>
         <Input

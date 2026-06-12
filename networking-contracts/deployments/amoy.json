@@ -1,0 +1,14 @@
+{
+  "network": "polygon_amoy",
+  "chainId": 80002,
+  "status": "aborted",
+  "reason": "Sem POL de teste nos faucets; deploy não concluído.",
+  "deployedAt": null,
+  "contracts": {
+    "MockUSDC": "",
+    "ReputationSBT": "",
+    "CredentialNFT": "",
+    "ServiceEscrow": ""
+  },
+  "partialDeployNote": "CredentialNFT 0x66d3EfbA31A31e666Ef626bC4b8573a02A51F118 foi deployado parcialmente e está ignorado."
+}

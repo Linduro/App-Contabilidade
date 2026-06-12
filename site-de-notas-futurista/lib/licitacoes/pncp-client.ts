@@ -1,6 +1,7 @@
 import type { LicititaItem } from "@/lib/licitacoes/scraper-browser"
 import { isOnOrAfterToday } from "@/lib/licitacoes/date-filter"
 import { isLegitimateLegalTender } from "@/lib/licitacoes/legal-relevance"
+import { buildPncpUrlFromSearchItem } from "@/lib/licitacoes/pncp-url"
 
 const PNCP_SEARCH = "https://pncp.gov.br/api/search/"
 
@@ -28,6 +29,9 @@ interface PncpSearchItem {
   description: string
   item_url: string
   numero_controle_pncp: string
+  orgao_cnpj?: string
+  ano?: string
+  numero_sequencial?: string
   orgao_nome: string
   unidade_nome?: string
   municipio_nome?: string
@@ -62,11 +66,6 @@ function buildSearchText(row: PncpSearchItem): string {
     .join(" ")
 }
 
-function buildPncpUrl(item: PncpSearchItem): string {
-  if (item.item_url.startsWith("http")) return item.item_url
-  return `https://pncp.gov.br/app${item.item_url}`
-}
-
 function mapSearchItem(item: PncpSearchItem): LicititaItem {
   const municipio = item.municipio_nome
   const uf = item.uf
@@ -90,10 +89,17 @@ function mapSearchItem(item: PncpSearchItem): LicititaItem {
     cidade,
     deadline: item.data_fim_vigencia?.slice(0, 10) ?? null,
     publicadoEm: item.data_publicacao_pncp?.slice(0, 10) ?? null,
-    url: buildPncpUrl(item),
+    url: buildPncpUrlFromSearchItem(item),
     tipo: "licitacao",
     area: "direito",
     fonte: "pncp-search",
+    pncp: {
+      numero_controle_pncp: item.numero_controle_pncp,
+      orgao_cnpj: item.orgao_cnpj,
+      ano: item.ano,
+      numero_sequencial: item.numero_sequencial,
+      item_url: item.item_url,
+    },
   }
 }
 

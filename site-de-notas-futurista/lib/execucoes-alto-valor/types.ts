@@ -1,3 +1,6 @@
+import type { AdvogadoStatus } from "@/lib/datajud/advogado-detect"
+import type { CaptacaoFilter } from "@/lib/datajud/captacao-filter"
+
 export type ExecucaoAltoValorStatus = "novo" | "contatado" | "respondeu" | "cliente"
 
 export interface ContatoField {
@@ -20,7 +23,10 @@ export interface ExecucaoAltoValor {
   tipoExecutado: "PF" | "PJ"
   dataAjuizamento: string | null
   ultimoMovimento: string | null
-  temAdvogado: boolean
+  temAdvogado: AdvogadoStatus
+  capaDatajud: boolean
+  classe_execucao: boolean
+  alto_valor: boolean | null
   contatos: Record<string, ContatoField>
   score: number
   scoreMotivo: string | null
@@ -33,6 +39,10 @@ export interface AltoValorFilters {
   status: ExecucaoAltoValorStatus | "all"
   dataDe: string
   dataAte: string
+  captacao: CaptacaoFilter
+  valorMin: string
+  altoValor: "all" | "sim" | "nao" | "desconhecido"
+  classeExecucao: "all" | "sim" | "nao"
 }
 
 export interface AltoValorCollectParams {
@@ -53,4 +63,8 @@ export const DEFAULT_ALTO_VALOR_FILTERS: AltoValorFilters = {
   status: "all",
   dataDe: "",
   dataAte: "",
+  captacao: "oportunidade",
+  valorMin: "500000",
+  altoValor: "all",
+  classeExecucao: "all",
 }

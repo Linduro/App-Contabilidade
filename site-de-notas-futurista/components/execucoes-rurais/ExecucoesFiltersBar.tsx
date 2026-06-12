@@ -3,6 +3,7 @@
 import type { ExecucaoFilters } from "@/lib/execucoes-rurais/types"
 import { EXECUCAO_STATUS_LABELS } from "@/lib/execucoes-rurais/types"
 import { NATUREZAS_EXECUCAO } from "@/lib/datajud/naturezas"
+import { CaptacaoFilterField } from "@/components/datajud/CaptacaoFilterField"
 import { DatajudFilterFields } from "@/components/datajud/DatajudFilterFields"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +21,45 @@ export function ExecucoesFiltersBar({ filters, onChange }: Props) {
         onChange={onChange}
         naturezas={NATUREZAS_EXECUCAO}
       />
+      <CaptacaoFilterField
+        value={filters.captacao}
+        onChange={(captacao) => onChange({ ...filters, captacao })}
+        id="filtro-captacao-rural"
+      />
+      <div className="space-y-1.5">
+        <Label>Indício rural</Label>
+        <select
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.indicioRural}
+          onChange={(e) =>
+            onChange({
+              ...filters,
+              indicioRural: e.target.value as ExecucaoFilters["indicioRural"],
+            })
+          }
+        >
+          <option value="all">Todos</option>
+          <option value="sim">Com indício rural</option>
+          <option value="nao">Sem indício rural</option>
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Classe execução</Label>
+        <select
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          value={filters.classeExecucao}
+          onChange={(e) =>
+            onChange({
+              ...filters,
+              classeExecucao: e.target.value as ExecucaoFilters["classeExecucao"],
+            })
+          }
+        >
+          <option value="all">Todas</option>
+          <option value="sim">Classe de execução (1116/877/40)</option>
+          <option value="nao">Outras classes</option>
+        </select>
+      </div>
       <div className="space-y-1.5">
         <Label>Comarca</Label>
         <Input

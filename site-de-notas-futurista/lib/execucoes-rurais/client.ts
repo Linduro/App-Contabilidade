@@ -2,7 +2,15 @@ import { collection, doc, getDocs, orderBy, query, updateDoc } from "firebase/fi
 import { db } from "@/lib/firebase"
 import { matchesDataRange } from "@/lib/datajud/date-range"
 import { matchesNaturezaCodigo, NATUREZAS_EXECUCAO } from "@/lib/datajud/naturezas"
+import { matchesCaptacaoFilter } from "@/lib/datajud/captacao-filter"
+import type { AdvogadoStatus } from "@/lib/datajud/advogado-detect"
 import type { ExecucaoFilters, ExecucaoRural, ExecucaoStatus } from "@/lib/execucoes-rurais/types"
+
+function mapAdvogadoStatus(raw: unknown): AdvogadoStatus {
+  if (raw === true) return true
+  if (raw === false) return false
+  return null
+}
 
 function mapDoc(id: string, data: Record<string, unknown>): ExecucaoRural {
   return {
@@ -21,7 +29,10 @@ function mapDoc(id: string, data: Record<string, unknown>): ExecucaoRural {
     classe_codigo: data.classe_codigo != null ? Number(data.classe_codigo) : null,
     classe_nome: (data.classe_nome as string) ?? null,
     assuntos: (data.assuntos as string) ?? null,
-    tem_advogado: Boolean(data.tem_advogado),
+    tem_advogado: mapAdvogadoStatus(data.tem_advogado),
+    capa_datajud: Boolean(data.capa_datajud),
+    indicio_rural: Boolean(data.indicio_rural),
+    classe_execucao: Boolean(data.classe_execucao),
     area_hectares: data.area_hectares != null ? Number(data.area_hectares) : null,
     municipio_imovel: (data.municipio_imovel as string) ?? null,
     score: Number(data.score ?? 0),
@@ -58,6 +69,15 @@ export function filterExecucoes(items: ExecucaoRural[], filters: ExecucaoFilters
     const valor = item.valor_execucao ?? 0
     if (min != null && !Number.isNaN(min) && valor < min) return false
     if (max != null && !Number.isNaN(max) && valor > max) return false
+    if (
+      !matchesCaptacaoFilter(item.tem_advogado, item.capa_datajud, filters.captacao)
+    ) {
+      return false
+    }
+    if (filters.indicioRural === "sim" && !item.indicio_rural) return false
+    if (filters.indicioRural === "nao" && item.indicio_rural) return false
+    if (filters.classeExecucao === "sim" && !item.classe_execucao) return false
+    if (filters.classeExecucao === "nao" && item.classe_execucao) return false
     return true
   })
 }

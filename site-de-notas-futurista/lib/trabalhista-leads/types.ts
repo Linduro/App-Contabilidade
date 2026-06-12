@@ -1,3 +1,6 @@
+import type { AdvogadoStatus } from "@/lib/datajud/advogado-detect"
+import type { CaptacaoFilter } from "@/lib/datajud/captacao-filter"
+
 export type LeadStatus = "novo" | "contatado" | "respondeu" | "cliente"
 
 export interface Lead {
@@ -24,6 +27,9 @@ export interface Lead {
   municipio: string | null
   uf: string | null
   processos_simultaneos: number
+  capa_datajud: boolean
+  tem_advogado: AdvogadoStatus
+  reu_pj: boolean | null
   created_at: string
   updated_at: string
 }
@@ -36,13 +42,14 @@ export interface LeadFilters {
   dataDe: string
   dataAte: string
   natureza: string
+  captacao: CaptacaoFilter
+  reuPj: "all" | "pj" | "pf" | "desconhecido"
 }
 
 export interface TrabalhistaCollectParams {
   dataDe?: string
   dataAte?: string
   daysBack?: number
-  natureza: string
   trts?: number[]
   pageSize?: number
 }
@@ -78,4 +85,6 @@ export const DEFAULT_LEAD_FILTERS: LeadFilters = {
   dataDe: "",
   dataAte: "",
   natureza: "all",
+  captacao: "oportunidade",
+  reuPj: "all",
 }

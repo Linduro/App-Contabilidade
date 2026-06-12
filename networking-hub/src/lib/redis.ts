@@ -1,5 +1,5 @@
 import { Queue, Worker, type JobsOptions } from "bullmq"
-import { getEnv } from "./env.js"
+import { getEnv, isInlineQueue } from "./env.js"
 
 export const EMBEDDING_QUEUE_NAME = "generate-embedding" as const
 
@@ -27,6 +27,15 @@ export async function enqueueEmbeddingJob(
   profileId: string,
   options?: JobsOptions
 ): Promise<void> {
+  if (isInlineQueue()) {
+    void import("../modules/matching/embedding.job.js")
+      .then(({ processEmbeddingJob }) => processEmbeddingJob({ profileId }))
+      .catch((err) => {
+        console.error("[embedding:inline] Falhou", { profileId, error: err })
+      })
+    return
+  }
+
   const queue = getEmbeddingQueue()
   await queue.add(
     "profile",
@@ -49,6 +58,7 @@ export function createEmbeddingWorker(
 }
 
 export async function closeRedis(): Promise<void> {
+  if (isInlineQueue()) return
   const queue = getEmbeddingQueue()
   await queue.close()
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { CaptacaoBadge } from "@/components/datajud/CaptacaoBadge"
 import type { Lead } from "@/lib/trabalhista-leads/types"
 import { LEAD_STATUS_LABELS } from "@/lib/trabalhista-leads/types"
 
@@ -17,7 +18,7 @@ export function LeadsTable({ leads, onSelect }: LeadsTableProps) {
   if (leads.length === 0) {
     return (
       <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-        Nenhum lead com os filtros atuais. O worker na nuvem popula esta lista via Datajud.
+        Nenhum lead com os filtros atuais. Clique em Buscar agora para importar processos do Datajud.
       </div>
     )
   }
@@ -30,6 +31,7 @@ export function LeadsTable({ leads, onSelect }: LeadsTableProps) {
             <th className="px-4 py-3">Empresa</th>
             <th className="px-4 py-3">Processo</th>
             <th className="px-4 py-3">Comarca / Vara</th>
+            <th className="px-4 py-3">Captação</th>
             <th className="px-4 py-3">Valor</th>
             <th className="px-4 py-3">Score</th>
             <th className="px-4 py-3">Status</th>
@@ -56,6 +58,12 @@ export function LeadsTable({ leads, onSelect }: LeadsTableProps) {
                 {lead.vara && (
                   <span className="block text-muted-foreground">{lead.vara}</span>
                 )}
+              </td>
+              <td className="px-4 py-3">
+                <CaptacaoBadge
+                  temAdvogado={lead.tem_advogado}
+                  capaDatajud={lead.capa_datajud}
+                />
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 {formatCurrency(lead.valor_causa)}

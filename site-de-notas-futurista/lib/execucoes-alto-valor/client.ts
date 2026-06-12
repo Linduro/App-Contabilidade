@@ -1,12 +1,20 @@
 import { collection, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { matchesDataRange } from "@/lib/datajud/date-range"
+import { matchesCaptacaoFilter } from "@/lib/datajud/captacao-filter"
+import type { AdvogadoStatus } from "@/lib/datajud/advogado-detect"
 import type {
   AltoValorFilters,
   ContatoField,
   ExecucaoAltoValor,
   ExecucaoAltoValorStatus,
 } from "@/lib/execucoes-alto-valor/types"
+
+function mapAdvogadoStatus(raw: unknown): AdvogadoStatus {
+  if (raw === true) return true
+  if (raw === false) return false
+  return null
+}
 
 function mapDoc(id: string, data: Record<string, unknown>): ExecucaoAltoValor {
   return {
@@ -23,7 +31,11 @@ function mapDoc(id: string, data: Record<string, unknown>): ExecucaoAltoValor {
     tipoExecutado: (data.tipoExecutado as "PF" | "PJ") ?? "PF",
     dataAjuizamento: (data.dataAjuizamento as string) ?? null,
     ultimoMovimento: (data.ultimoMovimento as string) ?? null,
-    temAdvogado: Boolean(data.temAdvogado),
+    temAdvogado: mapAdvogadoStatus(data.temAdvogado),
+    capaDatajud: Boolean(data.capaDatajud),
+    classe_execucao: Boolean(data.classe_execucao),
+    alto_valor:
+      data.alto_valor === true ? true : data.alto_valor === false ? false : null,
     contatos: (data.contatos as Record<string, ContatoField>) ?? {},
     score: Number(data.score ?? 0),
     scoreMotivo: (data.scoreMotivo as string) ?? null,
@@ -46,6 +58,18 @@ export function filterAltoValor(
       const hay = `${item.comarca ?? ""} ${item.vara ?? ""}`.toLowerCase()
       if (!hay.includes(q)) return false
     }
+    const min = filters.valorMin ? parseFloat(filters.valorMin) : null
+    if (min != null && !Number.isNaN(min) && item.valorCausa < min) return false
+    if (
+      !matchesCaptacaoFilter(item.temAdvogado, item.capaDatajud, filters.captacao)
+    ) {
+      return false
+    }
+    if (filters.altoValor === "sim" && item.alto_valor !== true) return false
+    if (filters.altoValor === "nao" && item.alto_valor !== false) return false
+    if (filters.altoValor === "desconhecido" && item.alto_valor != null) return false
+    if (filters.classeExecucao === "sim" && !item.classe_execucao) return false
+    if (filters.classeExecucao === "nao" && item.classe_execucao) return false
     return true
   })
 }

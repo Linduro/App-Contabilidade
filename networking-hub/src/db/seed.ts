@@ -1,5 +1,6 @@
 import { hashPassword } from "better-auth/crypto"
 import { eq } from "drizzle-orm"
+import { bootstrap } from "../bootstrap.js"
 import { db } from "./index.js"
 import { expertisesCatalog, profiles, users } from "./schema.js"
 import { enqueueEmbeddingJob } from "../lib/redis.js"
@@ -264,7 +265,8 @@ async function seed() {
   console.info("[seed] Concluído. Rode o worker: npm run dev:worker")
 }
 
-seed()
+bootstrap()
+  .then(() => seed())
   .catch((err) => {
     console.error("[seed] Erro:", err)
     process.exit(1)

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { relations, sql } from "drizzle-orm"
 import {
   boolean,
@@ -13,6 +14,12 @@ import {
   vector,
 } from "drizzle-orm/pg-core"
 
+function uuidPk(name: string) {
+  return uuid(name)
+    .primaryKey()
+    .$defaultFn(() => randomUUID())
+}
+
 export const connectionStatusEnum = pgEnum("connection_status", [
   "pendente",
   "aceita",
@@ -20,7 +27,7 @@ export const connectionStatusEnum = pgEnum("connection_status", [
 ])
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: uuidPk("id"),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -44,7 +51,7 @@ export const sessions = pgTable("sessions", {
 export const profiles = pgTable(
   "profiles",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: uuidPk("id"),
     userId: uuid("user_id")
       .notNull()
       .unique()
@@ -71,7 +78,7 @@ export const profiles = pgTable(
 )
 
 export const expertisesCatalog = pgTable("expertises_catalog", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: uuidPk("id"),
   nome: text("nome").notNull().unique(),
   categoria: text("categoria"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -80,7 +87,7 @@ export const expertisesCatalog = pgTable("expertises_catalog", {
 export const connections = pgTable(
   "connections",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: uuidPk("id"),
     profileAId: uuid("profile_a_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
@@ -99,7 +106,7 @@ export const connections = pgTable(
 export const matchResults = pgTable(
   "match_results",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: uuidPk("id"),
     profileId: uuid("profile_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
