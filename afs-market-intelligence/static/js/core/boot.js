@@ -93,7 +93,7 @@ export async function bootApp() {
 
   registerAllRoutes();
 
-  const go = await start(function (path) {
+  await start(function (path) {
     refreshChrome(path);
     if (isLegacyRoute(path)) {
       document.getElementById('app-root')?.classList.add('hidden');
@@ -104,8 +104,6 @@ export async function bootApp() {
     const { path } = parseHash();
     if (!isLegacyRoute(path)) refreshChrome(path);
   });
-
-  await go();
 }
 
 window.AFS_BOOT = bootApp;
