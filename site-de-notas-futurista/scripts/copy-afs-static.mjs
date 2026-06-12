@@ -34,18 +34,19 @@ function buildIndexHtml() {
         }
       })();
     </script>
-    <script src="./js/photo-resolver.js?v=16"></script>
-    <script src="./js/browser-evaluation.js?v=16"></script>
-    <script src="./js/browser-api.js?v=16"></script>`
+    <script src="./js/photo-resolver.js?v=17"></script>
+    <script src="./js/learning-rules.js?v=17"></script>
+    <script src="./js/browser-evaluation.js?v=17"></script>
+    <script src="./js/browser-api.js?v=17"></script>`
 
   return baseHtml
     .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=16"',
+      'href="./css/style.css?v=17"',
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=16"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=17"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }
@@ -56,6 +57,10 @@ ensureDir(path.join(outDir, "js"))
 fs.copyFileSync(
   path.join(afsRoot, "static", "css", "style.css"),
   path.join(outDir, "css", "style.css"),
+)
+fs.copyFileSync(
+  path.join(afsRoot, "static", "js", "learning-rules.js"),
+  path.join(outDir, "js", "learning-rules.js"),
 )
 fs.copyFileSync(
   path.join(afsRoot, "static", "js", "photo-resolver.js"),

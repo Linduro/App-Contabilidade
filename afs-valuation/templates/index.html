@@ -25,6 +25,10 @@
         <span class="tab-icon">🔍</span>Pesquisa & Avaliação
         <span class="tab-lock">🔒</span>
     </button>
+    <button class="tab-btn disabled" data-tab="learning" id="tabBtnLearning">
+        <span class="tab-icon">🧠</span>Revisão & Aprendizado
+        <span class="tab-lock">🔒</span>
+    </button>
 </nav>
 
 <!-- Tab: Initialization -->
@@ -315,7 +319,7 @@
                         <div id="countDone" class="filter-card-value">0</div>
                     </div>
                     <div id="card_filter_ignored" class="filter-card filter-card-ignored" onclick="filterEvaluationTable('ignored')">
-                        <div class="filter-card-label">Ignorados (Link Ok)</div>
+                        <div class="filter-card-label">Ignorados / Já avaliados</div>
                         <div id="countIgnored" class="filter-card-value">0</div>
                     </div>
                 </div>
@@ -428,6 +432,49 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Tab: Revisão & Aprendizado -->
+<div class="tab-content" id="tabLearning">
+    <div id="alertContainerLearning"></div>
+    <div class="card" style="border-top: 4px solid var(--afs-orange-500);">
+        <div class="card-header">
+            <div>
+                <div class="card-title">
+                    <div class="card-title-icon">🧠</div>
+                    Regras de Aprendizado (DSL)
+                </div>
+                <div class="card-subtitle">
+                    Edite regras em formato estilo Python. Elas são convertidas em instruções para a IA — não executam código real no navegador (mais seguro que Python arbitrário).
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="loadAllLearnings()">📋 Listar todos aprendizados</button>
+                <button class="btn btn-primary btn-sm" onclick="saveLearningRules()">Salvar regras</button>
+            </div>
+        </div>
+        <textarea id="learningRulesEditor" class="form-input" rows="16" style="font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" spellcheck="false"></textarea>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+            Dica: use blocos <code>RULE nome:</code> com instruções indentadas. Comentários com <code>#</code>.
+        </p>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <div class="card-title">Histórico de feedback & auto-aprendizado</div>
+        </div>
+        <pre id="learningsDump" style="background: rgba(0,0,0,0.25); padding: 16px; border-radius: 8px; max-height: 400px; overflow: auto; font-size: 0.8rem; white-space: pre-wrap;">Carregue os aprendizados com o botão acima.</pre>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">
+            <div class="card-title">Revisão rápida de avaliações</div>
+            <button class="btn btn-secondary btn-sm" onclick="openGalleryModal()">Abrir banco de ativos</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Use o botão <strong>Revisar</strong> na aba Pesquisa & Avaliação ou no Banco de Ativos para corrigir valores e alimentar o aprendizado.
+        </p>
     </div>
 </div>
 

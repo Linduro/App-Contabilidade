@@ -323,6 +323,7 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
     if (evIdx >= 0) {
         s.evaluations[evIdx] = { ...s.evaluations[evIdx], ...updated };
     }
+    if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
 
     const link1Letter = mappings.link1;
     if (link1Letter) row[link1Letter] = '';

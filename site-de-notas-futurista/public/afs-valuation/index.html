@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Asset Solutions Valuation — Avaliação e conciliação de ativo imobilizado patrimonial">
     <title>Asset Solutions Valuation</title>
-    <link rel="stylesheet" href="./css/style.css?v=16">
+    <link rel="stylesheet" href="./css/style.css?v=17">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23f97316'/><text x='16' y='22' text-anchor='middle' font-family='Inter,sans-serif' font-size='16' font-weight='700' fill='white'>A</text></svg>">
 </head>
@@ -34,6 +34,10 @@
     </button>
     <button class="tab-btn disabled" data-tab="research" id="tabBtnResearch">
         <span class="tab-icon">🔍</span>Pesquisa & Avaliação
+        <span class="tab-lock">🔒</span>
+    </button>
+    <button class="tab-btn disabled" data-tab="learning" id="tabBtnLearning">
+        <span class="tab-icon">🧠</span>Revisão & Aprendizado
         <span class="tab-lock">🔒</span>
     </button>
 </nav>
@@ -442,6 +446,47 @@
     </div>
 </div>
 
+<!-- Tab: Revisão & Aprendizado -->
+<div class="tab-content" id="tabLearning">
+    <div id="alertContainerLearning"></div>
+    <div class="card" style="border-top: 4px solid var(--afs-orange-500);">
+        <div class="card-header">
+            <div>
+                <div class="card-title">
+                    <div class="card-title-icon">🧠</div>
+                    Regras de Aprendizado (DSL)
+                </div>
+                <div class="card-subtitle">
+                    Edite regras em formato estilo Python. Elas são convertidas em instruções para a IA — não executam código real no navegador (mais seguro que Python arbitrário).
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="loadAllLearnings()">📋 Listar todos aprendizados</button>
+                <button class="btn btn-primary btn-sm" onclick="saveLearningRules()">Salvar regras</button>
+            </div>
+        </div>
+        <textarea id="learningRulesEditor" class="form-input" rows="16" style="font-family: monospace; font-size: 0.85rem; width: 100%; resize: vertical;" spellcheck="false"></textarea>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+            Dica: use blocos <code>RULE nome:</code> com instruções indentadas. Comentários com <code>#</code>.
+        </p>
+    </div>
+    <div class="card mt-3">
+        <div class="card-header">
+            <div class="card-title">Histórico de feedback & auto-aprendizado</div>
+        </div>
+        <pre id="learningsDump" style="background: rgba(0,0,0,0.25); padding: 16px; border-radius: 8px; max-height: 400px; overflow: auto; font-size: 0.8rem; white-space: pre-wrap;">Carregue os aprendizados com o botão acima.</pre>
+    </div>
+    <div class="card mt-3">
+        <div class="card-header">
+            <div class="card-title">Revisão rápida de avaliações</div>
+            <button class="btn btn-secondary btn-sm" onclick="openGalleryModal()">Abrir banco de ativos</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Use o botão <strong>Revisar</strong> na aba Pesquisa & Avaliação ou no Banco de Ativos para corrigir valores e alimentar o aprendizado.
+        </p>
+    </div>
+</div>
+
 
 <!-- ==========================================
      MODAL DE REVISÃO
@@ -678,9 +723,10 @@
         }
       })();
     </script>
-    <script src="./js/photo-resolver.js?v=16"></script>
-    <script src="./js/browser-evaluation.js?v=16"></script>
-    <script src="./js/browser-api.js?v=16"></script>
-    <script src="./js/app.js?v=16"></script>
+    <script src="./js/photo-resolver.js?v=17"></script>
+    <script src="./js/learning-rules.js?v=17"></script>
+    <script src="./js/browser-evaluation.js?v=17"></script>
+    <script src="./js/browser-api.js?v=17"></script>
+    <script src="./js/app.js?v=17"></script>
 </body>
 </html>

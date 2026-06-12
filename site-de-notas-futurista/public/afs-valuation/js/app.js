@@ -316,9 +316,8 @@ function resetInitFlowAfterSpreadsheetChange(hasExistingMappings) {
     state.initialized = false;
     resetEvaluationControls();
     lockTab('research');
+    lockTab('learning');
     switchTab('init');
-
-    const step4 = document.getElementById('step4');
     const connector3 = document.getElementById('connector3');
     if (step4) {
         step4.classList.remove('completed');
@@ -357,6 +356,7 @@ async function maybeAutoFinalizeIfReady() {
             state.initialized = true;
             updateStep(4, 'completed');
             unlockTab('research');
+            unlockTab('learning');
             const dot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
             if (dot) dot.classList.add('active');
@@ -376,9 +376,8 @@ async function clearSpreadsheetSessionUI() {
     state.spreadsheetData = null;
     resetEvaluationControls();
     lockTab('research');
+    lockTab('learning');
     switchTab('init');
-
-    updateStep(2, 'active');
     updateStep(3, 'active');
     updateStep(4, 'active');
     ['step2', 'step3', 'step4'].forEach((id, i) => {
@@ -1187,15 +1186,25 @@ async function loadSpreadsheetRowsForEvaluation() {
             return;
         }
 
-        // Carregar avaliações já existentes para reidratar status/Revisar
+        // Carregar avaliações e linhas já processadas (memória persistente)
         const evalIndex = {};
+        const evaluatedSet = new Set();
         try {
             const evalData = await apiFetch('/api/evaluations');
             (evalData.evaluations || []).forEach(ev => {
                 if (ev.row_index != null && evalIndex[`r:${ev.row_index}`] == null) evalIndex[`r:${ev.row_index}`] = ev;
                 if (ev.control != null && ev.control !== '' && evalIndex[`c:${ev.control}`] == null) evalIndex[`c:${ev.control}`] = ev;
             });
+            const evRows = await apiFetch('/api/evaluated-rows');
+            (evRows.rows || []).forEach(r => evaluatedSet.add(r));
         } catch (_) { /* sem avaliações */ }
+
+        const photoMeta = {
+            ...spreadsheetMeta,
+            photo_lookups: data.photo_lookups || spreadsheetMeta.photo_lookups,
+            photo_lookup: data.photo_lookup || spreadsheetMeta.photo_lookup,
+            headers: spreadsheetMeta.headers
+        };
         
         tbody.innerHTML = '';
         const rows = data.rows || [];
@@ -1214,19 +1223,19 @@ async function loadSpreadsheetRowsForEvaluation() {
             const controlVal = controlLetter ? row[controlLetter] : null;
             const descText = descLetter ? row[descLetter] : "Item sem descrição";
             const assetText = assetLetter ? row[assetLetter] : '';
-            const rowPhotos = resolveRowPhotosForDisplay(row, mappings, { ...spreadsheetMeta, photo_lookup: data.photo_lookup || spreadsheetMeta.photo_lookup });
+            const rowPhotos = resolveRowPhotosForDisplay(row, mappings, photoMeta);
             const fotoUrl = rowPhotos[0]?.url || "Sem foto";
             const fotoSpec = rowPhotos[1]?.url || "Sem foto especificação";
             const fotoTag = rowPhotos[2]?.url || "Sem foto tag";
             const link1Val = link1Letter ? row[link1Letter] : null;
 
             const existingEval = evalIndex[`r:${rowIdx}`] || (controlVal != null ? evalIndex[`c:${controlVal}`] : null);
+            const alreadyEvaluated = evaluatedSet.has(rowIdx) || Boolean(existingEval);
             
-            // Determinar status
             let status = "Pendente";
-            if (existingEval) {
-                status = "Concluído";
-                done++;
+            if (alreadyEvaluated) {
+                status = "Ignorado";
+                ignored++;
             } else if (link1Val !== null && link1Val !== undefined && String(link1Val).trim() !== "") {
                 status = "Ignorado";
                 ignored++;
@@ -1253,7 +1262,6 @@ async function loadSpreadsheetRowsForEvaluation() {
             let statusColor = 'var(--text-color)';
             if (status === 'Ignorado') statusColor = 'var(--text-muted)';
             if (status === 'Pendente') statusColor = 'var(--status-info)';
-            if (status === 'Concluído') statusColor = 'var(--status-ok)';
 
             const ctrlEsc = (controlVal != null ? String(controlVal) : '').replace(/'/g, "\\'");
             const btnHtml = existingEval
@@ -2010,6 +2018,47 @@ async function activateSpreadsheet(filename) {
         document.getElementById('cardMapping')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
         showAlert('Erro ao ativar: ' + e.message, 'error');
+    }
+}
+
+// ---------- Aba Revisão & Aprendizado ----------
+async function loadLearningTab() {
+    try {
+        const data = await apiFetch('/api/learning-rules');
+        const editor = document.getElementById('learningRulesEditor');
+        if (editor) {
+            editor.value = data.rules || (typeof AFS_DEFAULT_LEARNING_RULES !== 'undefined' ? AFS_DEFAULT_LEARNING_RULES : '');
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar regras:', e);
+    }
+}
+
+async function saveLearningRules() {
+    const editor = document.getElementById('learningRulesEditor');
+    if (!editor) return;
+    try {
+        const data = await apiFetch('/api/learning-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rules: editor.value })
+        });
+        if (data.status === 'ok') showAlert('Regras de aprendizado salvas!', 'success');
+        else showAlert(data.message || 'Erro ao salvar', 'error');
+    } catch (e) {
+        showAlert('Erro: ' + e.message, 'error');
+    }
+}
+
+async function loadAllLearnings() {
+    const dump = document.getElementById('learningsDump');
+    if (!dump) return;
+    dump.textContent = 'Carregando...';
+    try {
+        const data = await apiFetch('/api/learnings');
+        dump.textContent = data.formatted || 'Nenhum aprendizado registrado.';
+    } catch (e) {
+        dump.textContent = 'Erro: ' + e.message;
     }
 }
 
