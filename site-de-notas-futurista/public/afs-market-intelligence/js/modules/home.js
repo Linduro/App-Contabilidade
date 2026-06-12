@@ -38,7 +38,7 @@ export async function renderHome({ mount }) {
         '<p class="hint">Leads quentes para abordagem manual hoje</p>' +
         (hot.length ? '<ul class="l2-opp-list">' + hot.map(function (l) {
           return '<li><strong>' + esc(l.razao_social) + '</strong> <span>Score ' + esc(l.score) + ' · ' + esc(l.uf) + '</span>' +
-            '<a class="btn sm" href="#/legacy">Abrir legado</a></li>';
+            '<a class="btn sm" href="#/crm/leads">Abrir lead</a></li>';
         }).join('') + '</ul>' : '<p class="hint">Nenhuma oportunidade quente no momento.</p>') +
       '</section>' +
       '<p class="hint" style="margin-top:1rem">Dados em <code>localStorage</code>. Import do Firestore na primeira carga.</p>' +

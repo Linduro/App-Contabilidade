@@ -9,7 +9,15 @@ import { renderPipelines } from '../modules/crm-pipelines.js';
 import { renderOportunidades } from '../modules/crm-oportunidades.js';
 import { renderLeads } from '../modules/crm-leads.js';
 import { renderAtividades } from '../modules/atividades.js';
-import { placeholderModule } from '../modules/placeholder.js';
+import { renderComunicacaoInbox } from '../modules/comunicacao-inbox.js';
+import { renderMarketing } from '../modules/marketing.js';
+import { renderAutomacao } from '../modules/automacao.js';
+import { renderAnalises } from '../modules/analises.js';
+import { renderProspeccao } from '../modules/prospeccao.js';
+import { renderDeadZone } from '../modules/prospeccao-dead-zone.js';
+import { renderTransicao } from '../modules/prospeccao-transicao.js';
+import { renderParceiros } from '../modules/parceiros.js';
+import { renderConfiguracoes } from '../modules/configuracoes.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 
 const TITLES = {
@@ -21,6 +29,7 @@ const TITLES = {
   '/crm/leads': 'Leads',
   '/crm/oportunidades': 'Oportunidades',
   '/tarefas': 'Atividades',
+  '/comunicacao/inbox': 'Caixa de entrada',
   '/parceiros': 'Parceiros B2B2B',
   '/configuracoes': 'Configurações',
   '/legacy': 'UI Legada',
@@ -36,23 +45,23 @@ function titleFor(path) {
 }
 
 function registerAllRoutes() {
-  const ph = placeholderModule;
   register('/apps', renderHome);
   register('/legacy', async () => { await mountLegacy(); });
   registerPrefix('/legacy/', async () => { await mountLegacy(); });
-  register('/prospeccao', ph('Prospecção', 'Filtros accordion + tabela (fase 3).'));
-  register('/prospeccao/dead-zone', ph('Dead Zone', 'Use UI legada (#/legacy) até migrar.'));
-  register('/prospeccao/transicao', ph('Transição de Regime'));
+  register('/prospeccao', renderProspeccao);
+  register('/prospeccao/dead-zone', renderDeadZone);
+  register('/prospeccao/transicao', renderTransicao);
   register('/crm/pipelines', renderPipelines);
   register('/crm/leads', renderLeads);
   register('/crm/oportunidades', renderOportunidades);
   register('/tarefas', renderAtividades);
-  register('/parceiros', ph('Parceiros B2B2B'));
-  register('/configuracoes', ph('Configurações', 'Scoring e pipelines.'));
-  registerPrefix('/marketing/', ph('Marketing'));
-  registerPrefix('/comunicacao/', ph('Comunicação'));
-  registerPrefix('/automacao/', ph('Automação'));
-  registerPrefix('/analises/', ph('Análises'));
+  register('/comunicacao/inbox', renderComunicacaoInbox);
+  registerPrefix('/comunicacao/', renderComunicacaoInbox);
+  register('/parceiros', renderParceiros);
+  register('/configuracoes', renderConfiguracoes);
+  registerPrefix('/marketing/', renderMarketing);
+  registerPrefix('/automacao/', renderAutomacao);
+  registerPrefix('/analises/', renderAnalises);
 }
 
 function refreshChrome(path) {

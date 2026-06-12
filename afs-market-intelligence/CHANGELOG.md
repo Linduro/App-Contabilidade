@@ -115,3 +115,15 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Filtros rápidos (para fazer, atrasadas, hoje, amanhã, semana, mês)
 - Nova atividade vinculada a lead/negócio, conclusão com outcome
 - Badge de atrasadas na sidebar; sync automático pendente → atrasada
+
+## v3.4 — Módulos restantes (fase 3d–3j)
+
+- `#/comunicacao/inbox`: caixa omnichannel 3 colunas (lista, thread, detalhes)
+- `#/marketing/*`: segmentações, templates, landing pages, formulários
+- `#/automacao/*`: jornadas com canvas de etapas e campanhas simuladas
+- `#/analises/*`: relatórios Chart.js (funil, UF, pipeline) e metas
+- `#/prospeccao`: filtros accordion + busca local + empresas para converter em lead
+- `#/prospeccao/dead-zone` e `#/prospeccao/transicao`: views dedicadas
+- `#/parceiros`: CRUD parceiros B2B2B + acionar indicação
+- `#/configuracoes`: scoring ICP, pipelines, tags e usuários
+- Seed v4: conversas, mensagens, segmentações, automações, campanhas, metas, LPs, forms, empresas demo

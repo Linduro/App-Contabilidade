@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AFS Market Intelligence</title>
     <link rel="stylesheet" href="./css/style.css?v=3">
-    <link rel="stylesheet" href="./css/layout-v2.css?v=1">
+    <link rel="stylesheet" href="./css/layout-v2.css?v=2">
     <script>window.__AFS_BASE_PATH__="/App-Contabilidade";</script>
 </head>
 <body>
@@ -42,6 +42,7 @@
 <script src="./js/toast.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
 (async function bootstrapAFS() {
     const status = document.getElementById('login-status');
@@ -60,7 +61,7 @@
         }
         const { startAuthGate } = await import('./js/auth-gate.js?v=6');
         startAuthGate(async function () {
-            const { bootApp } = await import('./js/core/boot.js?v=1');
+            const { bootApp } = await import('./js/core/boot.js?v=2');
             await bootApp();
         });
     } catch (err) {

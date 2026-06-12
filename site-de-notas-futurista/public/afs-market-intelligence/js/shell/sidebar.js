@@ -41,7 +41,12 @@ export function renderSidebar(el, currentPath) {
       return '<div class="l2-nav-section"><div class="l2-nav-title">' + sec.section + '</div>' +
         sec.items.map(function (item) {
           const active = currentPath === item.hash || currentPath.startsWith(item.hash + '/');
-          const badge = item.hash === '/tarefas' && overdue > 0 ? '<span class="l2-badge">' + overdue + '</span>' : '';
+          let badge = '';
+          if (item.hash === '/tarefas' && overdue > 0) badge = '<span class="l2-badge">' + overdue + '</span>';
+          if (item.hash === '/comunicacao/inbox') {
+            const unread = store.count('conversations', (c) => (c.nao_lidas || 0) > 0);
+            if (unread > 0) badge = '<span class="l2-badge">' + unread + '</span>';
+          }
           return '<a class="l2-nav-item' + (active ? ' active' : '') + '" href="#' + item.hash + '">' +
             '<span class="l2-nav-icon">' + item.icon + '</span>' + item.label + badge + '</a>';
         }).join('') +

@@ -76,18 +76,92 @@ const ACTIVITIES = [
 
 const PARTNERS = [
   { id: 'par_1', nome: 'Auditoria Horizonte', rede: 'Independente', uf: 'SP', website: 'horizonteaudit.com.br', email: 'parcerias@horizonteaudit.com.br', telefone: '(11) 4000-1000', status_parceria: 'ativo' },
+  { id: 'par_2', nome: 'Contábil Sul', rede: 'Rede AFS', uf: 'RS', website: 'contabilsul.com.br', email: 'b2b@contabilsul.com.br', telefone: '(51) 3000-2000', status_parceria: 'ativo' },
 ];
+
+const COMPANIES = [
+  { id: 'co_1', cnpj: '99887766000133', nome: 'Investimentos Zeta Ltda', cnae_codigo: '6619-3/02', cnae_descricao: 'Corretoras de valores', regime_tributario: 'LR', porte_empresa: 'MEDIO', capital_social: 1200000, uf: 'SP', municipio: 'Campinas', score: 7.8, situacao_cadastral: 'ATIVA' },
+  { id: 'co_2', cnpj: '44332211000144', nome: 'Metalúrgica Omega S.A.', cnae_codigo: '2599-3/99', cnae_descricao: 'Metalurgia', regime_tributario: 'LP', porte_empresa: 'GRANDE', capital_social: 15000000, uf: 'RS', municipio: 'Porto Alegre', score: 8.9, situacao_cadastral: 'ATIVA' },
+];
+
+const CONVERSATIONS = [
+  { id: 'conv_1', lead_id: 'ld_2', canal: 'email', assunto: 'Proposta BPO + Transição LR', status: 'aberta', nao_lidas: 2, ultima_msg_em: new Date(Date.now() - 3600000).toISOString(), ultima_preview: 'Podemos agendar uma call esta semana?' },
+  { id: 'conv_2', lead_id: 'ld_4', canal: 'whatsapp', assunto: 'Consultoria Delta', status: 'aberta', nao_lidas: 0, ultima_msg_em: new Date(Date.now() - 86400000).toISOString(), ultima_preview: 'Recebi a proposta, vou analisar.' },
+  { id: 'conv_3', lead_id: 'ld_1', canal: 'email', assunto: 'Holding Alfa — primeiro contato', status: 'lida', nao_lidas: 0, ultima_msg_em: new Date(Date.now() - 3 * 86400000).toISOString(), ultima_preview: 'Obrigado pelo retorno.' },
+];
+
+const MESSAGES = [
+  { id: 'msg_1', conversation_id: 'conv_1', direcao: 'entrada', corpo: 'Recebemos a proposta. Podemos agendar uma call esta semana?', autor: 'fiscal@betaind.com.br', criado_em: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'msg_2', conversation_id: 'conv_1', direcao: 'saida', corpo: 'Claro! Envio opções de horário ainda hoje.', autor: 'Cartoon HQ', criado_em: new Date(Date.now() - 7200000).toISOString() },
+  { id: 'msg_3', conversation_id: 'conv_2', direcao: 'entrada', corpo: 'Recebi a proposta, vou analisar com o time.', autor: 'ceo@delta.tech', criado_em: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'msg_4', conversation_id: 'conv_3', direcao: 'saida', corpo: 'Olá, identificamos oportunidade de otimização patrimonial.', autor: 'Cartoon HQ', criado_em: new Date(Date.now() - 4 * 86400000).toISOString() },
+];
+
+const SEGMENTATIONS = [
+  { id: 'seg_1', nome: 'ICP Patrimonial SP', filtros: { uf: 'SP', scoreMin: 7 }, ativo: true },
+  { id: 'seg_2', nome: 'Transição LR', filtros: { scoreMin: 6 }, ativo: true },
+];
+
+const AUTOMATIONS = [
+  { id: 'auto_1', nome: 'Boas-vindas lead quente', trigger: 'lead_score_above', trigger_value: 8, ativo: true, steps: [
+    { tipo: 'aguardar', config: '1 dia' }, { tipo: 'email', config: 'Abordagem patrimonial' }, { tipo: 'criar_atividade', config: 'Follow-up ligação' },
+  ]},
+  { id: 'auto_2', nome: 'Alerta atividade atrasada', trigger: 'activity_overdue', trigger_value: 0, ativo: false, steps: [
+    { tipo: 'notificacao', config: 'Responsável' }, { tipo: 'criar_atividade', config: 'Reagendar' },
+  ]},
+];
+
+const CAMPAIGNS = [
+  { id: 'camp_1', nome: 'Outreach Transição LR Q2', automation_id: 'auto_1', status: 'rascunho', enviados: 0 },
+];
+
+const GOALS = [
+  { id: 'goal_1', titulo: 'Novos negócios fechados Q2', tipo: 'deals_won', meta: 5, atual: 0, periodo: '2026-Q2' },
+  { id: 'goal_2', titulo: 'Leads prospectados', tipo: 'leads_created', meta: 50, atual: 5, periodo: '2026-Q2' },
+];
+
+const LANDING_PAGES = [
+  { id: 'lp_1', nome: 'Diagnóstico Patrimonial', slug: 'patrimonial', views: 342, conversoes: 18 },
+  { id: 'lp_2', nome: 'Transição Lucro Real', slug: 'transicao-lr', views: 128, conversoes: 9 },
+];
+
+const FORMS = [
+  { id: 'form_1', nome: 'Diagnóstico Fiscal Rápido', landing_page_id: 'lp_1', respostas: 18 },
+  { id: 'form_2', nome: 'Simulador Transição LR', landing_page_id: 'lp_2', respostas: 9 },
+];
+
+function mergeCollection(db, key, items) {
+  if (!db.collections[key]) db.collections[key] = [];
+  const ids = new Set(db.collections[key].map((r) => r.id));
+  items.forEach((item) => { if (!ids.has(item.id)) db.collections[key].push(item); });
+}
+
+function applySeedV4(db) {
+  mergeCollection(db, 'deals', DEALS);
+  mergeCollection(db, 'activities', ACTIVITIES);
+  mergeCollection(db, 'partners', PARTNERS);
+  mergeCollection(db, 'companies', COMPANIES);
+  mergeCollection(db, 'conversations', CONVERSATIONS);
+  mergeCollection(db, 'messages', MESSAGES);
+  mergeCollection(db, 'segmentations', SEGMENTATIONS);
+  mergeCollection(db, 'automations', AUTOMATIONS);
+  mergeCollection(db, 'campaigns', CAMPAIGNS);
+  mergeCollection(db, 'goals', GOALS);
+  mergeCollection(db, 'landingPages', LANDING_PAGES);
+  mergeCollection(db, 'forms', FORMS);
+  if (!db.collections.emailTemplates?.length) {
+    db.collections.emailTemplates = [{ id: 'tpl_1', nome: 'Abordagem patrimonial', assunto: 'Conformidade patrimonial — {{razao_social}}', corpo: 'Olá,\n\nIdentificamos oportunidade de otimização fiscal para {{razao_social}} ({{regime_tributario}}).\n\nAtt,\n{{responsavel}}' }];
+  }
+}
 
 export function seedIfEmpty() {
   const db = store.getDb();
-  if (db.meta.seededAt && db.meta.seedVersion >= 3) return false;
+  if (db.meta.seededAt && db.meta.seedVersion >= 4) return false;
 
-  if (db.meta.seededAt && db.meta.seedVersion < 3) {
-    const dealIds = new Set((db.collections.deals || []).map((d) => d.id));
-    DEALS.forEach((d) => { if (!dealIds.has(d.id)) db.collections.deals.push(d); });
-    const actIds = new Set((db.collections.activities || []).map((a) => a.id));
-    ACTIVITIES.forEach((a) => { if (!actIds.has(a.id)) db.collections.activities.push(a); });
-    store.setMeta({ seedVersion: 3 });
+  if (db.meta.seededAt && db.meta.seedVersion < 4) {
+    applySeedV4(db);
+    store.setMeta({ seedVersion: 4 });
+    store.replaceDb(db);
     return true;
   }
 
@@ -100,12 +174,21 @@ export function seedIfEmpty() {
   collections.deals = DEALS;
   collections.activities = ACTIVITIES;
   collections.partners = PARTNERS;
+  collections.companies = COMPANIES;
+  collections.conversations = CONVERSATIONS;
+  collections.messages = MESSAGES;
+  collections.segmentations = SEGMENTATIONS;
+  collections.automations = AUTOMATIONS;
+  collections.campaigns = CAMPAIGNS;
+  collections.goals = GOALS;
+  collections.landingPages = LANDING_PAGES;
+  collections.forms = FORMS;
   collections.tags = [{ id: 'tag_quente', nome: 'Quente', cor: '#e8681a' }, { id: 'tag_trans', nome: 'Transição LR', cor: '#3b82f6' }];
   collections.emailTemplates = [{ id: 'tpl_1', nome: 'Abordagem patrimonial', assunto: 'Conformidade patrimonial — {{razao_social}}', corpo: 'Olá,\n\nIdentificamos oportunidade de otimização fiscal para {{razao_social}} ({{regime_tributario}}).\n\nAtt,\n{{responsavel}}' }];
 
   store.replaceDb({
     ...db,
-    meta: { ...db.meta, seededAt: new Date().toISOString(), seedVersion: 3 },
+    meta: { ...db.meta, seededAt: new Date().toISOString(), seedVersion: 4 },
     collections,
   });
   return true;
