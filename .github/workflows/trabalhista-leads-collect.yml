@@ -1,5 +1,9 @@
 name: Trabalhista Leads — Coleta
 
+# Manual. Para ativar:
+#   Variable ENABLE_FIREBASE_COLLECT = true
+#   Secret FIREBASE_SERVICE_ACCOUNT
+
 on:
   workflow_dispatch:
 
@@ -8,20 +12,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Skip when Firebase collect is disabled
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT != 'true' }}
+        run: |
+          echo "ENABLE_FIREBASE_COLLECT não é 'true' — coleta ignorada."
+          echo "Configure a variável e o secret FIREBASE_SERVICE_ACCOUNT para rodar."
+
       - uses: actions/setup-node@v4
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT == 'true' }}
         with:
           node-version: 22
+
       - uses: actions/setup-python@v5
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT == 'true' }}
         with:
           python-version: "3.12"
+
       - name: Install agent
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT == 'true' }}
         working-directory: agent
         run: npm ci
+
       - name: Firebase credentials
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT == 'true' }}
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: echo "$FIREBASE_SERVICE_ACCOUNT" > "${{ runner.temp }}/firebase-sa.json"
+
       - name: Coleta trabalhista
+        if: ${{ vars.ENABLE_FIREBASE_COLLECT == 'true' }}
         working-directory: agent
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json

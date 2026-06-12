@@ -1,5 +1,9 @@
 name: Deploy Datajud proxy (Cloudflare Worker)
 
+# Opcional. Para ativar:
+#   Variable ENABLE_DATAJUD_PROXY_DEPLOY = true
+#   Secrets CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID
+
 on:
   workflow_dispatch:
   push:
@@ -13,10 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Skip when Datajud proxy deploy is disabled
+        if: ${{ vars.ENABLE_DATAJUD_PROXY_DEPLOY != 'true' }}
+        run: echo "ENABLE_DATAJUD_PROXY_DEPLOY não é 'true' — deploy do Worker ignorado."
+
       - uses: actions/setup-node@v4
+        if: ${{ vars.ENABLE_DATAJUD_PROXY_DEPLOY == 'true' }}
         with:
           node-version: 22
+
       - name: Deploy Worker
+        if: ${{ vars.ENABLE_DATAJUD_PROXY_DEPLOY == 'true' }}
         working-directory: workers/datajud-proxy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
