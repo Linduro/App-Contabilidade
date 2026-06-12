@@ -1,5 +1,9 @@
 name: Deploy AFS API (Render)
 
+# Opcional. Para ativar:
+#   1. Secret RENDER_DEPLOY_HOOK
+#   2. Variable ENABLE_RENDER_DEPLOY = true
+
 on:
   push:
     branches: [main]
@@ -13,10 +17,10 @@ jobs:
   deploy-render:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip when Render hook is not configured
-        if: ${{ secrets.RENDER_DEPLOY_HOOK == '' }}
-        run: echo "RENDER_DEPLOY_HOOK não configurado — deploy da API ignorado."
+      - name: Skip when Render deploy is disabled
+        if: ${{ vars.ENABLE_RENDER_DEPLOY != 'true' }}
+        run: echo "ENABLE_RENDER_DEPLOY não é 'true' — deploy da API ignorado."
 
       - name: Trigger Render deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        if: ${{ vars.ENABLE_RENDER_DEPLOY == 'true' }}
         run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"

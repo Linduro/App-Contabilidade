@@ -1,6 +1,9 @@
 name: Deploy AFS API (Cloud Run)
 
-# Opcional: exige secret FIREBASE_SERVICE_ACCOUNT. Sem ele, o job é ignorado (ver deploy-afs-api.yml / Render).
+# Opcional. Para ativar:
+#   1. Secret FIREBASE_SERVICE_ACCOUNT
+#   2. Variable ENABLE_GCP_CLOUD_RUN = true
+# Alternativa gratuita: deploy-afs-api.yml (Render).
 
 on:
   push:
@@ -25,28 +28,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Skip when GCP credentials are not configured
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT == '' }}
-        run: echo "FIREBASE_SERVICE_ACCOUNT não configurado — deploy Cloud Run ignorado."
+      - name: Skip when GCP Cloud Run deploy is disabled
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN != 'true' }}
+        run: echo "ENABLE_GCP_CLOUD_RUN não é 'true' — deploy Cloud Run ignorado."
 
       - name: Authenticate to Google Cloud
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@v2
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
       - name: Enable required APIs
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         run: |
           gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
 
       - name: Deploy to Cloud Run
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         working-directory: afs-valuation
         env:
           GEMINI_KEY: ${{ secrets.GOOGLE_API_KEY }}
@@ -68,7 +71,7 @@ jobs:
             --quiet
 
       - name: Resolve service URL
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         id: service
         run: |
           URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" \
@@ -78,7 +81,7 @@ jobs:
           echo "AFS API URL: ${URL}"
 
       - name: Update config.json for GitHub Pages
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         run: |
           node -e "
             const fs = require('fs');
@@ -87,7 +90,7 @@ jobs:
           "
 
       - name: Commit config.json
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
