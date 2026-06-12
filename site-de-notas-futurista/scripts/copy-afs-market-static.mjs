@@ -23,6 +23,10 @@ function buildIndexHtml() {
     "./js/$1",
   )
 
+  const basePath = (process.env.GITHUB_SITE_BASE || "").replace(/\/$/, "")
+  const baseScript = `<script>window.__AFS_BASE_PATH__=${JSON.stringify(basePath)};</script>`
+  raw = raw.replace("</head>", `    ${baseScript}\n</head>`)
+
   return raw
 }
 

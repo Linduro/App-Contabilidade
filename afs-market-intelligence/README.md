@@ -74,18 +74,13 @@ cd site-de-notas-futurista
 npx firebase deploy --only firestore:rules
 ```
 
-5. Provisionar usuários (owner + Gabriel):
+5. Usuários autorizados (mesma senha do login do portal):
 
-```bash
-cd site-de-notas-futurista
-npm run afs:setup
-```
+- `cartoonhq@gmail.com`
+- `gabrieldouran@gmail.com`
 
-Contas autorizadas: `cartoonhq@gmail.com` e `gabrieldouran@gmail.com`.
-Se a conta já existir, envia e-mail de redefinição de senha.
-Define senha inicial com `AFS_USER_PASSWORD="..."` se for conta nova.
-
-Popula leads demo apenas se a base AFS estiver vazia.
+A SPA reutiliza a sessão Firebase do portal — não há login separado.
+Acesse pelo dashboard ou faça sign-in no portal e será redirecionado automaticamente.
 
 6. Rebuild estático após alterações:
 

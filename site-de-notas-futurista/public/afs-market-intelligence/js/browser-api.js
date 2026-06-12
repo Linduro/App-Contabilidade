@@ -274,6 +274,12 @@ async function postExport(body) {
   };
 }
 
+async function savePipelineConfig(body) {
+  const ref = doc(db, CONFIG, 'pipeline');
+  await setDoc(ref, { config: body, updated_at: serverTimestamp() }, { merge: true });
+  return { status: 'ok' };
+}
+
 async function postPipeline(body) {
   const ref = doc(db, CONFIG, 'pipeline');
   const steps = ['ingestao_rf', 'icp_cluster', 'enriquecimento', 'validacao_email', 'monitor_regime'];
@@ -336,6 +342,7 @@ async function routePost(path, body) {
   try {
     if (base === '/feedback') return postFeedback(body);
     if (base === '/export') return postExport(body);
+    if (base === '/pipeline/save') return savePipelineConfig(body);
     if (base === '/pipeline/run') return postPipeline(body);
     if (base === '/parceiros') {
       const ref = await addDoc(collection(db, PARCEIROS), {

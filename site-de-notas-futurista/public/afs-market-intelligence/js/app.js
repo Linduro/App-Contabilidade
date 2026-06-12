@@ -51,6 +51,10 @@
   let unsubLeads = null;
   let unsubConfig = null;
   let searchTimer = null;
+  let reconnectAttempts = 0;
+  let browserOnline = navigator.onLine;
+
+  const ALLOWED_EMAILS = ['cartoonhq@gmail.com', 'gabrieldouran@gmail.com'];
 
   function perfil() {
     return $('#perfil')?.value || 'patrimonial';
@@ -64,6 +68,76 @@
   function fmtPct(n) {
     const sign = n >= 0 ? '+' : '';
     return sign + n.toFixed(1) + '%';
+  }
+
+  function portalSignInUrl() {
+    const base = window.__AFS_BASE_PATH__ || '';
+    const ret = encodeURIComponent(window.location.pathname + window.location.search);
+    return base + '/sign-in/?redirect=' + ret;
+  }
+
+  function portalHomeUrl() {
+    return (window.__AFS_BASE_PATH__ || '') + '/dashboard/';
+  }
+
+  function showTableSkeleton(id, rows) {
+    const el = $('#' + id);
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.innerHTML = Array(rows || 5).fill('<div class="skeleton-row"></div>').join('');
+  }
+
+  function hideTableSkeleton(id) {
+    const el = $('#' + id);
+    if (el) el.classList.add('hidden');
+  }
+
+  function computeFunilMetrics(leads) {
+    const p = perfil();
+    const list = leads.filter(function (l) {
+      return !l.perfil_icp || l.perfil_icp === p || p === 'generico';
+    });
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const countInMonth = function (arr, start, end) {
+      return arr.filter(function (l) {
+        const ts = l.criado_em && l.criado_em.toDate ? l.criado_em.toDate() : null;
+        return ts && ts >= start && ts < end;
+      }).length;
+    };
+    const prospectados = list.filter(function (l) { return l.status_funil === 'prospectado'; }).length;
+    const fechados = list.filter(function (l) { return l.status_funil === 'fechado'; }).length;
+    const regimeCounts = { SN: 0, LP: 0, LR: 0 };
+    list.forEach(function (l) {
+      if (regimeCounts[l.regime_tributario] !== undefined) regimeCounts[l.regime_tributario]++;
+    });
+    const thisMonth = countInMonth(list, monthStart, now);
+    const lastMonth = countInMonth(list, prevStart, monthStart);
+    return {
+      universo_icp: list.length,
+      enriquecidos: list.filter(function (l) { return l.email; }).length,
+      emails_validados: list.filter(function (l) { return l.email && l.email.includes('@'); }).length,
+      dead_zone: list.filter(function (l) { return l.status_funil === 'dead_zone'; }).length,
+      transicao_regime: list.filter(function (l) { return l.transicao_regime; }).length,
+      taxa_conversao: prospectados ? (fechados / prospectados) * 100 : 0,
+      pct_change: lastMonth ? ((thisMonth - lastMonth) / lastMonth) * 100 : 0,
+      regime_counts: regimeCounts,
+    };
+  }
+
+  function updateOnlineBadge(firestoreOnline) {
+    const online = browserOnline && firestoreOnline !== false;
+    const dot = $('#status-dot');
+    dot.classList.toggle('offline', !online);
+    dot.classList.toggle('pulse', !online);
+    if (online) {
+      reconnectAttempts = 0;
+      $('#status-text').textContent = '● Online';
+    } else {
+      reconnectAttempts++;
+      $('#status-text').textContent = '● Offline — tentando reconectar... (' + reconnectAttempts + ')';
+    }
   }
 
   function esc(s) {
@@ -120,14 +194,19 @@
     };
 
     onAuthStateChanged(auth, function (user) {
-      if (user) {
+      if (user && ALLOWED_EMAILS.includes((user.email || '').toLowerCase())) {
         $('#afs-login').classList.add('hidden');
         $('#afs-app').classList.remove('hidden');
         bootstrapApp();
+      } else if (user) {
+        signOut(auth).then(function () {
+          Toast()?.error('Acesso restrito a usuários autorizados.');
+          window.location.href = portalHomeUrl();
+        });
       } else {
         teardownApp();
-        $('#afs-app').classList.add('hidden');
-        $('#afs-login').classList.remove('hidden');
+        $('#login-status').textContent = 'Redirecionando para o login do portal…';
+        window.location.replace(portalSignInUrl());
       }
     });
   }
@@ -152,15 +231,24 @@
     if (unsubLeads) unsubLeads();
     unsubLeads = api.subscribeLeads(function (leads) {
       leadsCache = leads;
-      if (activeTab === 'dashboard') renderDashboardFromLeads(leads);
-      if (activeTab === 'funil') renderKanban(leads);
+      const funil = computeFunilMetrics(leads);
+      if (activeTab === 'dashboard') {
+        renderMetrics(funil, funil.pct_change);
+        renderRegimeBars(funil.regime_counts);
+        renderDashboardFromLeads(leads);
+      }
+      if (activeTab === 'funil') {
+        renderKanban(leads);
+        renderFunnelMetrics(funil, leads);
+      }
     });
     if (unsubConfig) unsubConfig();
     unsubConfig = api.subscribeConfigStatus(function (cfg) {
-      const online = cfg.online !== false;
-      $('#status-dot').classList.toggle('offline', !online);
-      $('#status-text').textContent = (online ? 'Online' : 'Offline') + ' · Perfil: ' + perfil();
+      updateOnlineBadge(cfg.online);
     });
+    window.addEventListener('online', function () { browserOnline = true; updateOnlineBadge(true); });
+    window.addEventListener('offline', function () { browserOnline = false; updateOnlineBadge(false); });
+    updateOnlineBadge(true);
   }
 
   /* ── Tabs ── */
@@ -206,20 +294,21 @@
   }
 
   function renderMetrics(funil, pctChange) {
+    const icons = ['📊', '✉', '✓', '⛔', '🔥', '📈'];
     const items = [
-      { label: 'Universo ICP', value: funil.universo_icp || 0, change: pctChange },
-      { label: 'Enriquecidos', value: funil.enriquecidos || 0, change: null },
+      { label: 'Total de Leads na Base', value: funil.universo_icp || 0, change: pctChange },
+      { label: 'Leads Enriquecidos', value: funil.enriquecidos || 0, change: null },
       { label: 'E-mails Validados', value: funil.emails_validados || 0, change: null },
-      { label: 'Dead Zone', value: funil.dead_zone || 0, change: null },
-      { label: 'Transição Regime', value: funil.transicao_regime || 0, change: null },
-      { label: 'Taxa Conversão', value: (funil.taxa_conversao || 0).toFixed(1) + '%', change: null, raw: true },
+      { label: 'Em Dead Zone', value: funil.dead_zone || 0, change: null },
+      { label: 'Em Transição de Regime', value: funil.transicao_regime || 0, change: null },
+      { label: 'Taxa de Conversão do Funil', value: (funil.taxa_conversao || 0).toFixed(1) + '%', change: null, raw: true },
     ];
-    $('#metrics-grid').innerHTML = items.map(function (i) {
+    $('#metrics-grid').innerHTML = items.map(function (i, idx) {
       const ch = i.change != null
         ? '<div class="change ' + (i.change >= 0 ? 'up' : 'down') + '">' + fmtPct(i.change) + ' vs mês ant.</div>'
         : '';
       const val = i.raw ? i.value : Number(i.value).toLocaleString('pt-BR');
-      return '<div class="metric-card"><div class="value">' + val + '</div><div class="label">' + esc(i.label) + '</div>' + ch + '</div>';
+      return '<div class="metric-card"><div class="metric-icon">' + icons[idx] + '</div><div class="value">' + val + '</div><div class="label">' + esc(i.label) + '</div>' + ch + '</div>';
     }).join('');
   }
 
@@ -255,16 +344,10 @@
       ? topCnaes.map(function (e) { return '<li><span>' + esc(e[0]) + '</span><strong>' + e[1] + '</strong></li>'; }).join('')
       : '<li><span>Nenhum dado</span></li>';
 
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     const opps = filtered
-      .filter(function (l) {
-        if (l.transicao_regime) return true;
-        if ((l.score || 0) >= 7) return true;
-        const ts = l.criado_em?.toDate ? l.criado_em.toDate() : null;
-        return ts && ts >= today;
-      })
+      .filter(function (l) { return l.status_funil === 'prospectado'; })
       .sort(function (a, b) { return (b.score || 0) - (a.score || 0); })
-      .slice(0, 8);
+      .slice(0, 5);
 
     $('#oportunidades-dia').innerHTML = opps.length
       ? opps.map(function (l) {
@@ -275,8 +358,23 @@
       : '<p class="hint">Nenhuma oportunidade destacada hoje.</p>';
 
     $$('.btn-abordagem').forEach(function (btn) {
-      btn.addEventListener('click', function () { openLeadDrawer(btn.dataset.id); });
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        iniciarAbordagem(btn.dataset.id);
+      });
     });
+  }
+
+  async function iniciarAbordagem(id) {
+    try {
+      await API().updateLead(id, { status_funil: 'contato_feito' });
+      await API().post('/feedback', { lead_id: id, outcome: 'positivo', motivo: 'Abordagem iniciada' });
+      Toast()?.success('Abordagem iniciada');
+      API().invalidateCache();
+      reloadActiveTab();
+    } catch (e) {
+      Toast()?.error('Erro ao iniciar abordagem');
+    }
   }
 
   /* ── Pipeline ── */
@@ -330,7 +428,7 @@
       pular_ingestao: $('#pipe-pular-ingestao').checked,
     };
     try {
-      await API().post('/pipeline/run', body);
+      await API().post('/pipeline/save', body);
       Toast()?.success('Configuração salva');
     } catch (e) {
       Toast()?.error('Erro ao salvar config');
@@ -355,7 +453,39 @@
     if (cmax) q.capital_max = cmax;
     if ($('#filter-transicao').checked) q.transicao = 'true';
     if ($('#filter-email').checked) q.email_validado = 'true';
+    if ($('#filter-situacao-ativa')?.checked) q.situacao_ativa = 'true';
+    const cnae = $('#filter-cnae')?.value;
+    if (cnae && cnae !== 'Todos') q.cnae = cnae;
+    const fq = $('#filter-q')?.value?.trim();
+    if (fq) q.q = fq;
     return q;
+  }
+
+  function populateCnaeFilter(leads) {
+    const sel = $('#filter-cnae');
+    if (!sel) return;
+    const current = sel.value;
+    const cnaes = [...new Set(leads.map(function (l) {
+      return l.cnae_codigo ? l.cnae_codigo + ' — ' + (l.cnae_descricao || '') : l.cnae_descricao;
+    }).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="Todos">Todos</option>' +
+      cnaes.map(function (c) { return '<option value="' + esc(c.split(' — ')[0]) + '">' + esc(c) + '</option>'; }).join('');
+    if ([...sel.options].some(function (o) { return o.value === current; })) sel.value = current;
+  }
+
+  function clearLeadsFilters() {
+    $('#filter-q').value = '';
+    $('#filter-uf').value = 'Todos';
+    $('#filter-regime').value = 'Todos';
+    $('#filter-porte').value = 'Todos';
+    $('#filter-score-min').value = '';
+    $('#filter-capital-min').value = '';
+    $('#filter-capital-max').value = '';
+    $('#filter-cnae').value = 'Todos';
+    $('#filter-transicao').checked = false;
+    $('#filter-email').checked = false;
+    $('#filter-situacao-ativa').checked = true;
+    loadLeads();
   }
 
   async function loadLeads() {
@@ -365,6 +495,7 @@
       const data = await API().get('/leads?' + new URLSearchParams(buildLeadsQuery()).toString());
       filteredLeads = data.leads || [];
       populateUfFilter(filteredLeads);
+      populateCnaeFilter(filteredLeads);
       leadsPage = 1;
       renderLeadsPage();
     } catch (e) {
@@ -396,22 +527,26 @@
         '<td>' + esc(l.cnpj_basico) + '</td>' +
         '<td>' + esc(l.razao_social) + '</td>' +
         '<td>' + esc(l.cnae_codigo || l.cnae_descricao) + '</td>' +
-        '<td>' + esc(l.cluster) + '</td>' +
         '<td>' + esc(REGIME_LABELS[l.regime_tributario] || l.regime_tributario || '—') + '</td>' +
+        '<td>' + esc(l.porte_empresa || '—') + '</td>' +
         '<td>' + fmtMoney(l.capital_social) + '</td>' +
-        '<td>' + (l.qtd_filiais || 0) + '</td>' +
+        '<td>' + fmtMoney(l.receita_anual_estimada) + '</td>' +
         '<td>' + esc(l.uf) + '</td>' +
+        '<td>' + (l.qtd_filiais || 0) + '</td>' +
         '<td>' + (l.score || 0).toFixed(1) + '</td>' +
+        '<td>' + esc(l.telefone || '—') + '</td>' +
+        '<td>' + esc(l.email || '—') + '</td>' +
         '<td>' + esc(l.status_funil || '—') + '</td>' +
-        '<td>' + (l.transicao_regime ? '🔥' : '—') + '</td>' +
         '<td><div class="action-icons">' +
-        '<button title="Ver" data-action="view" data-id="' + esc(l.id) + '">👁</button>' +
-        '<button title="Contato" data-action="contato" data-id="' + esc(l.id) + '">✉</button>' +
-        '<button title="Parceiro" data-action="parceiro" data-id="' + esc(l.id) + '">🤝</button>' +
+        '<button title="Ver detalhes" data-action="view" data-id="' + esc(l.id) + '">👁</button>' +
+        '<button title="Adicionar ao funil" data-action="funil" data-id="' + esc(l.id) + '">➕</button>' +
+        '<button title="Marcar contatado" data-action="contato" data-id="' + esc(l.id) + '">✓</button>' +
         '</div></td></tr>';
     }).join('');
 
-    $('#leads-page-info').textContent = 'Página ' + leadsPage + ' de ' + pages + ' (' + total + ' leads)';
+    const from = total ? start + 1 : 0;
+    const to = Math.min(start + PAGE_SIZE, total);
+    $('#leads-page-info').textContent = 'Exibindo ' + from + '–' + to + ' de ' + total + ' leads';
     $('#leads-prev').disabled = leadsPage <= 1;
     $('#leads-next').disabled = leadsPage >= pages;
 
@@ -420,14 +555,33 @@
         e.stopPropagation();
         const id = btn.dataset.id;
         if (btn.dataset.action === 'view') openLeadDrawer(id);
-        else if (btn.dataset.action === 'contato') openContatoModal(id);
-        else if (btn.dataset.action === 'parceiro') openAcionarModal(id);
+        else if (btn.dataset.action === 'funil') addToFunil(id);
+        else if (btn.dataset.action === 'contato') marcarContatado(id);
       });
     });
 
     $$('#leads-table tbody tr').forEach(function (tr) {
       tr.addEventListener('click', function () { openLeadDrawer(tr.dataset.id); });
     });
+  }
+
+  async function addToFunil(id) {
+    try {
+      await API().updateLead(id, { status_funil: 'prospectado' });
+      Toast()?.success('Lead adicionado ao funil');
+      API().invalidateCache();
+      loadLeads();
+    } catch (e) { Toast()?.error('Erro ao adicionar ao funil'); }
+  }
+
+  async function marcarContatado(id) {
+    try {
+      await API().updateLead(id, { status_funil: 'contato_feito' });
+      await API().post('/feedback', { lead_id: id, outcome: 'positivo', motivo: 'Marcado como contatado' });
+      Toast()?.success('Lead marcado como contatado');
+      API().invalidateCache();
+      loadLeads();
+    } catch (e) { Toast()?.error('Erro ao atualizar status'); }
   }
 
   /* ── Lead Drawer ── */
@@ -490,19 +644,26 @@
   /* ── Dead Zone ── */
 
   async function loadDeadZone() {
+    showTableSkeleton('deadzone-skeleton', 5);
+    $('#deadzone-table').classList.add('hidden');
     try {
       const data = await API().get('/dead-zone?limite=200');
       deadZoneCache = data.dead_zone || [];
       renderDeadZone();
     } catch (e) {
       Toast()?.error('Erro ao carregar dead zone');
+    } finally {
+      hideTableSkeleton('deadzone-skeleton');
+      $('#deadzone-table').classList.remove('hidden');
     }
   }
 
   function renderDeadZone() {
     const motivo = $('#dz-filter-motivo').value;
     const prioridade = $('#dz-filter-prioridade').value;
+    const rota = $('#dz-filter-rota')?.value;
     let list = deadZoneCache;
+    if (rota) list = list.filter(function (d) { return d.rota_recomendada === rota; });
     if (motivo) list = list.filter(function (d) { return (d.motivo || '').includes(motivo); });
     if (prioridade) list = list.filter(function (d) { return d.prioridade === prioridade; });
 
@@ -533,15 +694,20 @@
   /* ── Transição ── */
 
   async function loadTransicao() {
+    showTableSkeleton('transicao-skeleton', 5);
+    $('#transicao-table').classList.add('hidden');
     try {
       const data = await API().get('/transicao-regime');
-      $('#transicao-stats').innerHTML = '<strong>' + (data.count_90d || 0) +
-        '</strong> empresas em transição nos últimos 90 dias';
+      const n = data.count_90d || 0;
+      $('#transicao-card-title').textContent = '🔥 ' + n + ' empresas detectadas em transição para Lucro Real nos últimos 90 dias';
+      $('#transicao-stats').innerHTML = '<strong>' + n + '</strong> oportunidades ativas de assessoria fiscal';
       $('#transicao-table tbody').innerHTML = (data.transicoes || []).map(function (t) {
+        const dt = t.data_transicao?.toDate ? t.data_transicao.toDate().toLocaleDateString('pt-BR') : '—';
         return '<tr><td>' + esc(t.cnpj_basico) + '</td><td>' + esc(t.razao_social || '—') +
           '</td><td>' + esc(t.regime_anterior) + '</td><td>' + esc(t.regime_novo) +
           '</td><td>' + esc(t.cluster_estrategico || '—') + '</td><td>' + (t.score_prioridade || 0) +
-          '</td><td>' + esc(t.uf || '—') + '</td>' +
+          '</td><td>' + esc(t.uf || '—') + '</td><td>' + fmtMoney(t.capital_social) + '</td>' +
+          '<td>' + esc(t.telefone || '—') + '</td><td>' + esc(t.email || '—') + '</td><td>' + dt + '</td>' +
           '<td><button class="btn primary btn-priorizar" data-id="' + esc(t.id) + '">Priorizar</button></td></tr>';
       }).join('');
 
@@ -550,13 +716,26 @@
       });
     } catch (e) {
       Toast()?.error('Erro ao carregar transições');
+    } finally {
+      hideTableSkeleton('transicao-skeleton');
+      $('#transicao-table').classList.remove('hidden');
     }
   }
 
   async function priorizarLead(id) {
     try {
-      await API().updateLead(id, { prioridade: 'Alta', score: 10 });
-      Toast()?.success('Lead priorizado');
+      const all = await API().get('/leads?limite=5000');
+      const lead = (all.leads || []).find(function (l) { return l.id === id; });
+      const newScore = Math.min(10, (lead?.score || 0) + 2);
+      await API().updateLead(id, {
+        status_funil: 'prospectado',
+        prioridade: 'Alta',
+        score: newScore,
+        transicao_regime: true,
+      });
+      await API().post('/feedback', { lead_id: id, outcome: 'positivo', motivo: '🔥 Priorizado — Transição de Regime' });
+      Toast()?.success('Lead priorizado no Kanban');
+      API().invalidateCache();
       loadTransicao();
     } catch (e) {
       Toast()?.error('Erro ao priorizar');
@@ -566,22 +745,38 @@
   /* ── Parceiros ── */
 
   async function loadParceiros() {
+    showTableSkeleton('parceiros-skeleton', 5);
+    $('#parceiros-table').classList.add('hidden');
     try {
       const data = await API().get('/parceiros');
       window._parceirosCache = data.parceiros || [];
       $('#parceiros-table tbody').innerHTML = window._parceirosCache.map(function (p) {
         return '<tr><td>' + esc(p.nome) + '</td><td>' + esc(p.rede || '—') + '</td><td>' + esc(p.uf_sede || '—') +
           '</td><td>' + (p.website ? '<a href="' + esc(p.website) + '" target="_blank">Site</a>' : '—') +
-          '</td><td>' + esc(p.status_parceria) + '</td>' +
-          '<td><button class="btn btn-edit-parceiro" data-id="' + esc(p.id) + '">Editar</button></td></tr>';
+          '</td><td>' + esc(p.email_contato || '—') + '</td><td>' + esc(p.telefone || '—') + '</td>' +
+          '<td>' + esc(p.status_parceria) + '</td>' +
+          '<td><button class="btn btn-acionar-parceiro" data-id="' + esc(p.id) + '">Acionar Parceiro</button></td></tr>';
       }).join('');
 
-      $$('.btn-edit-parceiro').forEach(function (btn) {
-        btn.addEventListener('click', function () { openParceiroModal(btn.dataset.id); });
+      $$('.btn-acionar-parceiro').forEach(function (btn) {
+        btn.addEventListener('click', function () { openAcionarModalFromParceiro(btn.dataset.id); });
       });
     } catch (e) {
       Toast()?.error('Erro ao carregar parceiros');
+    } finally {
+      hideTableSkeleton('parceiros-skeleton');
+      $('#parceiros-table').classList.remove('hidden');
     }
+  }
+
+  function openAcionarModalFromParceiro(parceiroId) {
+    $('#acionar-parceiro-fixo').value = parceiroId;
+    $('#acionar-parceiro-field').classList.add('hidden');
+    const sel = $('#acionar-lead');
+    sel.innerHTML = (leadsCache.length ? leadsCache : filteredLeads).map(function (l) {
+      return '<option value="' + esc(l.id) + '">' + esc(l.razao_social) + '</option>';
+    }).join('') || '<option value="">Nenhum lead</option>';
+    openModal('modal-acionar');
   }
 
   function openParceiroModal(id) {
@@ -609,6 +804,8 @@
       rede: $('#parceiro-rede').value,
       uf_sede: $('#parceiro-uf').value,
       website: $('#parceiro-website').value,
+      email_contato: $('#parceiro-email').value,
+      telefone: $('#parceiro-telefone').value,
       status_parceria: $('#parceiro-status').value,
     };
     try {
@@ -622,7 +819,13 @@
   }
 
   function openAcionarModal(leadId) {
-    $('#acionar-lead-id').value = leadId;
+    $('#acionar-lead-id').value = leadId || '';
+    $('#acionar-parceiro-fixo').value = '';
+    $('#acionar-parceiro-field').classList.remove('hidden');
+    const leadSel = $('#acionar-lead');
+    leadSel.innerHTML = (leadsCache.length ? leadsCache : filteredLeads).map(function (l) {
+      return '<option value="' + esc(l.id) + '"' + (l.id === leadId ? ' selected' : '') + '>' + esc(l.razao_social) + '</option>';
+    }).join('') || '<option value="' + esc(leadId) + '">Lead</option>';
     const sel = $('#acionar-parceiro');
     sel.innerHTML = (window._parceirosCache || []).map(function (p) {
       return '<option value="' + esc(p.id) + '">' + esc(p.nome) + '</option>';
@@ -631,15 +834,15 @@
   }
 
   async function confirmarAcionar() {
-    const leadId = $('#acionar-lead-id').value;
-    const parcId = $('#acionar-parceiro').value;
+    const leadId = $('#acionar-lead').value || $('#acionar-lead-id').value;
+    const parcId = $('#acionar-parceiro-fixo').value || $('#acionar-parceiro').value;
     const obs = $('#acionar-obs').value;
     try {
       await API().post('/feedback', {
         lead_id: leadId,
         outcome: 'indicacao_b2b2b',
         motivo: 'Parceiro: ' + parcId + (obs ? ' — ' + obs : ''),
-        status_funil: 'contato_feito',
+        status_funil: 'proposta_enviada',
       });
       Toast()?.success('Indicação registrada');
       closeModal('modal-acionar');
@@ -705,9 +908,9 @@
   async function loadFunil() {
     try {
       const data = await API().get('/leads?perfil=' + perfil() + '&limite=500');
-      renderKanban(data.leads || []);
-      const st = await API().get('/status?perfil=' + perfil());
-      renderFunnelMetrics(st.funil || {});
+      const list = data.leads || [];
+      renderKanban(list);
+      renderFunnelMetrics(computeFunilMetrics(list), list);
     } catch (e) {
       Toast()?.error('Erro ao carregar funil');
     }
@@ -726,9 +929,15 @@
       if (countEl) countEl.textContent = cards.length;
       if (!container) return;
       container.innerHTML = cards.map(function (l) {
-        return '<div class="kanban-card" draggable="true" data-id="' + esc(l.id) + '">' +
-          '<strong>' + esc(l.razao_social) + '</strong><br>' +
-          '<span class="hint">Score ' + (l.score || 0).toFixed(1) + '</span></div>';
+        const next = nextKanbanStatus(col.id);
+        const cls = l.transicao_regime ? 'kanban-card transicao' : 'kanban-card';
+        return '<div class="' + cls + '" draggable="true" data-id="' + esc(l.id) + '">' +
+          '<strong>' + esc(l.razao_social) + '</strong>' +
+          (l.transicao_regime ? ' <span>🔥</span>' : '') + '<br>' +
+          '<span class="hint">Score ' + (l.score || 0).toFixed(1) + ' · ' +
+          esc(REGIME_LABELS[l.regime_tributario] || l.regime_tributario || '—') + ' · ' + esc(l.uf || '—') + '</span>' +
+          (next ? '<br><button class="btn" style="margin-top:0.35rem;font-size:0.7rem" data-next="' + next + '" data-id="' + esc(l.id) + '">Próxima etapa →</button>' : '') +
+          '</div>';
       }).join('');
 
       container.querySelectorAll('.kanban-card').forEach(function (card) {
@@ -737,32 +946,68 @@
           card.classList.add('dragging');
         });
         card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
-        card.addEventListener('click', function () { openLeadDrawer(card.dataset.id); });
+        card.addEventListener('click', function (e) {
+          if (e.target.closest('button[data-next]')) return;
+          openLeadDrawer(card.dataset.id);
+        });
+      });
+      container.querySelectorAll('button[data-next]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          updateKanbanStatus(btn.dataset.id, btn.dataset.next);
+        });
       });
     });
   }
 
   async function updateKanbanStatus(leadId, status) {
     try {
-      await API().updateLead(leadId, { status_funil: status });
+      await API().post('/feedback', {
+        lead_id: leadId,
+        outcome: 'positivo',
+        motivo: 'Movido para ' + status,
+        status_funil: status,
+      });
       Toast()?.success('Status atualizado');
+      API().invalidateCache();
       loadFunil();
     } catch (e) {
       Toast()?.error('Erro ao atualizar status');
     }
   }
 
-  function renderFunnelMetrics(funil) {
-    const steps = [
-      { name: 'Universo ICP', val: funil.universo_icp || 0 },
-      { name: 'Enriquecidos', val: funil.enriquecidos || 0 },
-      { name: 'E-mails Validados', val: funil.emails_validados || 0 },
-      { name: 'Dead Zone', val: funil.dead_zone || 0 },
-      { name: 'Transição', val: funil.transicao_regime || 0 },
-      { name: 'Taxa Conversão', val: (funil.taxa_conversao || 0).toFixed(1) + '%' },
-    ];
-    $('#funnel-metrics').innerHTML = steps.map(function (s) {
-      return '<div class="funnel-step"><span>' + s.name + '</span><strong>' + s.val + '</strong></div>';
+  function nextKanbanStatus(current) {
+    const order = KANBAN_COLS.map(function (c) { return c.id; });
+    const idx = order.indexOf(current);
+    return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : null;
+  }
+
+  function renderFunnelMetrics(funil, leads) {
+    const p = perfil();
+    const list = (leads || leadsCache).filter(function (l) {
+      return (!l.perfil_icp || l.perfil_icp === p || p === 'generico') && l.status_funil !== 'dead_zone';
+    });
+    const counts = {};
+    KANBAN_COLS.forEach(function (c) {
+      counts[c.id] = list.filter(function (l) { return (l.status_funil || 'prospectado') === c.id; }).length;
+    });
+    const conv = [];
+    for (let i = 0; i < KANBAN_COLS.length - 1; i++) {
+      const a = counts[KANBAN_COLS[i].id] || 0;
+      const b = counts[KANBAN_COLS[i + 1].id] || 0;
+      conv.push({ from: KANBAN_COLS[i].label, pct: a ? ((b / a) * 100).toFixed(1) : '0.0' });
+    }
+    $('#funnel-metrics').innerHTML = conv.map(function (c) {
+      return '<div class="funnel-step"><span>' + esc(c.from) + ' → próxima</span><strong>' + c.pct + '%</strong></div>';
+    }).join('');
+
+    const max = Math.max.apply(null, Object.values(counts).concat([1]));
+    $('#funnel-bars').innerHTML = KANBAN_COLS.map(function (col) {
+      const n = counts[col.id] || 0;
+      const w = Math.round((n / max) * 100);
+      return '<div class="funnel-bar-row"><span style="min-width:110px">' + col.label + '</span>' +
+        '<div class="funnel-bar-track"><div class="funnel-bar-fill" style="width:' + w + '%"></div></div>' +
+        '<span>' + n + '</span></div>';
     }).join('');
   }
 
@@ -772,9 +1017,16 @@
     return [...$$('#export-cols input:checked')].map(function (cb) { return cb.value; });
   }
 
+  function getSelectedExportStatuses() {
+    return [...$$('#export-status input:checked')].map(function (cb) { return cb.value; });
+  }
+
   async function getExportData() {
     const data = await API().get('/leads?perfil=' + perfil() + '&limite=5000');
-    return data.leads || [];
+    const statuses = getSelectedExportStatuses();
+    return (data.leads || []).filter(function (l) {
+      return !statuses.length || statuses.includes(l.status_funil);
+    });
   }
 
   function pickCols(rows, cols) {
@@ -809,11 +1061,14 @@
   async function exportClipboard() {
     const cols = getSelectedExportCols();
     const rows = pickCols(await getExportData(), cols);
-    const text = JSON.stringify(rows, null, 2);
+    const header = cols.join('\t');
+    const body = rows.map(function (r) {
+      return cols.map(function (c) { return String(r[c] ?? '').replace(/\t/g, ' '); }).join('\t');
+    }).join('\n');
     try {
-      await navigator.clipboard.writeText(text);
-      $('#export-result').textContent = rows.length + ' registros copiados.';
-      Toast()?.success('Copiado para área de transferência');
+      await navigator.clipboard.writeText(header + '\n' + body);
+      $('#export-result').textContent = rows.length + ' registros copiados (TSV).';
+      Toast()?.success('Copiado — cole no Google Sheets');
     } catch (e) {
       Toast()?.error('Falha ao copiar');
     }
@@ -821,14 +1076,25 @@
 
   async function exportExcel() {
     if (typeof XLSX === 'undefined') { Toast()?.error('SheetJS não carregado'); return; }
-    const cols = getSelectedExportCols();
-    const rows = pickCols(await getExportData(), cols);
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
-    XLSX.writeFile(wb, 'afs-leads-' + Date.now() + '.xlsx');
-    $('#export-result').textContent = 'Excel exportado com ' + rows.length + ' registros.';
-    Toast()?.success('Excel exportado');
+    try {
+      const pack = await API().post('/export', { perfil: perfil(), statuses: getSelectedExportStatuses() });
+      const sheets = pack.sheets || {};
+      const wb = XLSX.utils.book_new();
+      const add = function (name, rows) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows || []), name);
+      };
+      add('Leads Prontos', sheets.leads);
+      add('Dead Zone', sheets.dead_zone);
+      add('Transição Regime', sheets.transicao);
+      add('Parceiros', sheets.parceiros);
+      add('Histórico Contatos', sheets.historico);
+      add('Metadados', [{ perfil: perfil(), exportado_em: new Date().toISOString(), total_leads: (sheets.leads || []).length }]);
+      XLSX.writeFile(wb, pack.filename || 'afs-export.xlsx');
+      $('#export-result').textContent = 'Excel multi-abas exportado.';
+      Toast()?.success('Excel exportado');
+    } catch (e) {
+      Toast()?.error('Erro na exportação Excel');
+    }
   }
 
   function downloadBlob(content, filename, type) {
@@ -944,21 +1210,10 @@
       $('#sidebar').classList.toggle('open');
     });
 
-    $('#login-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const errEl = $('#login-error');
-      errEl.style.display = 'none';
-      try {
-        await window.AFSAuth.signIn($('#login-email').value, $('#login-password').value);
-      } catch (err) {
-        errEl.textContent = 'Credenciais inválidas. Tente novamente.';
-        errEl.style.display = 'block';
-      }
-    });
-
     $('#btn-logout').addEventListener('click', function () {
-      window.AFSAuth.signOut();
-      Toast()?.success('Sessão encerrada');
+      window.AFSAuth.signOut().then(function () {
+        window.location.href = portalSignInUrl();
+      });
     });
 
     $('#btn-run-full').addEventListener('click', function () { runPipeline(null); });
@@ -969,18 +1224,38 @@
     $('#btn-save-pipeline').addEventListener('click', savePipelineConfig);
 
     $('#btn-filter-leads').addEventListener('click', loadLeads);
+    $('#btn-clear-filters').addEventListener('click', clearLeadsFilters);
+    const fq = $('#filter-q');
+    if (fq) fq.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadLeads, 300);
+    });
     $('#leads-prev').addEventListener('click', function () { if (leadsPage > 1) { leadsPage--; renderLeadsPage(); } });
     $('#leads-next').addEventListener('click', function () { leadsPage++; renderLeadsPage(); });
 
     $('#btn-dz-filter').addEventListener('click', renderDeadZone);
 
     $('#drawer-close').addEventListener('click', closeDrawer);
+    $('#drawer-fechar').addEventListener('click', closeDrawer);
     $('#drawer-overlay').addEventListener('click', closeDrawer);
     $('#drawer-abordagem').addEventListener('click', function () {
-      if (currentDrawerLead) openContatoModal(currentDrawerLead.id);
+      if (currentDrawerLead) iniciarAbordagem(currentDrawerLead.id);
     });
-    $('#drawer-acionar').addEventListener('click', function () {
-      if (currentDrawerLead) openAcionarModal(currentDrawerLead.id);
+    $('#drawer-registrar-contato').addEventListener('click', async function () {
+      if (!currentDrawerLead) return;
+      const outcome = $('#drawer-contato-outcome').value;
+      const motivo = $('#drawer-contato-motivo').value;
+      const statusMap = { reuniao: 'negociacao', positivo: 'contato_feito', indicacao_b2b2b: 'proposta_enviada', negativo: 'perdido' };
+      try {
+        await API().post('/feedback', {
+          lead_id: currentDrawerLead.id,
+          outcome: outcome,
+          motivo: motivo,
+          status_funil: statusMap[outcome],
+        });
+        Toast()?.success('Contato registrado');
+        openLeadDrawer(currentDrawerLead.id);
+      } catch (e) { Toast()?.error('Erro ao registrar contato'); }
     });
 
     $('#btn-cadastrar-parceiro').addEventListener('click', function () { openParceiroModal(null); });

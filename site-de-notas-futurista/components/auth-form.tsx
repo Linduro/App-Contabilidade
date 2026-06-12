@@ -48,6 +48,13 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const finishAuth = () => {
     sessionStorage.setItem(WELCOME_GREETING_SESSION_KEY, "1")
+    if (typeof window !== "undefined") {
+      const redirect = new URLSearchParams(window.location.search).get("redirect")
+      if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+        window.location.href = redirect
+        return
+      }
+    }
     router.push("/dashboard")
   }
 

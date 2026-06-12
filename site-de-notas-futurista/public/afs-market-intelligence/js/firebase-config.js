@@ -12,9 +12,12 @@ if (!config || !config.apiKey) {
 
 const app = initializeApp(
   config || {
-    apiKey: 'placeholder',
-    authDomain: 'placeholder.firebaseapp.com',
-    projectId: 'placeholder',
+    apiKey: 'AIzaSyAQS75d3hx5mDQwixNRjyRPLOSVWpyDpvk',
+    authDomain: 'contabilidade-ebed6.firebaseapp.com',
+    projectId: 'contabilidade-ebed6',
+    storageBucket: 'contabilidade-ebed6.firebasestorage.app',
+    messagingSenderId: '92104290412',
+    appId: '1:92104290412:web:e99492aeb27bd9f1902849',
   },
 );
 
