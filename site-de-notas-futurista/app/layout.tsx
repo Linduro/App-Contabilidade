@@ -11,27 +11,16 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
 
+const siteBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
 export const metadata: Metadata = {
   title: 'AdvForte Portal | Notas e organização acadêmica',
   description:
     'Ferramenta feita de aluno para aluno: grade, notas, lembretes e links úteis para o curso de contabilidade. Não é página oficial da faculdade.',
   generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: `${siteBasePath}/icon.svg`,
+    apple: `${siteBasePath}/icon.svg`,
   },
 }
 

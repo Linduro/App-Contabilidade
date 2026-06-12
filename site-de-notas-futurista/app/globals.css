@@ -217,44 +217,6 @@
       linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px);
   }
 
-  .radio-volume-vertical {
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 0.4rem;
-    height: 5rem;
-    appearance: none;
-    background: transparent;
-  }
-
-  .radio-volume-vertical::-webkit-slider-runnable-track {
-    width: 0.35rem;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--primary) 25%, transparent);
-  }
-
-  .radio-volume-vertical::-webkit-slider-thumb {
-    appearance: none;
-    width: 0.65rem;
-    height: 0.65rem;
-    border-radius: 9999px;
-    background: var(--primary);
-    margin-left: -0.15rem;
-  }
-
-  .radio-volume-vertical::-moz-range-track {
-    width: 0.35rem;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--primary) 25%, transparent);
-  }
-
-  .radio-volume-vertical::-moz-range-thumb {
-    width: 0.65rem;
-    height: 0.65rem;
-    border-radius: 9999px;
-    background: var(--primary);
-    border: none;
-  }
-
   /* Mobile-only: evita scroll horizontal e melhora área segura */
   @media (max-width: 767px) {
     html,
