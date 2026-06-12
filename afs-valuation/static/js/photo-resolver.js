@@ -2,7 +2,7 @@
 // AFS — Fotos Coletum (especificação exata)
 // Col A (texto) + ".0"/".1"/… por QUANTIDADE nas colunas Foto do Bem / Espec / TAG
 // 3 abas: "Foto do Bem", "Foto Especificações", "Foto da TAG"
-// Em cada aba: chave col B, URL col D
+// Em cada aba: chave col B, URL col D (com auto-detecção + hyperlinks)
 // ============================================================
 
 function normalizePhotoUrl(raw) {
@@ -23,7 +23,7 @@ function normalizePhotoUrl(raw) {
     return s;
 }
 
-/** Preserva código patrimonial como texto (ex: 31807.158) */
+/** Preserva código patrimonial como texto (ex: 31807.158 ou 31807.158.0) */
 function afsFormatPhotoKey(val) {
     if (val == null || val === '') return null;
     if (typeof val === 'number') {
@@ -32,6 +32,205 @@ function afsFormatPhotoKey(val) {
         return s.includes('.') ? s : String(val);
     }
     return String(val).trim().replace(/;+$/, '');
+}
+
+function afsIsPhotoKeyShape(key) {
+    if (!key) return false;
+    return /^\d+\.\d+(\.\d+)?$/.test(key) || /^\d+\.\d+\.\d+$/.test(key);
+}
+
+function afsRegisterPhotoKey(lookup, key, url) {
+    const k = afsFormatPhotoKey(key);
+    const u = normalizePhotoUrl(url);
+    if (!k || !u || !/^https?:\/\//i.test(u)) return;
+    lookup[k] = u;
+    const parts = k.match(/^(.+)\.(\d+)$/);
+    if (parts) {
+        const base = parts[1];
+        const idx = parts[2];
+        lookup[`${base}.${idx}`] = u;
+        if (idx === '0') lookup[base] = u;
+    } else if (/^\d+\.\d+$/.test(k)) {
+        lookup[`${k}.0`] = u;
+    }
+}
+
+function afsGetSheetCell(ws, r, c, rowsFormatted, rowsRaw) {
+    if (ws && c >= 0) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = ws[addr];
+        if (cell) {
+            if (cell.l) {
+                const link = normalizePhotoUrl(cell.l.Target || cell.l);
+                if (link && /^https?:\/\//i.test(link)) return link;
+            }
+            if (cell.v != null && cell.v !== '') return cell.v;
+            if (cell.w) return cell.w;
+        }
+    }
+    const raw = rowsRaw[r]?.[c];
+    if (raw != null && raw !== '') return raw;
+    return rowsFormatted[r]?.[c] ?? null;
+}
+
+function afsFindUrlInRow(ws, r, rowsFormatted, rowsRaw, preferCol) {
+    const cols = new Set();
+    if (preferCol != null) {
+        cols.add(preferCol);
+        cols.add(preferCol + 1);
+        cols.add(preferCol - 1);
+    }
+    const maxC = Math.max(
+        (rowsRaw[r] || []).length,
+        (rowsFormatted[r] || []).length,
+        preferCol != null ? preferCol + 2 : 0
+    );
+    for (let c = 0; c < maxC; c++) cols.add(c);
+
+    for (const c of cols) {
+        if (c < 0) continue;
+        const url = normalizePhotoUrl(afsGetSheetCell(ws, r, c, rowsFormatted, rowsRaw));
+        if (url && /^https?:\/\//i.test(url)) return url;
+    }
+    return null;
+}
+
+function afsDetectPhotoColumns(rows, ws, rowsFormatted, rowsRaw) {
+    const keyHeaderRe = /c[óo]digo|chave|foto do bem|key|\bid\b/i;
+    const urlHeaderRe = /link|download|url|http/i;
+    for (let r = 0; r < Math.min(8, rows.length); r++) {
+        const row = rowsFormatted[r] || [];
+        let keyCol = -1;
+        let urlCol = -1;
+        for (let c = 0; c < row.length; c++) {
+            const cell = row[c] == null ? '' : String(row[c]).trim();
+            if (!cell) continue;
+            if (keyCol === -1 && keyHeaderRe.test(cell)) keyCol = c;
+            if (urlHeaderRe.test(cell)) urlCol = c;
+        }
+        if (keyCol !== -1 && urlCol !== -1 && keyCol !== urlCol) {
+            return { keyCol, urlCol };
+        }
+    }
+
+    const keyPattern = /^\d+\.\d+(\.\d+)?$/;
+    const colKeyScores = {};
+    const colUrlScores = {};
+    for (let r = 0; r < Math.min(80, rows.length); r++) {
+        for (let c = 0; c < 20; c++) {
+            const cell = afsGetSheetCell(ws, r, c, rowsFormatted, rowsRaw);
+            if (cell == null || cell === '') continue;
+            const s = String(cell).trim();
+            const url = normalizePhotoUrl(cell);
+            if (url && /^https?:\/\//i.test(url)) colUrlScores[c] = (colUrlScores[c] || 0) + 1;
+            else if (keyPattern.test(afsFormatPhotoKey(cell) || '')) {
+                colKeyScores[c] = (colKeyScores[c] || 0) + (/\.\d+$/.test(s) && s.split('.').length >= 3 ? 3 : 1);
+            }
+        }
+    }
+    const bestKey = Object.keys(colKeyScores).sort((a, b) => colKeyScores[b] - colKeyScores[a])[0];
+    const bestUrl = Object.keys(colUrlScores).sort((a, b) => colUrlScores[b] - colUrlScores[a])[0];
+    if (bestKey != null && bestUrl != null) {
+        return { keyCol: Number(bestKey), urlCol: Number(bestUrl) };
+    }
+    return null;
+}
+
+function afsScoreColumnPair(rows, ws, rowsFormatted, rowsRaw, keyCol, urlCol) {
+    let score = 0;
+    for (let r = 0; r < rows.length; r++) {
+        const key = afsFormatPhotoKey(afsGetSheetCell(ws, r, keyCol, rowsFormatted, rowsRaw));
+        const url = afsFindUrlInRow(ws, r, rowsFormatted, rowsRaw, urlCol);
+        if (!key || !url) continue;
+        if (/^(c[óo]digo|chave|key|id|link|download|url|nome)/i.test(key)) continue;
+        score += 1;
+        if (/^\d+\.\d+\.\d+$/.test(key)) score += 4;
+        else if (/^\d+\.\d+$/.test(key)) score += 1;
+    }
+    return score;
+}
+
+function afsBuildSheetLookupFromWorksheet(ws, sheetName) {
+    const empty = { lookup: {}, sheetName, count: 0, keyCol: null, urlCol: null };
+    if (!ws) return empty;
+
+    const rowsFormatted = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+    const rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+    const rows = rowsFormatted;
+
+    const detected = afsDetectPhotoColumns(rows, ws, rowsFormatted, rowsRaw);
+    const candidatePairs = [];
+    if (detected) candidatePairs.push([detected.keyCol, detected.urlCol]);
+    candidatePairs.push(
+        [1, 3], // B → D (Coletum)
+        [0, 2], // A → C
+        [0, 3], // A → D
+        [1, 2], // B → C
+        [XLSX.utils.decode_col('BB'), XLSX.utils.decode_col('DD')],
+        [0, 1]
+    );
+
+    let bestPair = null;
+    let bestScore = 0;
+    for (const [keyCol, urlCol] of candidatePairs) {
+        if (keyCol == null || urlCol == null || keyCol === urlCol) continue;
+        const score = afsScoreColumnPair(rows, ws, rowsFormatted, rowsRaw, keyCol, urlCol);
+        if (score > bestScore) {
+            bestScore = score;
+            bestPair = [keyCol, urlCol];
+        }
+    }
+    if (!bestPair || bestScore === 0) return empty;
+
+    const [keyCol, urlCol] = bestPair;
+    const lookup = {};
+    for (let r = 0; r < rows.length; r++) {
+        const key = afsFormatPhotoKey(afsGetSheetCell(ws, r, keyCol, rowsFormatted, rowsRaw));
+        const url = afsFindUrlInRow(ws, r, rowsFormatted, rowsRaw, urlCol);
+        if (!key || !url) continue;
+        if (/^(c[óo]digo|chave|key|id|link|download|url|nome)/i.test(key)) continue;
+        afsRegisterPhotoKey(lookup, key, url);
+    }
+
+    return {
+        lookup,
+        sheetName,
+        count: Object.keys(lookup).length,
+        keyCol,
+        urlCol
+    };
+}
+
+function afsFindPhotoSheet(wb, kind) {
+    if (!wb?.SheetNames) return null;
+    const names = wb.SheetNames.map(n => String(n).trim());
+    const norm = (s) => s.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+
+    if (kind === 'bem') {
+        return names.find(n => /foto\s*do\s*bem/i.test(n) && !/espec|tag/i.test(n))
+            || names.find(n => /foto\s*do\s*bem/i.test(n));
+    }
+    if (kind === 'spec') {
+        return names.find(n => /foto\s*espec/i.test(n));
+    }
+    if (kind === 'tag') {
+        return names.find(n => /foto\s*(da\s*)?tag/i.test(n))
+            || names.find(n => /foto.*tag/i.test(n) && !/espec/i.test(n))
+            || names.find(n => {
+                const x = norm(n);
+                return (x.includes('tag') || x.includes('plaqueta')) && x.includes('foto') && !x.includes('espec') && !x.includes('do bem');
+            })
+            || names.find(n => /^foto\s*tag$/i.test(n));
+    }
+    return null;
+}
+
+function afsBuildSheetLookup(wb, kind) {
+    const empty = { lookup: {}, sheetName: null, count: 0 };
+    const sheetName = afsFindPhotoSheet(wb, kind);
+    if (!sheetName) return empty;
+    const ws = wb.Sheets[sheetName];
+    return afsBuildSheetLookupFromWorksheet(ws, sheetName);
 }
 
 function afsAssetCodeFromRow(row) {
@@ -61,45 +260,23 @@ function afsDetectPhotoCountColumns(headers) {
     };
 }
 
-function afsBuildSheetLookup(wb, sheetPattern) {
-    const empty = { lookup: {}, sheetName: null, count: 0 };
-    if (!wb?.SheetNames) return empty;
-
-    const sheetName = wb.SheetNames.find(n => sheetPattern.test(String(n).trim()));
-    if (!sheetName) return empty;
-
-    const ws = wb.Sheets[sheetName];
-    const rowsFormatted = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
-    const rowsRaw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
-
-    const KEY_COL = 1; // B — Código (Foto do Bem)
-    const URL_COL = 3; // D — Link para download
-    const lookup = {};
-
-    for (let r = 0; r < rowsFormatted.length; r++) {
-        const fmt = rowsFormatted[r] || [];
-        const raw = rowsRaw[r] || [];
-        const key = afsFormatPhotoKey(raw[KEY_COL] ?? fmt[KEY_COL]);
-        const url = normalizePhotoUrl(raw[URL_COL] ?? fmt[URL_COL]);
-        if (!key || !url || !/^https?:\/\//i.test(url)) continue;
-        if (/^(c[óo]digo|chave|key|id|link|download|url|nome)/i.test(key)) continue;
-        lookup[key] = url;
-    }
-
-    return { lookup, sheetName, count: Object.keys(lookup).length };
-}
-
 function afsBuildAllPhotoLookups(wb) {
-    const bem = afsBuildSheetLookup(wb, /foto\s*do\s*bem/i);
-    const spec = afsBuildSheetLookup(wb, /foto\s*espec/i);
-    const tag = afsBuildSheetLookup(wb, /foto\s*(da\s*)?tag/i);
+    const bem = afsBuildSheetLookup(wb, 'bem');
+    const spec = afsBuildSheetLookup(wb, 'spec');
+    const tag = afsBuildSheetLookup(wb, 'tag');
     return {
         bem: bem.lookup,
         spec: spec.lookup,
         tag: tag.lookup,
         _meta: {
             sheets: { bem: bem.sheetName, spec: spec.sheetName, tag: tag.sheetName },
-            counts: { bem: bem.count, spec: spec.count, tag: tag.count }
+            counts: { bem: bem.count, spec: spec.count, tag: tag.count },
+            columns: {
+                bem: bem.keyCol != null ? `${XLSX.utils.encode_col(bem.keyCol)}→${XLSX.utils.encode_col(bem.urlCol)}` : null,
+                spec: spec.keyCol != null ? `${XLSX.utils.encode_col(spec.keyCol)}→${XLSX.utils.encode_col(spec.urlCol)}` : null,
+                tag: tag.keyCol != null ? `${XLSX.utils.encode_col(tag.keyCol)}→${XLSX.utils.encode_col(tag.urlCol)}` : null
+            },
+            allSheetNames: wb?.SheetNames || []
         }
     };
 }
@@ -125,12 +302,23 @@ function afsLookupInCategory(lookup, assetCode, index) {
     if (!lookup || assetCode == null) return null;
     const base = afsFormatPhotoKey(assetCode);
     if (!base) return null;
+
     const candidates = [
         `${base}.${index}`,
         `${base}.${index}.0`
     ];
+    if (index === 0) candidates.push(base);
+
     for (const k of candidates) {
         if (lookup[k]) return lookup[k];
+    }
+
+    for (const k of Object.keys(lookup)) {
+        const kn = afsFormatPhotoKey(k);
+        if (!kn) continue;
+        if (kn === `${base}.${index}` || kn === `${base}.${index}.0`) return lookup[k];
+        if (index === 0 && kn === base) return lookup[k];
+        if (kn.startsWith(`${base}.${index}`)) return lookup[k];
     }
     return null;
 }
@@ -182,8 +370,12 @@ function afsDebugPhotoResolution(row, mappings, photoLookups, headers) {
 
     const tryKey = (lookup, i) => {
         const key = `${code}.${i}`;
-        return { key, url: lookup[key] || null, found: Boolean(lookup[key]) };
+        const url = afsLookupInCategory(lookup, code, i);
+        return { key, url, found: Boolean(url) };
     };
+
+    const bemKeys = Object.keys(lk.bem);
+    const nearKeys = bemKeys.filter(k => k.includes(String(code).split('.')[0] || code)).slice(0, 5);
 
     return {
         colA: row['A'],
@@ -194,7 +386,7 @@ function afsDebugPhotoResolution(row, mappings, photoLookups, headers) {
             tag: { letter: tagLetter, raw: tagLetter ? row[tagLetter] : null, count: tagLetter ? afsParsePhotoCount(row[tagLetter]) : 0 }
         },
         lookupSizes: {
-            bem: Object.keys(lk.bem).length,
+            bem: bemKeys.length,
             spec: Object.keys(lk.spec).length,
             tag: Object.keys(lk.tag).length
         },
@@ -203,6 +395,8 @@ function afsDebugPhotoResolution(row, mappings, photoLookups, headers) {
             bem1: tryKey(lk.bem, 1),
             tag: tryKey(lk.tag, 0)
         },
+        nearKeys,
+        bemKeySamples: bemKeys.slice(0, 5),
         photos: afsCollectPhotosForRow(row, mappings, photoLookups, headers)
     };
 }

@@ -1817,6 +1817,8 @@ function updateSidePhotoUI() {
                     <strong>Qtd:</strong> bem=${cc.bem?.count ?? 0} (${cc.bem?.letter || '-'}) · esp=${cc.spec?.count ?? 0} · tag=${cc.tag?.count ?? 0}<br>
                     <strong>Índice:</strong> bem ${dbg.lookupSizes?.bem ?? 0} · esp ${dbg.lookupSizes?.spec ?? 0} · tag ${dbg.lookupSizes?.tag ?? 0}<br>
                     <strong>Chave .0:</strong> ${dbg.sampleKeys?.bem?.found ? 'OK' : 'não encontrada'} ${dbg.sampleKeys?.bem?.key || ''}<br>
+                    ${dbg.bemKeySamples?.length ? `<strong>Ex. índice bem:</strong> ${dbg.bemKeySamples.join(', ')}<br>` : ''}
+                    ${dbg.nearKeys?.length ? `<strong>Chaves próximas:</strong> ${dbg.nearKeys.join(', ')}<br>` : ''}
                     <span style="color: var(--afs-orange-400);">Reenvie a planilha se índice = 0</span>
                 </div>`;
         } else {
