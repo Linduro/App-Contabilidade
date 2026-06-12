@@ -1,0 +1,598 @@
+﻿<!-- Main App -->
+<div id="afs-app" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-icon">AFS</div>
+            <div>
+                <h1>Market Intelligence</h1>
+                <p>Asset Flow Solutions</p>
+            </div>
+        </div>
+
+        <div class="sidebar-search">
+            <input type="search" id="global-search" placeholder="Buscar empresa ou CNPJ..." autocomplete="off">
+            <div class="search-dropdown" id="search-dropdown"></div>
+        </div>
+
+        <nav class="nav">
+            <button class="nav-item active" data-tab="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Dashboard
+            </button>
+            <button class="nav-item" data-tab="pipeline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/></svg>
+                Pipeline
+            </button>
+            <button class="nav-item" data-tab="leads">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Leads ICP
+            </button>
+            <button class="nav-item" data-tab="deadzone">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+                Dead Zone
+            </button>
+            <button class="nav-item" data-tab="transicao">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                TransiÃ§Ã£o Regime
+            </button>
+            <button class="nav-item" data-tab="parceiros">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Parceiros
+            </button>
+            <button class="nav-item" data-tab="funil">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Funil
+            </button>
+            <button class="nav-item" data-tab="export">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+            </button>
+            <button class="nav-item" data-tab="configuracoes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                ConfiguraÃ§Ãµes
+            </button>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div style="display:flex;align-items:center;gap:0.75rem">
+                <button id="menu-toggle" aria-label="Menu">â˜°</button>
+                <h2 id="page-title">Dashboard</h2>
+            </div>
+            <div class="topbar-actions">
+                <div class="header-profile">
+                    <label for="perfil">Perfil</label>
+                    <select id="perfil">
+                        <option value="patrimonial">Conformidade Patrimonial</option>
+                        <option value="generico">Busca GenÃ©rica</option>
+                        <option value="transicao_regime">TransiÃ§Ã£o de Regime</option>
+                        <option value="parceiros_auditoria">Parceiros Auditoria</option>
+                    </select>
+                </div>
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Carregando...</span>
+                <button class="btn btn-logout" id="btn-logout">Sair</button>
+            </div>
+        </header>
+
+        <!-- Dashboard -->
+        <section class="tab-panel active" id="tab-dashboard">
+            <div class="metrics-grid" id="metrics-grid"></div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>DistribuiÃ§Ã£o por Regime</h3>
+                    <div class="regime-bars" id="regime-bars"></div>
+                </div>
+                <div class="card">
+                    <h3>Top 5 CNAEs</h3>
+                    <ul class="cnae-list" id="top-cnaes"></ul>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Oportunidades do Dia</h3>
+                <p class="hint">Leads quentes para abordagem manual hoje</p>
+                <div id="oportunidades-dia"></div>
+            </div>
+            <details class="card arch-collapse" id="arch-collapse">
+                <summary>Como funciona esta plataforma â–¼</summary>
+                <div class="layers-flow" style="margin-top:0.75rem">
+                    <div class="layer">1 Â· IngestÃ£o RF</div><div class="layer-arrow">â†’</div>
+                    <div class="layer">2 Â· ICP & Cluster</div><div class="layer-arrow">â†’</div>
+                    <div class="layer">3 Â· Enriquecimento</div><div class="layer-arrow">â†’</div>
+                    <div class="layer">4 Â· ValidaÃ§Ã£o</div><div class="layer-arrow">â†’</div>
+                    <div class="layer">Dead Zone</div><div class="layer-arrow">â†’</div>
+                    <div class="layer">Export Manual</div>
+                </div>
+                <p class="hint">Abordagem comercial 100% manual Â· Feedback loop recalibra scoring</p>
+            </details>
+        </section>
+
+        <!-- Pipeline -->
+        <section class="tab-panel" id="tab-pipeline">
+            <div class="card" id="pipeline-config">
+                <h3>Configurar Pipeline</h3>
+                <div class="filters-panel">
+                    <div class="form-field">
+                        <label for="pipe-ufs">UF alvo (multi)</label>
+                        <select id="pipe-ufs" multiple size="4">
+                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                            <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                            <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                            <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                            <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                            <option value="SP" selected>SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Regimes a incluir</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="SN" checked> Simples Nacional</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="LP" checked> Lucro Presumido</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="LR" checked> Lucro Real</label>
+                    </div>
+                    <div class="form-field">
+                        <label>CNAEs alvo (tags)</label>
+                        <div class="tag-input-wrap" id="pipe-cnae-tags"></div>
+                        <input type="text" id="pipe-cnae-input" placeholder="CÃ³digo CNAE + Enter" style="margin-top:0.35rem">
+                    </div>
+                    <div class="form-field">
+                        <label for="pipe-capital-min">Capital mÃ­nimo (R$)</label>
+                        <input type="number" id="pipe-capital-min" value="0" min="0">
+                    </div>
+                    <div class="form-field">
+                        <label for="pipe-perfil">Perfil alvo</label>
+                        <select id="pipe-perfil">
+                            <option value="patrimonial">Patrimonial</option>
+                            <option value="generico">GenÃ©rico</option>
+                            <option value="transicao_regime">TransiÃ§Ã£o Regime</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="pipe-limite">Limite de leads</label>
+                        <input type="number" id="pipe-limite" value="500" min="10" max="5000">
+                    </div>
+                    <div class="form-field" style="display:flex;flex-direction:column;gap:0.5rem;justify-content:flex-end">
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="checkbox" id="pipe-pular-ingestao" checked> Pular ingestÃ£o RF (usar base existente)
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="checkbox" id="pipe-forcar-enrich"> ForÃ§ar reenriquecimento de leads jÃ¡ enriquecidos
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Progresso do Pipeline</h3>
+                <p class="hint">[IngestÃ£o RF] â†’ [ICP/Cluster] â†’ [Enriquecimento] â†’ [ValidaÃ§Ã£o E-mail] â†’ [Monitor Regime]</p>
+                <div class="pipeline-steps" id="pipeline-steps"></div>
+                <div class="btn-group">
+                    <button class="btn primary" id="btn-run-full">Pipeline Completo</button>
+                    <button class="btn" id="btn-run-icp">SÃ³ ICP</button>
+                    <button class="btn" id="btn-run-enrich">Enriquecimento</button>
+                    <button class="btn" id="btn-run-validate">ValidaÃ§Ã£o E-mail</button>
+                    <button class="btn" id="btn-run-regime">Monitor Regime</button>
+                    <button class="btn" id="btn-save-pipeline">Salvar Config</button>
+                </div>
+                <pre id="pipeline-log" class="log"></pre>
+            </div>
+        </section>
+
+        <!-- Leads -->
+        <section class="tab-panel" id="tab-leads">
+            <div class="card">
+                <h3>Filtros AvanÃ§ados</h3>
+                <div class="filters-panel" id="leads-filters">
+                    <div class="form-field" style="grid-column:1/-1">
+                        <label>Buscar (razÃ£o social ou CNPJ)</label>
+                        <input type="search" id="filter-q" placeholder="Digite para filtrar...">
+                    </div>
+                    <div class="form-field">
+                        <label>UF</label>
+                        <select id="filter-uf"><option value="Todos">Todos</option></select>
+                    </div>
+                    <div class="form-field">
+                        <label>Regime</label>
+                        <select id="filter-regime">
+                            <option value="Todos">Todos</option>
+                            <option value="SN">Simples Nacional</option>
+                            <option value="LP">Lucro Presumido</option>
+                            <option value="LR">Lucro Real</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Porte</label>
+                        <select id="filter-porte">
+                            <option value="Todos">Todos</option>
+                            <option value="MEI">MEI</option>
+                            <option value="ME">ME</option>
+                            <option value="EPP">EPP</option>
+                            <option value="MEDIO">MÃ©dio</option>
+                            <option value="GRANDE">Grande</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Score mÃ­n. (0â€“10)</label>
+                        <input type="range" id="filter-score-min" min="0" max="10" step="0.5" value="0">
+                        <span id="filter-score-min-val" class="hint">0</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Score mÃ¡x. (0â€“10)</label>
+                        <input type="range" id="filter-score-max" min="0" max="10" step="0.5" value="10">
+                        <span id="filter-score-max-val" class="hint">10</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Capital mÃ­n.</label>
+                        <input type="number" id="filter-capital-min" placeholder="0">
+                    </div>
+                    <div class="form-field">
+                        <label>Capital mÃ¡x.</label>
+                        <input type="number" id="filter-capital-max" placeholder="âˆž">
+                    </div>
+                    <div class="form-field" style="display:flex;align-items:flex-end;gap:0.75rem">
+                        <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer">
+                            <input type="checkbox" id="filter-transicao"> Em transiÃ§Ã£o
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer">
+                            <input type="checkbox" id="filter-email"> E-mail validado
+                        </label>
+                    </div>
+                    <div class="form-field">
+                        <label>CNAE / Ramo</label>
+                        <select id="filter-cnae"><option value="Todos">Todos</option></select>
+                    </div>
+                    <div class="form-field" style="display:flex;align-items:flex-end;gap:0.5rem">
+                        <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer">
+                            <input type="checkbox" id="filter-situacao-ativa" checked> SituaÃ§Ã£o ativa
+                        </label>
+                    </div>
+                    <div class="form-field" style="display:flex;align-items:flex-end;gap:0.5rem">
+                        <button class="btn primary" id="btn-filter-leads">Filtrar</button>
+                        <button class="btn" id="btn-clear-filters">Limpar Filtros</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Leads ICP</h3>
+                <div id="leads-skeleton">
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                    <div class="skeleton-row"></div>
+                </div>
+                <table class="data-table hidden" id="leads-table">
+                    <thead><tr>
+                        <th>CNPJ</th><th>RazÃ£o Social</th><th>CNAE</th><th>Regime</th><th>Porte</th>
+                        <th>Capital</th><th>Receita Est.</th><th>UF</th><th>Filiais</th><th>Score</th>
+                        <th>Telefone</th><th>E-mail</th><th>Status Funil</th><th>AÃ§Ãµes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                <div class="pagination" id="leads-pagination">
+                    <button class="btn" id="leads-prev">â† Anterior</button>
+                    <span id="leads-page-info">PÃ¡gina 1</span>
+                    <button class="btn" id="leads-next">PrÃ³xima â†’</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dead Zone -->
+        <section class="tab-panel" id="tab-deadzone">
+            <div class="card">
+                <h3>Dead Zone â€” Rotas Alternativas</h3>
+                <p class="hint">LinkedIn â†’ Telefone â†’ EndereÃ§o â†’ Parceiro B2B2B â†’ RevisÃ£o manual</p>
+                <div id="deadzone-skeleton" class="table-skeleton hidden"></div>
+                <div class="filters-panel" id="deadzone-filters">
+                    <div class="form-field">
+                        <label>Rota Recomendada</label>
+                        <select id="dz-filter-rota">
+                            <option value="">Todas</option>
+                            <option value="LinkedIn">LinkedIn</option>
+                            <option value="Telefone">Telefone</option>
+                            <option value="Parceiro B2B2B">Parceiro B2B2B</option>
+                            <option value="RevisÃ£o Manual">RevisÃ£o Manual</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Motivo</label>
+                        <select id="dz-filter-motivo">
+                            <option value="">Todos</option>
+                            <option value="email_invalido">E-mail invÃ¡lido</option>
+                            <option value="sem_contato">Sem contato</option>
+                            <option value="bounce">Bounce</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Prioridade</label>
+                        <select id="dz-filter-prioridade">
+                            <option value="">Todas</option>
+                            <option value="Alta">Alta</option>
+                            <option value="MÃ©dia">MÃ©dia</option>
+                            <option value="Baixa">Baixa</option>
+                        </select>
+                    </div>
+                    <div class="form-field" style="display:flex;align-items:flex-end">
+                        <button class="btn" id="btn-dz-filter">Filtrar</button>
+                    </div>
+                </div>
+                <table class="data-table" id="deadzone-table">
+                    <thead><tr>
+                        <th>Empresa</th><th>Cluster</th><th>Motivo</th><th>Rota</th>
+                        <th>LinkedIn</th><th>Telefone</th><th>Prioridade</th><th>AÃ§Ãµes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TransiÃ§Ã£o -->
+        <section class="tab-panel" id="tab-transicao">
+            <div class="card highlight" id="transicao-highlight">
+                <h3 id="transicao-card-title">ðŸ”¥ TransiÃ§Ã£o para Lucro Real</h3>
+                <p class="hint">Oportunidade: CFO em reestruturaÃ§Ã£o busca assessoria fiscal urgente</p>
+                <div id="transicao-stats" style="margin-bottom:1rem;font-size:0.9rem"></div>
+            </div>
+            <div class="card">
+                <div id="transicao-skeleton" class="table-skeleton hidden"></div>
+                <table class="data-table" id="transicao-table">
+                    <thead><tr>
+                        <th>CNPJ</th><th>Empresa</th><th>De</th><th>Para</th><th>Cluster</th><th>Score</th>
+                        <th>UF</th><th>Capital</th><th>Telefone</th><th>E-mail</th><th>Data Trans.</th><th>AÃ§Ãµes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Parceiros -->
+        <section class="tab-panel" id="tab-parceiros">
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+                    <div>
+                        <h3>Canal B2B2B â€” Bancas de Auditoria</h3>
+                        <p class="hint" style="margin:0">95 bancas cadastradas Â· Exclui Big Four + top 6 globais</p>
+                    </div>
+                    <button class="btn primary" id="btn-cadastrar-parceiro">+ Cadastrar</button>
+                </div>
+                <div id="parceiros-skeleton" class="table-skeleton hidden"></div>
+                <table class="data-table" id="parceiros-table">
+                    <thead><tr>
+                        <th>Banca</th><th>Rede</th><th>UF</th><th>Website</th><th>E-mail</th><th>Telefone</th><th>Status</th><th>AÃ§Ãµes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Funil -->
+        <section class="tab-panel" id="tab-funil">
+            <div class="card">
+                <h3>Funil Comercial â€” Kanban</h3>
+                <p class="hint">Arraste cards entre colunas para atualizar o status</p>
+                <div class="kanban-board" id="kanban-board"></div>
+                <h3 style="margin-top:1rem">MÃ©tricas do Funil</h3>
+                <div class="funnel" id="funnel-metrics"></div>
+                <div id="funnel-timing" class="funnel-timing"></div>
+                <div id="funnel-bars" style="margin-top:1rem"></div>
+            </div>
+        </section>
+
+        <!-- Export -->
+        <section class="tab-panel" id="tab-export">
+            <div class="card">
+                <h3>Exportar Dados</h3>
+                <p class="hint">Selecione colunas e formato de exportaÃ§Ã£o</p>
+                <div class="form-field" style="margin-bottom:1rem">
+                    <label>Status do funil na exportaÃ§Ã£o</label>
+                    <div class="export-cols" id="export-status">
+                        <label><input type="checkbox" value="prospectado" checked> Prospectado</label>
+                        <label><input type="checkbox" value="contato_feito" checked> Contato Feito</label>
+                        <label><input type="checkbox" value="proposta_enviada" checked> Proposta</label>
+                        <label><input type="checkbox" value="negociacao" checked> NegociaÃ§Ã£o</label>
+                        <label><input type="checkbox" value="fechado" checked> Fechado</label>
+                        <label><input type="checkbox" value="perdido"> Perdido</label>
+                        <label><input type="checkbox" value="dead_zone"> Dead Zone</label>
+                    </div>
+                </div>
+                <div class="export-cols" id="export-cols">
+                    <label><input type="checkbox" value="cnpj_basico" checked> CNPJ</label>
+                    <label><input type="checkbox" value="razao_social" checked> RazÃ£o Social</label>
+                    <label><input type="checkbox" value="cnae_codigo" checked> CNAE</label>
+                    <label><input type="checkbox" value="cluster" checked> Cluster</label>
+                    <label><input type="checkbox" value="regime_tributario" checked> Regime</label>
+                    <label><input type="checkbox" value="capital_social" checked> Capital</label>
+                    <label><input type="checkbox" value="score" checked> Score</label>
+                    <label><input type="checkbox" value="email" checked> E-mail</label>
+                    <label><input type="checkbox" value="telefone" checked> Telefone</label>
+                    <label><input type="checkbox" value="uf" checked> UF</label>
+                    <label><input type="checkbox" value="status_funil" checked> Status Funil</label>
+                </div>
+                <div class="btn-group">
+                    <button class="btn primary" id="btn-export-csv">CSV</button>
+                    <button class="btn" id="btn-export-json">JSON</button>
+                    <button class="btn" id="btn-export-clipboard">Copiar</button>
+                    <button class="btn" id="btn-export-excel">Excel (.xlsx)</button>
+                </div>
+                <div id="export-result" class="hint" style="margin-top:0.75rem"></div>
+            </div>
+        </section>
+
+        <!-- ConfiguraÃ§Ãµes -->
+        <section class="tab-panel" id="tab-configuracoes">
+            <div class="card">
+                <h3>Pesos de Scoring</h3>
+                <p class="hint">Ajuste os pesos e recalcule scores de todos os leads</p>
+                <div id="scoring-sliders">
+                    <div class="slider-row">
+                        <label><span>Capital Social</span><span id="val-capital">5</span></label>
+                        <input type="range" id="peso-capital" min="1" max="10" value="5">
+                    </div>
+                    <div class="slider-row">
+                        <label><span>Filiais</span><span id="val-filiais">5</span></label>
+                        <input type="range" id="peso-filiais" min="1" max="10" value="5">
+                    </div>
+                    <div class="slider-row">
+                        <label><span>Regime / TransiÃ§Ã£o</span><span id="val-regime">5</span></label>
+                        <input type="range" id="peso-regime" min="1" max="10" value="5">
+                    </div>
+                    <div class="slider-row">
+                        <label><span>CNAE</span><span id="val-cnae">5</span></label>
+                        <input type="range" id="peso-cnae" min="1" max="10" value="5">
+                    </div>
+                    <div class="slider-row">
+                        <label><span>Porte</span><span id="val-porte">5</span></label>
+                        <input type="range" id="peso-porte" min="1" max="10" value="5">
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn primary" id="btn-save-scoring">Salvar Pesos</button>
+                    <button class="btn" id="btn-recalc-scores">Recalcular Scores</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Lead Drawer -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<aside class="drawer" id="lead-drawer">
+    <div class="drawer-header">
+        <div>
+            <h3 id="drawer-title">â€”</h3>
+            <p class="hint" id="drawer-subtitle" style="margin:0"></p>
+            <span class="drawer-badge" id="drawer-status-badge"></span>
+        </div>
+        <button class="btn" id="drawer-close">âœ•</button>
+    </div>
+    <div class="drawer-section">
+        <h4>Dados Cadastrais</h4>
+        <dl class="drawer-grid" id="drawer-empresa"></dl>
+    </div>
+    <div class="drawer-section">
+        <h4>LocalizaÃ§Ã£o</h4>
+        <dl class="drawer-grid" id="drawer-localizacao"></dl>
+    </div>
+    <div class="drawer-section">
+        <h4>Contatos</h4>
+        <dl class="drawer-grid" id="drawer-contato"></dl>
+    </div>
+    <div class="drawer-section">
+        <h4>SÃ³cios</h4>
+        <table class="drawer-socios" id="drawer-socios">
+            <thead><tr><th>Nome</th><th>QualificaÃ§Ã£o</th><th>E-mail</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="drawer-section">
+        <h4>HistÃ³rico de Contato</h4>
+        <div id="drawer-historico"></div>
+    </div>
+    <div class="drawer-section" id="drawer-outcome-section">
+        <h4>Registrar Outcome</h4>
+        <div class="form-field">
+            <label>Outcome</label>
+            <select id="drawer-contato-outcome">
+                <option value="positivo">Positivo</option>
+                <option value="negativo">Negativo</option>
+                <option value="sem_resposta">Sem Resposta</option>
+                <option value="reuniao">ReuniÃ£o</option>
+                <option value="indicacao_b2b2b">IndicaÃ§Ã£o B2B2B</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Motivo (opcional)</label>
+            <input type="text" id="drawer-contato-motivo" placeholder="Detalhes do contato">
+        </div>
+        <button class="btn primary" id="drawer-registrar-contato" style="width:100%">Registrar Contato</button>
+    </div>
+    <div class="btn-group">
+        <button class="btn" id="drawer-fechar">Fechar</button>
+        <button class="btn primary" id="drawer-abordagem">Iniciar Abordagem</button>
+    </div>
+</aside>
+
+<!-- Modals -->
+<div class="modal-overlay" id="modal-parceiro">
+    <div class="modal">
+        <h3 id="modal-parceiro-title">Cadastrar Parceiro</h3>
+        <form id="form-parceiro">
+            <input type="hidden" id="parceiro-id">
+            <div class="form-field"><label>Nome da Banca</label><input type="text" id="parceiro-nome" required></div>
+            <div class="form-row">
+                <div class="form-field"><label>Rede</label><input type="text" id="parceiro-rede"></div>
+                <div class="form-field"><label>UF Sede</label><input type="text" id="parceiro-uf" maxlength="2"></div>
+            </div>
+            <div class="form-field"><label>Website</label><input type="url" id="parceiro-website"></div>
+            <div class="form-row">
+                <div class="form-field"><label>E-mail de Contato</label><input type="email" id="parceiro-email"></div>
+                <div class="form-field"><label>Telefone</label><input type="tel" id="parceiro-telefone"></div>
+            </div>
+            <div class="form-field">
+                <label>Status</label>
+                <select id="parceiro-status">
+                    <option value="prospectando">Prospectando</option>
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" data-close="modal-parceiro">Cancelar</button>
+                <button type="submit" class="btn primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-acionar">
+    <div class="modal">
+        <h3>Acionar Parceiro B2B2B</h3>
+        <input type="hidden" id="acionar-lead-id">
+        <input type="hidden" id="acionar-parceiro-fixo">
+        <div class="form-field">
+            <label>Lead a encaminhar</label>
+            <select id="acionar-lead"></select>
+        </div>
+        <div class="form-field" id="acionar-parceiro-field">
+            <label>Parceiro</label>
+            <select id="acionar-parceiro"></select>
+        </div>
+        <div class="form-field">
+            <label>Briefing / mensagem</label>
+            <textarea id="acionar-obs" rows="3" placeholder="Contexto para o parceiro..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn" data-close="modal-acionar">Cancelar</button>
+            <button type="button" class="btn primary" id="btn-confirmar-acionar">Enviar IndicaÃ§Ã£o</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-contato">
+    <div class="modal">
+        <h3>Registrar Contato</h3>
+        <input type="hidden" id="contato-lead-id">
+        <div class="form-field">
+            <label>Outcome</label>
+            <select id="contato-outcome">
+                <option value="positivo">Positivo</option>
+                <option value="negativo">Negativo</option>
+                <option value="sem_resposta">Sem Resposta</option>
+                <option value="reuniao">ReuniÃ£o Agendada</option>
+                <option value="indicacao_b2b2b">IndicaÃ§Ã£o B2B2B</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Motivo (opcional)</label>
+            <input type="text" id="contato-motivo" placeholder="Detalhes do contato">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn" data-close="modal-contato">Cancelar</button>
+            <button type="button" class="btn primary" id="btn-confirmar-contato">Registrar</button>
+        </div>
+    </div>
+</div>
+
+

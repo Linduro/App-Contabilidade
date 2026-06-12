@@ -67,12 +67,13 @@ export function startAuthGate(onAuthorized) {
       if (user && ALLOWED_EMAILS.includes(email)) {
         setLoginStatus('Sessão válida. Carregando…');
         document.getElementById('afs-login')?.classList.add('hidden');
-        document.getElementById('afs-app')?.classList.remove('hidden');
+        document.getElementById('app-root')?.classList.remove('hidden');
         Promise.resolve(onAuthorized()).catch(function (err) {
           console.error('[AFS-ERROR] boot', err);
           setLoginStatus('Erro ao carregar o app. Recarregue a página.');
           document.getElementById('afs-login')?.classList.remove('hidden');
-          document.getElementById('afs-app')?.classList.add('hidden');
+          document.getElementById('app-root')?.classList.add('hidden');
+          document.getElementById('legacy-root')?.classList.add('hidden');
         });
         return;
       }

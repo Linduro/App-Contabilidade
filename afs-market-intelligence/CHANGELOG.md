@@ -86,3 +86,11 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - **Bloco 8:** Botão Editar parceiro + e-mail/telefone no modal
 - **Bloco 11:** Admin por e-mail nas rules (plano Spark, sem Blaze) + `[AFS-ERROR]` em todos os catches
 - **CI:** workflows Cloud Run ignoram deploy quando `ENABLE_GCP_CLOUD_RUN` ≠ `true` (variável do repositório)
+
+## v3 — Casca Leads2b (fase 2)
+
+- Nova shell: sidebar colapsável, header, busca global, roteamento hash `#/rota`
+- `store.js` + `localStorage` como fonte padrão; seed com dados contábeis fictícios
+- Import único do Firestore na primeira carga (`firestore-adapter.js`)
+- UI legada em `#/legacy` (`static/legacy/page.html` + `js/legacy/app.js`)
+- Módulo Home `#/apps` com cards de onboarding e oportunidades do dia
