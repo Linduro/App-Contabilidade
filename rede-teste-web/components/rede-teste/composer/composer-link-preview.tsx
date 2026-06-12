@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { X } from "lucide-react";
-import type { JqLinkPreview } from "@/lib/rede-teste/publication-dto";
+import type { JqLinkPreview } from "@/lib/rede-teste/link-preview-parsers";
 
 type Props = {
   preview: JqLinkPreview;

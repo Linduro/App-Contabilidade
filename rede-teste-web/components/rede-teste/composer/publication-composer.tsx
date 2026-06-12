@@ -36,7 +36,7 @@ import {
 } from "@/lib/rede-teste/composer-validations";
 import { clearActiveDraft } from "@/lib/rede-teste/draft-storage";
 import { clearJqComposerPrefill, loadJqComposerPrefill } from "@/lib/templates/rede-teste-bridge";
-import type { JqLinkPreview } from "@/lib/rede-teste/publication-dto";
+import type { JqLinkPreview } from "@/lib/rede-teste/link-preview-parsers";
 import { cn } from "@/lib/utils";
 import { PremiumGateDialog } from "./premium-gate-dialog";
 import { ComposerEmojiPicker } from "./composer-emoji-picker";

@@ -11,7 +11,7 @@ import {
 import {
   mapJqPublicationDtoToDmPreview,
   type DmPublicationPreviewResult,
-} from "@/lib/rede-teste/dm-publication-preview";
+} from "@/lib/rede-teste/dm-publication-preview-shared";
 import { DmSharedPublicationCard } from "./dm-shared-publication-card";
 import { cn } from "@/lib/utils";
 

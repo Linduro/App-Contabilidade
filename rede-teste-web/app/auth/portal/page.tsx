@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
-export default function PortalAuthPage() {
+function PortalAuthInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
@@ -53,5 +53,20 @@ export default function PortalAuthPage() {
       <Loader2 className="size-8 animate-spin" />
       <p className="text-sm opacity-80">Entrando na Rede Teste…</p>
     </main>
+  )
+}
+
+export default function PortalAuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex flex-col items-center justify-center gap-3">
+          <Loader2 className="size-8 animate-spin" />
+          <p className="text-sm opacity-80">Entrando na Rede Teste…</p>
+        </main>
+      }
+    >
+      <PortalAuthInner />
+    </Suspense>
   )
 }

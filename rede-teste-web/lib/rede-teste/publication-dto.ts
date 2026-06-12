@@ -2,6 +2,13 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { parseJqPoll, type JqPollStored } from "@/lib/rede-teste/poll";
 import { loadJqPollDtosBatch, type JqPollDto } from "@/lib/rede-teste/poll-db";
 import {
+  parseLinkPreview,
+  type JqLinkPreview,
+} from "@/lib/rede-teste/link-preview-parsers";
+
+export type { JqLinkPreview };
+export { parseLinkPreview };
+import {
   loadViewerLastRepliesBatch,
   type JqViewerLastReply,
 } from "@/lib/rede-teste/viewer-last-reply";
@@ -157,28 +164,6 @@ export type JqPublicationDto = {
   /** Último comentário do viewer neste post (evita N+1 no feed). */
   viewerLastReply?: JqViewerLastReply | null;
 };
-
-export type JqLinkPreview = {
-  url: string;
-  title: string | null;
-  description: string | null;
-  image: string | null;
-  siteName: string | null;
-};
-
-export function parseLinkPreview(raw: unknown): JqLinkPreview | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const url = typeof o.url === "string" ? o.url : null;
-  if (!url) return null;
-  return {
-    url,
-    title: typeof o.title === "string" ? o.title : null,
-    description: typeof o.description === "string" ? o.description : null,
-    image: typeof o.image === "string" ? o.image : null,
-    siteName: typeof o.siteName === "string" ? o.siteName : null,
-  };
-}
 
 function pollDtoToLegacy(dto: JqPollDto): JqPollStored {
   return {

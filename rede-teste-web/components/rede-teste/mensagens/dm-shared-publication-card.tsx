@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ExternalLink, ImageOff } from "lucide-react";
 import { normalizeMediaUrl } from "@/lib/media-url";
-import type { DmPublicationPreview, DmPublicationPreviewResult } from "@/lib/rede-teste/dm-publication-preview";
+import type { DmPublicationPreview, DmPublicationPreviewResult } from "@/lib/rede-teste/dm-publication-preview-shared";
 import { JqAvatar } from "../shared/jq-avatar";
 import { JqMediaLightbox } from "../shared/jq-media-lightbox";
 import { YouTubeEmbed } from "../feed/youtube-embed";

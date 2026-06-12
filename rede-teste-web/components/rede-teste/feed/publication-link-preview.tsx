@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { JqLinkPreview } from "@/lib/rede-teste/publication-dto";
+import type { JqLinkPreview } from "@/lib/rede-teste/link-preview-parsers";
 
 export function PublicationLinkPreview({ preview }: { preview: JqLinkPreview }) {
   return (
