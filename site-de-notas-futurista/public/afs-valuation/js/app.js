@@ -107,14 +107,22 @@ let currentSideRow = null;
 let currentReviewRow = null;
 
 function resolveRowPhotosForDisplay(row, mappings, spreadsheetMeta) {
-    if (typeof afsCollectPhotosForRow === 'function' && spreadsheetMeta) {
+    const lookups = spreadsheetMeta?.photo_lookups || {
+        bem: spreadsheetMeta?.photo_lookup || {},
+        spec: {},
+        tag: {}
+    };
+    if (typeof afsCollectPhotosForRow === 'function') {
         const photos = afsCollectPhotosForRow(
             row,
             mappings,
-            spreadsheetMeta.photo_lookup || {},
-            spreadsheetMeta.headers || []
+            lookups,
+            spreadsheetMeta?.headers || []
         );
         if (photos.length) return photos;
+        if (typeof afsDebugPhotoResolution === 'function' && window.__AFS_PHOTO_DEBUG) {
+            console.warn('[AFS Foto Debug]', afsDebugPhotoResolution(row, mappings, lookups, spreadsheetMeta?.headers));
+        }
     }
     const letters = [
         { letter: mappings.photo_original, type: 'Foto do Bem' },
@@ -470,6 +478,10 @@ async function loadSessionState() {
             state.hasSpreadsheet = true;
             updateStep(2, 'completed');
             await restoreSpreadsheetMappingUI(data);
+            const preview = data.spreadsheet_preview || {};
+            if (preview.rows && !preview.photo_lookups?.bem && !(preview.photo_lookup && Object.keys(preview.photo_lookup).length)) {
+                showAlert('Planilha em cache antigo — reenvie o arquivo .xlsx para indexar as fotos (3 abas).', 'warning');
+            }
         }
         if (data.has_mappings) {
             state.hasMappings = true;
@@ -643,10 +655,17 @@ async function handleFileUpload(file) {
             fileMeta.textContent = `${(file.size / 1024).toFixed(1)} KB · ${data.total_rows} linhas · ${data.headers.length} colunas${data.photo_count != null ? ` · ${data.photo_count} fotos` : ''}`;
 
             updateStep(2, 'completed');
+            const photoMeta = data.photo_lookup_meta || {};
+            const counts = photoMeta.counts || {};
+            const sheets = photoMeta.sheets || {};
             const photoMsg = data.photo_count != null
-                ? (data.photo_count > 0 ? ` · ${data.photo_count} fotos indexadas` : ' · aviso: nenhuma foto na aba Foto do Bem (BB→DD)')
+                ? (data.photo_count > 0
+                    ? ` · Fotos indexadas: ${counts.bem || 0} bem, ${counts.spec || 0} esp, ${counts.tag || 0} tag`
+                    : ` · AVISO: 0 fotos (abas: ${sheets.bem || '?'}, ${sheets.spec || '?'}, ${sheets.tag || '?'}) — reenvie se faltar aba Foto do Bem/Espec/TAG`)
                 : '';
             showAlert(`Planilha carregada: ${data.total_rows} linhas, ${data.headers.length} colunas${photoMsg}`, data.photo_count === 0 ? 'warning' : 'success');
+            if (data.photo_count === 0) console.warn('[AFS Fotos] Nenhuma foto indexada. Abas encontradas:', sheets, counts);
+            else console.info('[AFS Fotos] Indexação OK:', counts, 'Exemplo chave bem:', Object.keys(data.photo_lookups?.bem || {}).slice(0, 3));
 
             const sessionAfter = await apiFetch('/api/session-state');
             const hasMaps = Boolean(sessionAfter.column_mappings && Object.keys(sessionAfter.column_mappings).length);
@@ -1285,7 +1304,7 @@ async function loadSpreadsheetRowsForEvaluation() {
                 rowEl.classList.add('selected-row');
                 loadSidePanelDetails(
                     existingEval ? existingEval.id : null, 
-                    rowIdx, 
+                    row, 
                     controlVal, 
                     fotoUrl, 
                     fotoSpec, 
@@ -1788,6 +1807,21 @@ function updateSidePhotoUI() {
         prevBtn.disabled = true;
         nextBtn.disabled = true;
         typeLabel.textContent = 'Sem Foto';
+        const dbg = window.__lastPhotoDebug;
+        if (dbg) {
+            const cc = dbg.countColumns || {};
+            empty.innerHTML = `
+                <i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
+                <div style="font-size: 0.7rem; line-height: 1.45; text-align: left; padding: 0 8px;">
+                    <strong>Col A:</strong> ${dbg.colA ?? '-'} → <code>${dbg.assetCode ?? '?'}</code><br>
+                    <strong>Qtd:</strong> bem=${cc.bem?.count ?? 0} (${cc.bem?.letter || '-'}) · esp=${cc.spec?.count ?? 0} · tag=${cc.tag?.count ?? 0}<br>
+                    <strong>Índice:</strong> bem ${dbg.lookupSizes?.bem ?? 0} · esp ${dbg.lookupSizes?.spec ?? 0} · tag ${dbg.lookupSizes?.tag ?? 0}<br>
+                    <strong>Chave .0:</strong> ${dbg.sampleKeys?.bem?.found ? 'OK' : 'não encontrada'} ${dbg.sampleKeys?.bem?.key || ''}<br>
+                    <span style="color: var(--afs-orange-400);">Reenvie a planilha se índice = 0</span>
+                </div>`;
+        } else {
+            empty.innerHTML = `<i class="fa-solid fa-camera" style="font-size: 2.5rem; margin-bottom: 10px; display: block;"></i><span>Sem foto para este item</span>`;
+        }
         return;
     }
     
@@ -1808,7 +1842,8 @@ function updateSidePhotoUI() {
 }
 
 async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, photoTag, description, photosFromRow) {
-    currentSideRow = row;
+    const rowKey = typeof row === 'object' && row != null ? row._row_index : row;
+    currentSideRow = rowKey;
     
     document.getElementById('sideActiveItem').textContent = `Controle: ${formatControlLabel(control, null)}`;
     document.getElementById('sideDescOriginal').textContent = description || 'Sem descrição';
@@ -1827,6 +1862,23 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
         if (isValidPhotoUrl(pUrl)) sidePhotos.push({ url: pUrl, type: 'Foto do Bem' });
         if (isValidPhotoUrl(pSpec)) sidePhotos.push({ url: pSpec, type: 'Foto Especificações' });
         if (isValidPhotoUrl(pTag)) sidePhotos.push({ url: pTag, type: 'Foto da TAG' });
+    }
+
+    const rowObj = typeof row === 'object' && row != null ? row : null;
+    if (rowObj && sidePhotos.length === 0 && typeof afsDebugPhotoResolution === 'function') {
+        try {
+            const session = await apiFetch('/api/session-state');
+            const spreadsheet = session.spreadsheet_preview || state.spreadsheetData || {};
+            const mappings = session.column_mappings || {};
+            const retry = resolveRowPhotosForDisplay(rowObj, mappings, spreadsheet);
+            if (retry.length) sidePhotos = retry.filter(p => isValidPhotoUrl(p.url));
+            window.__lastPhotoDebug = afsDebugPhotoResolution(rowObj, mappings, spreadsheet.photo_lookups || spreadsheet, spreadsheet.headers);
+            console.info('[AFS Foto Debug]', window.__lastPhotoDebug);
+        } catch (e) {
+            window.__lastPhotoDebug = null;
+        }
+    } else if (sidePhotos.length) {
+        window.__lastPhotoDebug = null;
     }
     
     currentSidePhotoIndex = 0;
@@ -1855,7 +1907,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
         const data = await apiFetch(`/api/evaluation/${evalId}`);
         
         // Prevent race condition of rapid SSE events updates
-        if (currentSideRow !== row) return;
+        if (currentSideRow !== rowKey) return;
         
         if (data.status === 'ok') {
             const ev = data.evaluation;
@@ -1896,7 +1948,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
             document.getElementById('sideReasoning').textContent = 'Erro ao carregar dados: ' + data.message;
         }
     } catch (e) {
-        if (currentSideRow !== row) return;
+        if (currentSideRow !== rowKey) return;
         document.getElementById('sideReasoning').textContent = 'Erro: ' + e.message;
     }
 }

@@ -76,7 +76,7 @@ function afsCollectImageUrls(row, mappings, spreadsheet) {
         if (u && /^https?:\/\//i.test(u) && !urls.includes(u)) urls.push(u);
     }
     if (urls.length === 0 && typeof afsCollectPhotosForRow === 'function' && spreadsheet) {
-        const photos = afsCollectPhotosForRow(resolved, mappings, spreadsheet.photo_lookup || {}, spreadsheet.headers);
+        const photos = afsCollectPhotosForRow(resolved, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers);
         photos.forEach(p => { if (p.url && !urls.includes(p.url)) urls.push(p.url); });
     }
     return urls;
@@ -113,7 +113,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         : row;
 
     const photos = typeof afsCollectPhotosForRow === 'function'
-        ? afsCollectPhotosForRow(resolvedRow, mappings, spreadsheet.photo_lookup || {}, spreadsheet.headers)
+        ? afsCollectPhotosForRow(resolvedRow, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers)
         : [];
     const fotoUrl = photos[0]?.url || normalizePhotoUrl(letter('photo_original') ? resolvedRow[letter('photo_original')] : null) || 'Sem foto';
     const fotoSpec = photos[1]?.url || normalizePhotoUrl(letter('photo_spec') ? resolvedRow[letter('photo_spec')] : null) || 'Sem foto especificação';
@@ -221,7 +221,7 @@ async function browserRunEvaluation(options, onProgress) {
         const link1Val = link1Letter ? row[link1Letter] : null;
 
         const photos = typeof afsCollectPhotosForRow === 'function'
-            ? afsCollectPhotosForRow(row, mappings, spreadsheet.photo_lookup || {}, spreadsheet.headers)
+            ? afsCollectPhotosForRow(row, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers)
             : [];
         const fotoUrl = photos[0]?.url || 'Sem foto';
         const fotoSpec = photos[1]?.url || 'Sem foto especificação';

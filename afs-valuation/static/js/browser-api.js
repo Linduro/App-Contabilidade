@@ -106,10 +106,11 @@ function afsParseWorkbook(file) {
                 };
                 const preview = dataRows.slice(0, 5).map(buildRow);
                 const allRows = dataRows.map(buildRow);
-                const photoLookup = typeof afsBuildPhotoLookupFromWorkbook === 'function'
-                    ? afsBuildPhotoLookupFromWorkbook(wb)
-                    : {};
-                const photoCount = Object.keys(photoLookup).length;
+                const photoLookups = typeof afsBuildAllPhotoLookups === 'function'
+                    ? afsBuildAllPhotoLookups(wb)
+                    : { bem: {}, spec: {}, tag: {}, _meta: { sheets: {}, counts: {} } };
+                const meta = photoLookups._meta || {};
+                const photoCount = (meta.counts?.bem || 0) + (meta.counts?.spec || 0) + (meta.counts?.tag || 0);
                 resolve({
                     status: 'ok',
                     headers,
@@ -121,7 +122,9 @@ function afsParseWorkbook(file) {
                     sheet_names: wb.SheetNames,
                     best_sheet_idx: wb.SheetNames.indexOf(sheetName),
                     file_name: file.name,
-                    photo_lookup: photoLookup,
+                    photo_lookups: { bem: photoLookups.bem, spec: photoLookups.spec, tag: photoLookups.tag },
+                    photo_lookup_meta: meta,
+                    photo_lookup: { ...(photoLookups.bem || {}), ...(photoLookups.spec || {}), ...(photoLookups.tag || {}) },
                     photo_count: photoCount
                 });
             } catch (err) {
@@ -154,9 +157,9 @@ const AFS_FIELDS = {
         control: { label: 'ID de Controle (Principal)', description: 'Coluna de identificação única do item na planilha' },
         asset_output: { label: 'Ativo (DESTINO / IA)', description: 'Coluna para gravar o nome simplificado do bem (ex: cadeira, mesa)' },
         category_output: { label: 'Categoria (DESTINO / IA)', description: 'Coluna para gravar a categoria ampla (ex: mobiliário, TI)' },
-        photo_original: { label: 'Foto do Ativo', description: 'Coluna com o link da imagem original da vistoria' },
-        photo_spec: { label: 'Foto Especificações', description: 'Coluna com o link da foto de especificações do bem' },
-        photo_tag: { label: 'Foto da TAG', description: 'Coluna com o link da foto da plaqueta/tag do bem' }
+        photo_original: { label: 'Foto do Bem (quantidade)', description: 'Coluna com a QUANTIDADE de fotos do bem (ex: 2) — não é URL' },
+        photo_spec: { label: 'Foto Especificações (quantidade)', description: 'Coluna com a QUANTIDADE de fotos de especificações' },
+        photo_tag: { label: 'Foto da TAG (quantidade)', description: 'Coluna com a QUANTIDADE de fotos da plaqueta/tag' }
     }
 };
 
@@ -225,7 +228,7 @@ async function browserApiFetch(path, options = {}) {
         const rows = typeof afsResolveAllRowsPhotos === 'function'
             ? afsResolveAllRowsPhotos(s.spreadsheet, mappings)
             : (s.spreadsheet.rows || []);
-        return { status: 'ok', rows, photo_lookup: s.spreadsheet.photo_lookup || {} };
+        return { status: 'ok', rows, photo_lookup: s.spreadsheet.photo_lookup || {}, photo_lookups: s.spreadsheet.photo_lookups || {}, photo_lookup_meta: s.spreadsheet.photo_lookup_meta || {} };
     }
 
     if (path === '/api/spreadsheets/input' && method === 'GET') {
