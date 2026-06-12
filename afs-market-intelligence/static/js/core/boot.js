@@ -4,20 +4,6 @@ import { seedIfEmpty } from './seed-data.js';
 import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
-import { renderHome } from '../modules/home.js';
-import { renderPipelines } from '../modules/crm-pipelines.js';
-import { renderOportunidades } from '../modules/crm-oportunidades.js';
-import { renderLeads } from '../modules/crm-leads.js';
-import { renderAtividades } from '../modules/atividades.js';
-import { renderComunicacaoInbox } from '../modules/comunicacao-inbox.js';
-import { renderMarketing } from '../modules/marketing.js';
-import { renderAutomacao } from '../modules/automacao.js';
-import { renderAnalises } from '../modules/analises.js';
-import { renderProspeccao } from '../modules/prospeccao.js';
-import { renderDeadZone } from '../modules/prospeccao-dead-zone.js';
-import { renderTransicao } from '../modules/prospeccao-transicao.js';
-import { renderParceiros } from '../modules/parceiros.js';
-import { renderConfiguracoes } from '../modules/configuracoes.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 
 const TITLES = {
@@ -35,6 +21,27 @@ const TITLES = {
   '/legacy': 'UI Legada',
 };
 
+const ROUTE_LOADERS = {
+  '/apps': () => import('../modules/home.js').then((m) => m.renderHome),
+  '/prospeccao': () => import('../modules/prospeccao.js').then((m) => m.renderProspeccao),
+  '/prospeccao/dead-zone': () => import('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
+  '/prospeccao/transicao': () => import('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
+  '/crm/pipelines': () => import('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
+  '/crm/leads': () => import('../modules/crm-leads.js').then((m) => m.renderLeads),
+  '/crm/oportunidades': () => import('../modules/crm-oportunidades.js').then((m) => m.renderOportunidades),
+  '/tarefas': () => import('../modules/atividades.js').then((m) => m.renderAtividades),
+  '/comunicacao/inbox': () => import('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
+  '/parceiros': () => import('../modules/parceiros.js').then((m) => m.renderParceiros),
+  '/configuracoes': () => import('../modules/configuracoes.js').then((m) => m.renderConfiguracoes),
+};
+
+function lazy(loaderFn) {
+  return async function (ctx) {
+    const handler = await loaderFn();
+    return handler(ctx);
+  };
+}
+
 function titleFor(path) {
   if (TITLES[path]) return TITLES[path];
   if (path.startsWith('/marketing')) return 'Marketing';
@@ -45,23 +52,25 @@ function titleFor(path) {
 }
 
 function registerAllRoutes() {
-  register('/apps', renderHome);
   register('/legacy', async () => { await mountLegacy(); });
   registerPrefix('/legacy/', async () => { await mountLegacy(); });
-  register('/prospeccao', renderProspeccao);
-  register('/prospeccao/dead-zone', renderDeadZone);
-  register('/prospeccao/transicao', renderTransicao);
-  register('/crm/pipelines', renderPipelines);
-  register('/crm/leads', renderLeads);
-  register('/crm/oportunidades', renderOportunidades);
-  register('/tarefas', renderAtividades);
-  register('/comunicacao/inbox', renderComunicacaoInbox);
-  registerPrefix('/comunicacao/', renderComunicacaoInbox);
-  register('/parceiros', renderParceiros);
-  register('/configuracoes', renderConfiguracoes);
-  registerPrefix('/marketing/', renderMarketing);
-  registerPrefix('/automacao/', renderAutomacao);
-  registerPrefix('/analises/', renderAnalises);
+
+  Object.entries(ROUTE_LOADERS).forEach(([path, loader]) => {
+    register(path, lazy(loader));
+  });
+
+  registerPrefix('/comunicacao/', lazy(
+    () => import('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
+  ));
+  registerPrefix('/marketing/', lazy(
+    () => import('../modules/marketing.js').then((m) => m.renderMarketing),
+  ));
+  registerPrefix('/automacao/', lazy(
+    () => import('../modules/automacao.js').then((m) => m.renderAutomacao),
+  ));
+  registerPrefix('/analises/', lazy(
+    () => import('../modules/analises.js').then((m) => m.renderAnalises),
+  ));
 }
 
 function refreshChrome(path) {
@@ -75,33 +84,28 @@ function refreshChrome(path) {
 }
 
 export async function bootApp() {
-  try {
-    if (!location.hash || location.hash === '#') location.hash = '#/apps';
-    seedIfEmpty();
-    const imp = await importFirestoreOnceIfNeeded();
-    if (imp.imported && window.AFSToast) {
-      window.AFSToast.success('Importados ' + imp.leads + ' leads do Firestore');
-    }
-
-    registerAllRoutes();
-
-    const go = await start(function (path) {
-      refreshChrome(path);
-      if (isLegacyRoute(path)) {
-        document.getElementById('app-root')?.classList.add('hidden');
-      }
-    });
-
-    store.onChange(function () {
-      const { path } = parseHash();
-      if (!isLegacyRoute(path)) refreshChrome(path);
-    });
-
-    await go();
-  } catch (err) {
-    console.error('[AFS-ERROR] bootApp', err);
-    throw err;
+  if (!location.hash || location.hash === '#') location.hash = '#/apps';
+  seedIfEmpty();
+  const imp = await importFirestoreOnceIfNeeded();
+  if (imp.imported && window.AFSToast) {
+    window.AFSToast.success('Importados ' + imp.leads + ' leads do Firestore');
   }
+
+  registerAllRoutes();
+
+  const go = await start(function (path) {
+    refreshChrome(path);
+    if (isLegacyRoute(path)) {
+      document.getElementById('app-root')?.classList.add('hidden');
+    }
+  });
+
+  store.onChange(function () {
+    const { path } = parseHash();
+    if (!isLegacyRoute(path)) refreshChrome(path);
+  });
+
+  await go();
 }
 
 window.AFS_BOOT = bootApp;

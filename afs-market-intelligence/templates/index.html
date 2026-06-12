@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <title>AFS Market Intelligence</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-v2.css') }}?v=2">
@@ -22,6 +24,9 @@
         <p class="hint">Use o mesmo e-mail e senha do login principal.</p>
         <p id="login-fallback" class="hidden" style="margin-top:1rem">
             <a id="login-fallback-link" class="btn primary" href="#">Ir para o login do portal</a>
+        </p>
+        <p id="login-recovery" class="hidden" style="margin-top:0.75rem">
+            <button type="button" id="btn-reset-afs" class="btn sm">Limpar dados locais e recarregar</button>
         </p>
     </div>
 </div>
@@ -59,7 +64,10 @@
             } catch (_) {}
         }
         const buildTag = window.__AFS_BUILD__ || Date.now();
-        const { startAuthGate } = await import('{{ url_for('static', filename='js/auth-gate.js') }}?v=7');
+        if (new URLSearchParams(location.search).has('afs_reset')) {
+            try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+        }
+        const { startAuthGate } = await import('{{ url_for('static', filename='js/auth-gate.js') }}?b=' + buildTag);
         startAuthGate(async function () {
             const { bootApp } = await import('{{ url_for('static', filename='js/core/boot.js') }}?b=' + buildTag);
             await bootApp();

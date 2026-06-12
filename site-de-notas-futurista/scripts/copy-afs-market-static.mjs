@@ -44,7 +44,9 @@ function buildIndexHtml() {
   )
 
   const basePath = (process.env.GITHUB_SITE_BASE || "").replace(/\/$/, "")
-  const baseScript = `<script>window.__AFS_BASE_PATH__=${JSON.stringify(basePath)};</script>`
+  const buildId = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")
+  const baseScript =
+    `<script>window.__AFS_BASE_PATH__=${JSON.stringify(basePath)};window.__AFS_BUILD__="${buildId}";</script>`
   raw = raw.replace("</head>", `    ${baseScript}\n</head>`)
 
   return raw
@@ -128,19 +130,4 @@ if (!bootText.includes("from './seed-data.js'")) {
   throw new Error("Falha no build AFS: boot.js deve importar ./seed-data.js")
 }
 
-const buildId = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "")
-const indexPath = path.join(outDir, "index.html")
-let indexHtml = fs.readFileSync(indexPath, "utf8")
-indexHtml = indexHtml.replace(
-  /window\.__AFS_BUILD__\s*=\s*[^;]+;/,
-  `window.__AFS_BUILD__="${buildId}";`,
-)
-if (!indexHtml.includes("__AFS_BUILD__")) {
-  indexHtml = indexHtml.replace(
-    "</head>",
-    `    <script>window.__AFS_BUILD__="${buildId}";</script>\n</head>`,
-  )
-}
-fs.writeFileSync(indexPath, indexHtml, "utf8")
-
-console.log("AFS Market Intelligence static assets copied to public/afs-market-intelligence/ (build " + buildId + ")")
+console.log("AFS Market Intelligence static assets copied to public/afs-market-intelligence/")

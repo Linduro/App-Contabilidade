@@ -33,6 +33,7 @@ function loadRaw() {
     return JSON.parse(raw);
   } catch (e) {
     console.error('[AFS-ERROR] store.load', e);
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
     return null;
   }
 }

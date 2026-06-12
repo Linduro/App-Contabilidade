@@ -37,6 +37,27 @@ function showSignInFallback() {
   return signIn;
 }
 
+function showRecoveryActions() {
+  const el = document.getElementById('login-recovery');
+  if (el) el.classList.remove('hidden');
+  const btn = document.getElementById('btn-reset-afs');
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', function () {
+      try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+      const v = Date.now();
+      const url = new URL(location.href);
+      url.searchParams.set('afs_reset', String(v));
+      location.replace(url.toString());
+    });
+  }
+}
+
+window.AFS_resetLocalData = function () {
+  try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+  location.reload();
+};
+
 /**
  * @param {() => void | Promise<void>} onAuthorized
  */
@@ -76,6 +97,7 @@ export function startAuthGate(onAuthorized) {
           document.getElementById('app-root')?.classList.add('hidden');
           document.getElementById('legacy-root')?.classList.add('hidden');
           showSignInFallback();
+          showRecoveryActions();
         });
         return;
       }
