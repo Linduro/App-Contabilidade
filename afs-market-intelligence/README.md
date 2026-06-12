@@ -74,11 +74,19 @@ cd site-de-notas-futurista
 npx firebase deploy --only firestore:rules
 ```
 
-5. Seed de demonstração (requer credencial de service account):
+5. Seed de demonstração (sem service account — via REST):
 
 ```bash
-cd afs-market-intelligence
-GOOGLE_APPLICATION_CREDENTIALS=../path/sa.json node scripts/seed-firestore.mjs
+cd site-de-notas-futurista
+npm run afs:seed
+```
+
+Cria usuário `afs.market.demo@gmail.com` / `AfsMarket2026!` e 4 leads de exemplo.
+
+Alternativa após login na SPA (console do browser):
+
+```js
+await AFSMarketAPI.seedDemo()
 ```
 
 6. Rebuild estático após alterações:

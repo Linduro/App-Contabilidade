@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "predev": "node scripts/copy-afs-static.mjs && node scripts/copy-afs-market-static.mjs",
+    "afs:seed": "node scripts/setup-afs-demo.mjs",
     "dev": "next dev",
     "prebuild": "node scripts/copy-afs-static.mjs && node scripts/copy-afs-market-static.mjs",
     "build": "next build",

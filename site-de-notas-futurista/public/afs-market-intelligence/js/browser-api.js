@@ -417,4 +417,18 @@ window.AFSMarketAPI = {
       .slice(0, 8)
       .map(normalizeLead);
   },
+  /** Carrega dados demo no Firestore (requer usuário autenticado). */
+  seedDemo: async function () {
+    if (!auth.currentUser) throw new Error('Faça login antes de carregar o demo.');
+    const daysAgo = (n) => Timestamp.fromDate(new Date(Date.now() - n * 86400000));
+    const samples = [
+      { cnpj_basico: '12345678', razao_social: 'Holding Patrimonial Alfa Ltda', cnae_codigo: '6422-1/00', cnae_descricao: 'Bancos múltiplos', regime_tributario: 'LR', capital_social: 5000000, porte_empresa: 'MEDIO', qtd_filiais: 3, situacao_cadastral: 'ATIVA', uf: 'SP', municipio: 'São Paulo', telefone: '(11) 3000-0001', email: 'contato@holdingalfa.com.br', cluster: 'Patrimonial', score: 8.5, transicao_regime: true, perfil_icp: 'patrimonial', status_funil: 'prospectado', criado_em: daysAgo(15), atualizado_em: serverTimestamp() },
+      { cnpj_basico: '87654321', razao_social: 'Indústria Beta EPP', cnae_codigo: '2511-0/00', cnae_descricao: 'Fabricação de estruturas metálicas', regime_tributario: 'LP', capital_social: 800000, porte_empresa: 'EPP', qtd_filiais: 1, situacao_cadastral: 'ATIVA', uf: 'MG', municipio: 'Belo Horizonte', telefone: '(31) 3200-0002', email: 'financeiro@betaind.com.br', cluster: 'Industrial', score: 6.2, transicao_regime: false, perfil_icp: 'generico', status_funil: 'contato_feito', criado_em: daysAgo(30), atualizado_em: serverTimestamp() },
+      { cnpj_basico: '11223344', razao_social: 'Comércio Gama ME', cnae_codigo: '4711-3/01', cnae_descricao: 'Comércio varejista', regime_tributario: 'SN', capital_social: 50000, porte_empresa: 'ME', situacao_cadastral: 'ATIVA', uf: 'RJ', municipio: 'Rio de Janeiro', telefone: '(21) 2500-0003', email: '', cluster: 'Varejo', score: 3.1, transicao_regime: false, perfil_icp: 'generico', status_funil: 'dead_zone', motivo_dead_zone: 'Sem e-mail válido', rota_recomendada: 'LinkedIn', prioridade: 'Média', criado_em: daysAgo(45), atualizado_em: serverTimestamp() },
+    ];
+    for (const s of samples) await addDoc(collection(db, LEADS), s);
+    await setDoc(doc(db, CONFIG, 'status'), { online: true, updated_at: serverTimestamp() }, { merge: true });
+    _leadsCache = [];
+    return { status: 'ok', count: samples.length };
+  },
 };
