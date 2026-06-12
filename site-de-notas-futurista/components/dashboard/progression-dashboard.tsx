@@ -277,8 +277,10 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
                       className="h-9 w-auto hidden dark:block"
                     />
                   </a>
-                  <span className="text-sm font-bold text-primary border-l border-primary/30 pl-3 max-md:border-l-0 max-md:pl-0 max-md:w-full max-md:text-xs">
-                    Gestão de Progressão
+                  <span className="text-sm font-bold gradient-text border-l border-primary/30 pl-3 leading-tight max-md:border-l-0 max-md:pl-0 max-md:w-full">
+                    Comunidade dos Alunos
+                    <br />
+                    FIPECAFI
                   </span>
                 </div>
               </div>
