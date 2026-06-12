@@ -1,0 +1,5 @@
+import type { ReactNode } from "react"
+
+export function RedeTesteShell({ children }: { children: ReactNode }) {
+  return <>{children}</>
+}

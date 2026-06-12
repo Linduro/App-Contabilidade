@@ -1,0 +1,76 @@
+name: Deploy Rede Teste (Cloud Run)
+
+# Ativar:
+#   Settings → Secrets: FIREBASE_SERVICE_ACCOUNT, REDE_TESTE_DATABASE_URL, REDE_TESTE_AUTH_SECRET
+#   Settings → Variables: ENABLE_REDE_TESTE_CLOUD_RUN = true
+#   Depois do 1º deploy: REDE_TESTE_URL = URL do Cloud Run (para o portal GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rede-teste-web/**"
+      - ".github/workflows/deploy-rede-teste-cloudrun.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GCP_PROJECT: contabilidade-ebed6
+  GCP_REGION: southamerica-east1
+  SERVICE_NAME: rede-teste
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip when Cloud Run deploy is disabled
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN != 'true' }}
+        run: |
+          echo "ENABLE_REDE_TESTE_CLOUD_RUN não é 'true' — deploy ignorado."
+          echo "Defina a variável no GitHub para publicar a Rede Teste."
+
+      - name: Authenticate to Google Cloud
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Enable required APIs
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        run: |
+          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
+
+      - name: Deploy to Cloud Run
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        working-directory: rede-teste-web
+        env:
+          DATABASE_URL: ${{ secrets.REDE_TESTE_DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.REDE_TESTE_AUTH_SECRET }}
+        run: |
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --source . \
+            --region "${{ env.GCP_REGION }}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "DATABASE_URL=${DATABASE_URL},BETTER_AUTH_SECRET=${AUTH_SECRET},NEXT_PUBLIC_PORTAL_URL=https://linduro.github.io/App-Contabilidade,FIREBASE_PROJECT_ID=contabilidade-ebed6,NODE_ENV=production" \
+            --quiet
+
+      - name: Set BETTER_AUTH_URL to service URL
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        run: |
+          URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" --region "${{ env.GCP_REGION }}" --format='value(status.url)')
+          gcloud run services update "${{ env.SERVICE_NAME }}" \
+            --region "${{ env.GCP_REGION }}" \
+            --update-env-vars "BETTER_AUTH_URL=${URL}" \
+            --quiet
+          echo "Rede Teste URL: ${URL}"
+          echo "Adicione em GitHub → Settings → Variables → REDE_TESTE_URL = ${URL}"

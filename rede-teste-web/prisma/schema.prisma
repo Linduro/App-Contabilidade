@@ -1,0 +1,2539 @@
+// Portal - schema base Fase 1
+// Sistema interno juridico-contabil
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// MULTI-TENANT (SaaS)
+// ============================================================
+
+enum TenantPlan {
+  TRIAL
+  SOLO
+  EQUIPE
+  ESCRITORIO
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  SUSPENDED
+}
+
+enum TenantMemberRole {
+  OWNER
+  ADMIN
+  ADVOGADO
+  ESTAGIARIO
+  FINANCEIRO
+  SECRETARIA
+}
+
+model Tenant {
+  id                   String         @id @default(cuid())
+  name                 String
+  slug                 String         @unique
+  plan                 TenantPlan     @default(TRIAL)
+  status               TenantStatus   @default(TRIAL)
+  trialEndsAt          DateTime?
+  stripeCustomerId     String?        @unique
+  stripeSubscriptionId String?        @unique
+  maxUsers             Int            @default(1)
+
+  logoUrl              String?
+  cnpj                 String?
+  legalName            String?
+  addressStreet        String?
+  addressNumber        String?
+  addressComplement    String?
+  addressDistrict      String?
+  addressCity          String?
+  addressState         String?        @db.VarChar(2)
+  addressZip           String?
+  website              String?
+  publicPhone          String?
+  contactEmails        String?
+
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  users                User[]
+  invites              TenantInvite[]
+  oabRegistrations     TenantOab[]
+  clients              Client[]
+  cases                Case[]
+  intimations          Intimation[]
+  deadlines            Deadline[]
+  tasks                Task[]
+  financialEntries     FinancialEntry[]
+  financeBankAccounts  FinanceBankAccount[]
+  financeCostCenters   FinanceCostCenter[]
+  financeCategoryGroups FinanceCategoryGroup[]
+  financeCategories    FinanceCategory[]
+  auditLogs            AuditLog[]
+  settings             TenantSetting[]
+  notifications        Notification[]
+  juridiquesProfiles     RedeTesteProfile[]
+  juridiquesCommunities  RedeTesteCommunity[]
+  juridiquesPublications RedeTestePublication[]
+  juridiquesReferrals    RedeTesteReferral[]
+  taskTypes              TaskType[]
+  actionGroups           ActionGroup[]
+  actionTypes            ActionType[]
+  stages                 Stage[]
+  crmCards               CrmCard[]
+  documentTemplates      DocumentTemplate[]
+  personOrigins          PersonOrigin[]
+  goals                  Goal[]
+  partners               Partner[]
+  partnerCaseShares      PartnerCaseShare[]
+  workflows              Workflow[]
+  inboxSections          InboxSection[]
+  monitoredTerms         MonitoredTerm[]
+  squads                 Squad[]
+  notificationRules      TenantNotificationRule[]
+  apiKeys                TenantApiKey[]
+  webhooks               TenantWebhook[]
+  contractRecords        ContractRecord[]
+  gestaoAlertRecipients  GestaoAlertRecipient[]
+  medicalReportRecords   MedicalReportRecord[]
+  contractPeriods        ContractPeriod[]
+  inssRequerimentos      InssRequerimento[]
+  operationalEntries     OperationalEntry[]
+  lawyerCertificates     LawyerCertificate[]
+  inssDigitalSyncJobs    InssDigitalSyncJob[]
+  minutaReviews          MinutaReview[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+model TenantInvite {
+  id        String           @id @default(cuid())
+  tenantId  String
+  email     String
+  role      TenantMemberRole @default(ADVOGADO)
+  token     String           @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdAt DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([token])
+}
+
+model TenantSetting {
+  tenantId  String
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, key])
+}
+
+// ============================================================
+// NOTIFICAÇÕES
+// ============================================================
+
+enum NotificationType {
+  DEADLINE
+  INTIMATION
+  TASK
+  BILLING
+  SYSTEM
+  MINUTA
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  tenantId  String
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, readAt])
+  @@index([userId, createdAt])
+}
+
+enum MinutaReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model MinutaReview {
+  id               String             @id @default(cuid())
+  tenantId         String
+  authorUserId     String
+  reviewerUserId   String
+  status           MinutaReviewStatus @default(PENDING)
+
+  especiePeca      String
+  clienteNome      String
+  parteContraria   String             @default("")
+  processoNumero   String             @default("")
+  tribunal         String             @default("")
+  area             String             @default("")
+  tipoProcesso     String             @default("")
+  apontamentos     String             @db.Text @default("")
+
+  linkleiCauseSlug String?
+  clientSource     String             @default("manual")
+
+  pdfStorageKey    String
+  pdfPublicUrl     String
+
+  reviewerFeedback String?            @db.Text
+  reviewedAt       DateTime?
+  completedAt      DateTime?
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author   User   @relation("MinutaAuthor", fields: [authorUserId], references: [id])
+  reviewer User   @relation("MinutaReviewer", fields: [reviewerUserId], references: [id])
+
+  @@index([tenantId, reviewerUserId, status])
+  @@index([tenantId, authorUserId, createdAt])
+}
+
+model NotificationPreference {
+  userId    String
+  eventType String
+  email     Boolean  @default(true)
+  push      Boolean  @default(false)
+  inApp     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventType])
+}
+
+model TenantOab {
+  id                String    @id @default(cuid())
+  tenantId          String
+  oabNumber         String
+  oabUf             String    @db.VarChar(2)
+  responsibleUserId String
+  active            Boolean   @default(true)
+  lastSyncAt        DateTime?
+  lastSyncCount     Int       @default(0)
+  lastSyncError     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsible User   @relation("OabResponsible", fields: [responsibleUserId], references: [id])
+
+  @@unique([tenantId, oabNumber, oabUf])
+  @@index([tenantId])
+}
+
+// ============================================================
+// AUTH + RBAC
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  /** Login curto definido pelo admin (não é e-mail). */
+  login         String?   @unique
+  contactEmail  String?
+  emailVerified Boolean   @default(false)
+  name          String
+  image         String?   // avatar_url
+  phone         String?
+  bio           String?   @db.Text
+  coverImage    String?   // cover_url
+  oabNumber     String?
+  oabUf         String?   @db.VarChar(2)
+  timezone      String    @default("America/Sao_Paulo")
+  locale        String    @default("pt-BR")
+  themePreference String  @default("system")
+  uiDensity     String    @default("normal")
+  metaPontos    Int       @default(0) // meta de pontos por colaborador (gamificacao)
+  acessoFinanceiro Boolean @default(true) // acesso ao modulo financeiro
+  active        Boolean   @default(true)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // cifrado AES-256-GCM
+  /** Senha definida pelo admin (cifrada) — só para exibição em Equipe. */
+  adminPasswordEnc String?
+  lastLoginAt   DateTime?
+
+  tenantId      String?
+  tenantRole    TenantMemberRole?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id])
+  notificationPreferences NotificationPreference[]
+  oabRegistrations TenantOab[] @relation("OabResponsible")
+  roles         UserRole[]
+  sessions      Session[]
+  accounts      Account[]
+  lawyerCertificates LawyerCertificate[]
+  auditLogs     AuditLog[]
+  tasksAssigned       Task[]       @relation("TaskAssignee")
+  tasksCreated        Task[]       @relation("TaskCreator")
+  intimationsAssigned Intimation[] @relation("IntimationAssignee")
+  lawyerProfile LawyerProfile?
+  financialEntries FinancialEntry[] @relation("FinancialCreatedBy")
+  casesResponsible Case[] @relation("CaseResponsible")
+  attachmentsUploaded CaseAttachment[] @relation("CaseAttachmentUploader")
+  notifications      Notification[]
+  minutasAuthored      MinutaReview[] @relation("MinutaAuthor")
+  minutasToReview      MinutaReview[] @relation("MinutaReviewer")
+  juridiquesProfile  RedeTesteProfile?
+  juridiquesPublications RedeTestePublication[] @relation("JqAuthor")
+  juridiquesLikes    RedeTesteLike[]
+  juridiquesReposts  RedeTesteRepost[]
+  juridiquesFollowing RedeTesteFollow[] @relation("JqFollower")
+  juridiquesFollowers RedeTesteFollow[] @relation("JqFollowing")
+  juridiquesMedia     RedeTesteMedia[]
+  juridiquesMentions  RedeTesteMention[] @relation("JqMentioned")
+  juridiquesNotifs    RedeTesteNotification[] @relation("JqNotifRecipient")
+  juridiquesNotifsActed RedeTesteNotification[] @relation("JqNotifActor")
+  juridiquesNotifPreference RedeTesteNotificationPreference?
+  juridiquesPushSubscriptions RedeTestePushSubscription[]
+  juridiquesEmailEngagement RedeTesteEmailEngagement[]
+  juridiquesBlocking  RedeTesteBlock[] @relation("JqBlocker")
+  juridiquesBlockedBy RedeTesteBlock[] @relation("JqBlocked")
+  juridiquesMuting    RedeTesteProfileMute[] @relation("JqMuter")
+  juridiquesMutedBy   RedeTesteProfileMute[] @relation("JqMuted")
+  juridiquesProfileReportsMade     RedeTesteProfileReport[] @relation("JqProfileReporter")
+  juridiquesProfileReportsReceived RedeTesteProfileReport[] @relation("JqProfileReported")
+  juridiquesReports   RedeTesteReport[] @relation("JqReporter")
+  juridiquesConversationMembers RedeTesteConversationMember[]
+  juridiquesCommunitiesCreated  RedeTesteCommunity[]
+  juridiquesCommunityMemberships RedeTesteCommunityMember[]
+  juridiquesMessagesSent      RedeTesteMessage[] @relation("JqMessageSender")
+  juridiquesReferralsMade     RedeTesteReferral[] @relation("JqReferrer")
+  juridiquesReferralReceived  RedeTesteReferral[] @relation("JqReferred")
+  juridiquesPollVotes         RedeTestePollVote[]
+  juridiquesBookmarks         RedeTesteBookmark[]
+  juridiquesViews             RedeTesteView[]
+  contractRecordsResponsible  ContractRecord[] @relation("ContractResponsavel")
+  operationalEntriesCreated   OperationalEntry[] @relation("OperationalEntryCreator")
+  gestaoAlertRecipients       GestaoAlertRecipient[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([deletedAt])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  providerId        String
+  accountId         String
+  password          String? // hash bcrypt/argon2 (better-auth gerencia)
+  accessToken       String?
+  refreshToken      String?
+  idToken           String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) // superadmin nao pode ser deletado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  userId    String
+  roleId    String
+  assignedAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique // ex: clients.create, processes.read
+  module      String   // ex: clients, processes
+  action      String   // ex: create, read, update, delete
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+// ============================================================
+// CLIENTES (PF/PJ)
+// ============================================================
+
+enum ClientType {
+  PF
+  PJ
+}
+
+model Client {
+  id            String     @id @default(cuid())
+  tenantId      String
+  type          ClientType
+  name          String     // razao social (PJ) ou nome completo (PF)
+  document      String     // CPF ou CNPJ (somente digitos)
+  email         String?
+  phone         String?
+  birthDate     DateTime?  // PF
+  foundedAt     DateTime?  // PJ
+  originId      String?    // origem do lead/cliente (PersonOrigin)
+  notes         String?
+
+  zipCode       String?
+  address       String?
+  addressNumber String?
+  complement    String?
+  district      String?
+  city          String?
+  state         String?
+
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cases         Case[]
+  financialEntries FinancialEntry[]
+  deadlines     Deadline[]
+  tasks         Task[]
+
+  @@unique([tenantId, document])
+  @@index([tenantId])
+  @@index([document])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// PROCESSOS (CNJ)
+// ============================================================
+
+enum CaseStatus {
+  ATIVO
+  SUSPENSO
+  ARQUIVADO
+  ENCERRADO
+  SENTENCIADO
+}
+
+enum CaseInstance {
+  PRIMEIRA
+  SEGUNDA
+  SUPERIOR
+  ADMINISTRATIVO
+}
+
+model Court {
+  id           String  @id @default(cuid())
+  code         String  @unique // ex: TJSP, TRF3, TRT2, TRT15, TJPR, TRT9, TRF4, INSS
+  name         String
+  jurisdiction String  // estadual, federal, trabalhista, administrativo, superior, eleitoral, militar
+  state        String? // SP, PR, etc. (null para nacionais)
+  active       Boolean @default(true)
+
+  cases                 Case[]
+  intimations           Intimation[]
+  juridiquesPublications RedeTestePublication[]
+
+  @@index([code])
+}
+
+model Case {
+  id            String       @id @default(cuid())
+  tenantId      String
+  cnjNumber     String       // 0000000-00.0000.0.00.0000
+  internalCode  String?      // codigo interno do escritorio
+  title         String       // assunto principal
+  description   String?
+  status        CaseStatus   @default(ATIVO)
+  instance      CaseInstance @default(PRIMEIRA)
+  riskLevel     Int          @default(0) // 0=baixo 1=medio 2=alto 3=critico
+  estimatedValue Decimal?    @db.Decimal(15, 2) // em reais
+
+  clientId      String
+  courtId       String
+  opposingParty String?
+  courtDistrict String?      // vara / comarca
+  tags          String[]     @default([])
+  responsibleUserId String?
+  actionTypeId  String?      // tipo de acao (catalogo configuravel)
+  stageId       String?      // etapa atual no pipeline/CRM
+
+  filedAt       DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client        Client       @relation(fields: [clientId], references: [id])
+  court         Court        @relation(fields: [courtId], references: [id])
+  responsibleUser User?      @relation("CaseResponsible", fields: [responsibleUserId], references: [id])
+  intimations   Intimation[]
+  deadlines     Deadline[]
+  tasks         Task[]
+  financialEntries FinancialEntry[]
+  movements     CaseMovement[]
+  attachments   CaseAttachment[]
+
+  @@unique([tenantId, cnjNumber])
+  @@unique([tenantId, internalCode])
+  @@index([tenantId])
+  @@index([cnjNumber])
+  @@index([responsibleUserId])
+  @@index([clientId])
+  @@index([courtId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+enum CaseMovementSource {
+  MANUAL
+  DATAJUD
+}
+
+model CaseMovement {
+  id          String             @id @default(cuid())
+  caseId      String
+  source      CaseMovementSource @default(MANUAL)
+  externalId  String?
+  title       String
+  description String?
+  movementAt  DateTime
+  createdAt   DateTime           @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, externalId])
+  @@index([caseId, movementAt])
+}
+
+model CaseAttachment {
+  id           String   @id @default(cuid())
+  caseId       String
+  fileName     String
+  fileUrl      String
+  mimeType     String?
+  sizeBytes    Int?
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  case       Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("CaseAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@index([caseId])
+}
+
+// ============================================================
+// INTIMACOES
+// ============================================================
+
+enum IntimationSource {
+  MANUAL
+  CRAWLER
+  DJEN
+  INSS_ADMIN
+}
+
+enum IntimationChannel {
+  DJEN
+  INSS_ADMIN
+}
+
+enum IntimationStatus {
+  NOVA
+  EM_TRIAGEM
+  ATRIBUIDA
+  CONCLUIDA
+  IGNORADA
+}
+
+model Intimation {
+  id          String           @id @default(cuid())
+  tenantId    String
+  source      IntimationSource @default(MANUAL)
+  channel     IntimationChannel?
+  status      IntimationStatus @default(NOVA)
+  publishedAt DateTime         // data de publicacao oficial
+  capturedAt  DateTime         @default(now())
+  deadline    DateTime?        // prazo derivado/manual
+
+  caseId      String?
+  courtId     String?
+  rawContent  String           // texto completo da intimacao
+  summary     String?          // resumo manual ou IA
+  cnjNumber   String?          // pode chegar antes de associar a um Case
+  externalId  String?          // id na origem (DJEN/INSS) para deduplicar
+  tribunalCode String?         // sigla do orgao (ex: TJSP, INSS)
+  poloAtivo    String[]        @default([]) // partes do polo ativo (DJEN/manual)
+  poloPassivo  String[]        @default([]) // partes do polo passivo
+
+  readAt          DateTime?    // null = não lida
+  assignedUserId  String?
+  assignmentNote  String?      @db.Text
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case          Case?  @relation(fields: [caseId], references: [id])
+  court         Court? @relation(fields: [courtId], references: [id])
+  assignedUser  User?  @relation("IntimationAssignee", fields: [assignedUserId], references: [id])
+  deadlines     Deadline[]
+  tasks         Task[]
+  juridiquesShares RedeTestePublication[]
+
+  @@unique([tenantId, source, externalId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([caseId])
+  @@index([channel])
+  @@index([deletedAt])
+  @@index([readAt])
+  @@index([assignedUserId])
+}
+
+// OAB do advogado (monitoramento DJEN / INSS)
+model LawyerProfile {
+  userId           String    @id
+  oabNumber        String?   // somente digitos
+  oabUf            String?   @db.VarChar(2)
+  djenEnabled      Boolean   @default(true)
+  inssEnabled      Boolean   @default(true)
+  autoSyncEnabled  Boolean   @default(true) // cron diário 02:00 America/Sao_Paulo
+  lastDjenSyncAt   DateTime?
+  lastInssSyncAt   DateTime?
+  lastSyncError    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// FINANCEIRO
+// ============================================================
+
+enum FinancialEntryType {
+  RECEITA
+  DESPESA
+  TRANSFERENCIA
+}
+
+enum FinanceBankAccountType {
+  CORRENTE
+  POUPANCA
+  INVESTIMENTO
+  CARTAO_CREDITO
+  OUTRO
+}
+
+enum FinanceCategoryType {
+  RECEITA
+  DESPESA
+}
+
+enum FinancialEntryStatus {
+  PENDENTE
+  PAGO
+  CANCELADO
+}
+
+model FinanceBankAccount {
+  id             String               @id @default(cuid())
+  tenantId       String
+  name           String
+  type           FinanceBankAccountType @default(CORRENTE)
+  bankName       String?
+  agency         String?
+  accountNumber  String?
+  initialBalance Decimal              @default(0) @db.Decimal(15, 2)
+  isDefault      Boolean              @default(false)
+  active         Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries      FinancialEntry[] @relation("EntryBankAccount")
+  entriesDest  FinancialEntry[] @relation("EntryDestBankAccount")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model FinanceCostCenter {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries FinancialEntry[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model FinanceCategoryGroup {
+  id       Int    @id
+  name     String
+  tenantId String?
+
+  tenant     Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categories FinanceCategory[]
+
+  @@index([tenantId])
+}
+
+model FinanceCategory {
+  id        String              @id @default(cuid())
+  tenantId  String
+  name      String
+  groupId   Int
+  type      FinanceCategoryType
+  isDefault Boolean             @default(false)
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  tenant  Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  group   FinanceCategoryGroup @relation(fields: [groupId], references: [id])
+  entries FinancialEntry[]
+
+  @@unique([tenantId, name, type])
+  @@index([tenantId, type])
+}
+
+model FinancialEntry {
+  id          String               @id @default(cuid())
+  tenantId    String
+  type        FinancialEntryType
+  status      FinancialEntryStatus @default(PENDENTE)
+  category    String
+  description String
+  amount      Decimal              @db.Decimal(15, 2)
+  dueAt       DateTime?
+  paidAt      DateTime?
+  competenceAt DateTime?
+
+  bankAccountId            String?
+  destinationBankAccountId String?
+  costCenterId             String?
+  financeCategoryId        String?
+  internalOnly             Boolean  @default(false)
+  transferGroupId          String?
+  installmentNumber        Int?
+  installmentTotal         Int?
+
+  clientId    String?
+  caseId      String?
+  createdById String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client    Client? @relation(fields: [clientId], references: [id])
+  case      Case?   @relation(fields: [caseId], references: [id])
+  createdBy User    @relation("FinancialCreatedBy", fields: [createdById], references: [id])
+  bankAccount            FinanceBankAccount? @relation("EntryBankAccount", fields: [bankAccountId], references: [id])
+  destinationBankAccount FinanceBankAccount? @relation("EntryDestBankAccount", fields: [destinationBankAccountId], references: [id])
+  costCenter             FinanceCostCenter?  @relation(fields: [costCenterId], references: [id])
+  financeCategory        FinanceCategory?    @relation(fields: [financeCategoryId], references: [id])
+
+  @@index([tenantId])
+  @@index([type, status])
+  @@index([clientId])
+  @@index([caseId])
+  @@index([dueAt])
+  @@index([competenceAt])
+  @@index([bankAccountId])
+  @@index([transferGroupId])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// AGENDA / PRAZOS
+// ============================================================
+
+enum DeadlineType {
+  PROCESSUAL
+  AUDIENCIA
+  REUNIAO
+  ADMINISTRATIVO
+  OUTRO
+}
+
+enum DeadlinePriority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Deadline {
+  id          String           @id @default(cuid())
+  tenantId    String
+  title       String
+  description String?
+  type        DeadlineType     @default(PROCESSUAL)
+  priority    DeadlinePriority @default(MEDIA)
+  dueAt       DateTime
+  doneAt      DateTime?
+
+  caseId       String?
+  clientId     String?
+  taskId       String?
+  intimationId String?
+  remindEmail  Boolean  @default(false)
+  reminderSentAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case        Case?       @relation(fields: [caseId], references: [id])
+  client      Client?     @relation(fields: [clientId], references: [id])
+  task        Task?       @relation(fields: [taskId], references: [id])
+  intimation  Intimation? @relation(fields: [intimationId], references: [id])
+
+  @@index([tenantId])
+  @@index([dueAt])
+  @@index([caseId])
+  @@index([clientId])
+  @@index([taskId])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// TAREFAS (Kanban)
+// ============================================================
+
+enum TaskColumn {
+  BACKLOG
+  TODO
+  DOING
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  tenantId    String
+  title       String
+  description String?
+  column      TaskColumn @default(TODO)
+  priority    TaskPriority @default(MEDIA)
+  taskScore   Int        @default(0) // pontuacao calculada (urgencia x impacto)
+  position    Int        @default(0) // ordem dentro da coluna
+
+  caseId        String?
+  clientId      String?
+  intimationId  String?
+  assigneeId    String?
+  creatorId     String
+  taskTypeId    String? // catalogo de tarefas (herda pontuacao)
+
+  dueAt       DateTime?
+  doneAt      DateTime?
+  important   Boolean  @default(false)
+  urgent      Boolean  @default(false)
+  viewedAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  case        Case? @relation(fields: [caseId], references: [id])
+  client      Client? @relation(fields: [clientId], references: [id])
+  intimation  Intimation? @relation(fields: [intimationId], references: [id])
+  deadlines   Deadline[]
+  assignee    User? @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator     User  @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  @@index([tenantId])
+  @@index([column, position])
+  @@index([caseId])
+  @@index([clientId])
+  @@index([intimationId])
+  @@index([assigneeId])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// JURIDIQUÊS (rede social jurídica)
+// ============================================================
+
+enum RedeTesteVerificationType {
+  NONE
+  LAWYER
+  FIRM
+  INSTITUTION
+}
+
+enum RedeTesteReplyPolicy {
+  EVERYONE
+  VERIFIED
+  FOLLOWING
+  MENTIONED
+}
+
+enum RedeTesteProfessionalKind {
+  ADVOGADO
+  ESTAGIARIO
+  PROCURADOR
+  DEFENSOR
+  JUIZ
+  PROMOTOR
+  ESCRITORIO
+  ACADEMICO
+}
+
+enum RedeTesteProfileVisibility {
+  PUBLIC
+  FOLLOWERS_ONLY
+  PRIVATE
+}
+
+model RedeTesteProfile {
+  userId             String                     @id
+  tenantId           String
+  handle             String
+  displayName        String
+  bio                String?                    @db.VarChar(280)
+  bannerUrl          String?
+  website            String?                    @db.VarChar(100)
+  lawFirm            String?                    @db.VarChar(80)
+  professionalKind   RedeTesteProfessionalKind?
+  location           String?
+  practiceAreas      String[]                   @default([])
+  oabVerified        Boolean                    @default(false)
+  verificationType   RedeTesteVerificationType @default(NONE)
+  followersCount     Int                        @default(0)
+  followingCount     Int                        @default(0)
+  publicationsCount        Int                        @default(0)
+  birthDate                DateTime?                  @db.Date
+  birthDateYearVisibility  RedeTesteProfileVisibility @default(PUBLIC)
+  birthDateDayVisibility   RedeTesteProfileVisibility @default(PUBLIC)
+  settings                 Json?
+  onboardingCompleted      Boolean                    @default(false)
+  onboardingStep           Int                        @default(0)
+  onboardingUserType       String?
+  onboardingOabNumber      String?
+  onboardingOabState       String?
+  onboardingInstitution    String?
+  onboardingInterests      String[]                   @default([])
+  tourCompleted            Boolean                    @default(false)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  followRecommendations       RedeTesteFollowRecommendation[] @relation("JqRecsFor")
+  followRecommendationTargets RedeTesteFollowRecommendation[] @relation("JqRecTarget")
+
+  @@unique([handle])
+  @@index([tenantId])
+}
+
+/// JurisConnect — cache de "quem seguir"
+model RedeTesteFollowRecommendation {
+  userId            String
+  recommendedUserId String
+  similarityScore   Decimal  @db.Decimal(6, 2)
+  reason            String   @db.VarChar(200)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user        RedeTesteProfile @relation("JqRecsFor", fields: [userId], references: [userId], onDelete: Cascade)
+  recommended RedeTesteProfile @relation("JqRecTarget", fields: [recommendedUserId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, recommendedUserId])
+  @@index([userId, similarityScore(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+}
+
+enum RedeTestePublicationStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+model RedeTestePublication {
+  id              String                      @id @default(cuid())
+  tenantId        String
+  authorId        String
+  content         String                      @db.VarChar(560)
+  practiceArea    String?
+  isConfidential  Boolean                     @default(false)
+  allowGifReplies Boolean                     @default(true)
+  replyPolicy     RedeTesteReplyPolicy       @default(EVERYONE)
+  status          RedeTestePublicationStatus @default(PUBLISHED)
+  scheduledAt     DateTime?
+  courtId         String?
+  threadId        String?
+  threadPosition  Int?
+  threadRootId    String?
+  linkPreview     Json?
+  parentId        String?
+  quotedId        String?
+  communityId          String?
+  sourceIntimationId String?
+  poll                 Json?
+  isEdited        Boolean               @default(false)
+  editedAt        DateTime?
+  repliesCount    Int                   @default(0)
+  repostsCount    Int                   @default(0)
+  likesCount      Int                   @default(0)
+  bookmarksCount  Int                   @default(0)
+  viewsCount      Int                   @default(0)
+  isHighlighted   Boolean               @default(false)
+  createdAt       DateTime              @default(now())
+  deletedAt       DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author    User   @relation("JqAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  court     Court? @relation(fields: [courtId], references: [id], onDelete: SetNull)
+  community RedeTesteCommunity? @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  parent    RedeTestePublication?  @relation("JqReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies RedeTestePublication[] @relation("JqReplies")
+  quoted  RedeTestePublication?  @relation("JqQuotes", fields: [quotedId], references: [id], onDelete: SetNull)
+  quotes  RedeTestePublication[] @relation("JqQuotes")
+  threadRoot   RedeTestePublication?  @relation("JqThread", fields: [threadRootId], references: [id], onDelete: SetNull)
+  jurisPost    JurisPost?
+  threadParts  RedeTestePublication[] @relation("JqThread")
+  likes     RedeTesteLike[]
+  reposts   RedeTesteRepost[]
+  media     RedeTesteMedia[]
+  hashtags  RedeTestePublicationHashtag[]
+  mentions  RedeTesteMention[]
+  notifs    RedeTesteNotification[]
+  reports   RedeTesteReport[]
+  jqPoll    RedeTestePoll?
+  dmShares  RedeTesteMessage[] @relation("JqDmSharedPublication")
+  bookmarks RedeTesteBookmark[]
+  views     RedeTesteView[]
+  sourceIntimation Intimation? @relation(fields: [sourceIntimationId], references: [id], onDelete: SetNull)
+  score     RedeTestePublicationScore?
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([sourceIntimationId])
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([authorId, isHighlighted])
+  @@index([authorId, status, scheduledAt])
+  @@index([parentId])
+  @@index([communityId])
+  @@index([courtId])
+  @@index([threadId, threadPosition])
+  @@index([threadRootId])
+  @@index([deletedAt])
+  @@index([status, scheduledAt])
+}
+
+model RedeTestePoll {
+  id            String   @id @default(cuid())
+  publicationId String   @unique
+  durationDays  Int      @default(1)
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  options     RedeTestePollOption[]
+  votes       RedeTestePollVote[]
+
+  @@index([expiresAt])
+}
+
+model RedeTestePollOption {
+  id         String @id @default(cuid())
+  pollId     String
+  text       String @db.VarChar(80)
+  position   Int
+  votesCount Int    @default(0)
+
+  poll  RedeTestePoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes RedeTestePollVote[]
+
+  @@unique([pollId, position])
+  @@index([pollId])
+}
+
+model RedeTesteLinkPreviewCache {
+  id          String   @id @default(cuid())
+  urlHash     String   @unique
+  url         String
+  title       String?
+  description String?
+  image       String?
+  siteName    String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+enum RedeTesteCommunityRole {
+  ADMIN
+  MEMBER
+}
+
+model RedeTesteCommunity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  slug         String
+  name         String
+  description  String?  @db.VarChar(500)
+  isPrivate    Boolean  @default(false)
+  createdById  String
+  membersCount Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy    User                      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  members      RedeTesteCommunityMember[]
+  publications RedeTestePublication[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model RedeTesteCommunityMember {
+  communityId String
+  userId      String
+  role        RedeTesteCommunityRole @default(MEMBER)
+  joinedAt    DateTime                @default(now())
+
+  community RedeTesteCommunity @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([communityId, userId])
+  @@index([userId])
+}
+
+model RedeTesteLike {
+  userId        String
+  publicationId String
+  createdAt     DateTime @default(now())
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, publicationId])
+}
+
+model RedeTesteRepost {
+  userId        String
+  publicationId String
+  createdAt     DateTime @default(now())
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, publicationId])
+}
+
+model RedeTesteBookmark {
+  userId        String
+  publicationId String
+  createdAt     DateTime @default(now())
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, publicationId])
+  @@index([userId])
+}
+
+model RedeTesteView {
+  id            String   @id @default(cuid())
+  publicationId String
+  userId        String?
+  sessionId     String?
+  createdAt     DateTime @default(now())
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([publicationId, createdAt])
+  @@index([userId, publicationId, createdAt])
+  @@index([sessionId, publicationId, createdAt])
+}
+
+/// JurisRank 2026 — pontuação do feed "Para você"
+model RedeTestePublicationScore {
+  publicationId     String   @id
+  authorId          String
+  authorityScore    Decimal  @db.Decimal(5, 2)
+  engagementScore   Decimal  @db.Decimal(5, 2)
+  contentDepthScore Decimal  @db.Decimal(5, 2)
+  baseScore         Decimal  @db.Decimal(6, 2)
+  finalScore        Decimal  @db.Decimal(6, 2)
+  updatedAt         DateTime @updatedAt
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([finalScore(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+}
+
+model RedeTesteFollow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("JqFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("JqFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model RedeTesteReferral {
+  id             String   @id @default(cuid())
+  tenantId       String
+  referrerUserId String
+  referredUserId String   @unique
+  source         String   @default("profile_follow")
+  createdAt      DateTime @default(now())
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  referrer User   @relation("JqReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User   @relation("JqReferred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, referredUserId])
+  @@index([referrerUserId])
+}
+
+model RedeTestePollVote {
+  id           String   @id @default(cuid())
+  pollId       String
+  pollOptionId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  poll       RedeTestePoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollOption RedeTestePollOption @relation(fields: [pollOptionId], references: [id], onDelete: Cascade)
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([pollOptionId])
+}
+
+enum RedeTesteMediaType {
+  IMAGE
+  VIDEO
+  GIF
+}
+
+enum RedeTesteNotificationType {
+  LIKE
+  REPLY
+  MENTION
+  FOLLOW
+  REPOST
+  FOLLOW_REQUEST
+  POLL_ENDING
+  SCHEDULED_PUBLISHED
+  COMMUNITY_INVITE
+  SYSTEM
+}
+
+model RedeTesteMedia {
+  id            String              @id @default(cuid())
+  publicationId String?
+  tenantId      String
+  uploaderId    String
+  type          RedeTesteMediaType @default(IMAGE)
+  url           String
+  order         Int                 @default(0)
+  createdAt     DateTime            @default(now())
+
+  publication RedeTestePublication? @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+  uploader    User                   @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  @@index([publicationId])
+  @@index([tenantId])
+}
+
+model RedeTesteHashtag {
+  id                String   @id @default(cuid())
+  tag               String   @unique
+  publicationsCount Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  publications RedeTestePublicationHashtag[]
+}
+
+model RedeTestePublicationHashtag {
+  publicationId String
+  hashtagId     String
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  hashtag     RedeTesteHashtag     @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([publicationId, hashtagId])
+  @@index([hashtagId])
+}
+
+model RedeTesteMention {
+  publicationId    String
+  mentionedUserId  String
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  mentioned   User                  @relation("JqMentioned", fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@id([publicationId, mentionedUserId])
+  @@index([mentionedUserId])
+}
+
+model RedeTesteNotification {
+  id            String                     @id @default(cuid())
+  tenantId      String
+  userId        String
+  type          RedeTesteNotificationType
+  actorId       String?
+  publicationId String?
+  readAt        DateTime?
+  createdAt     DateTime                   @default(now())
+
+  user        User                   @relation("JqNotifRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?                  @relation("JqNotifActor", fields: [actorId], references: [id], onDelete: SetNull)
+  publication RedeTestePublication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@index([tenantId])
+  @@index([readAt])
+}
+
+model RedeTesteNotificationPreference {
+  userId String @id
+
+  likesInApp    Boolean @default(true)
+  likesEmail    Boolean @default(false)
+  likesPush     Boolean @default(false)
+
+  commentsInApp Boolean @default(true)
+  commentsEmail Boolean @default(true)
+  commentsPush  Boolean @default(true)
+
+  mentionsInApp Boolean @default(true)
+  mentionsEmail Boolean @default(true)
+  mentionsPush  Boolean @default(true)
+
+  followersInApp Boolean @default(true)
+  followersEmail Boolean @default(true)
+  followersPush  Boolean @default(true)
+
+  repostsInApp Boolean @default(true)
+  repostsEmail Boolean @default(false)
+  repostsPush  Boolean @default(false)
+
+  weeklyDigestEmail Boolean @default(false)
+  marketingOptOut   Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RedeTestePushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @db.Text
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+}
+
+model RedeTesteEmailEngagement {
+  userId   String
+  template String
+  sentAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, template])
+  @@index([sentAt])
+}
+
+model RedeTesteBlock {
+  id        String   @id @default(cuid())
+  tenantId  String
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("JqBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("JqBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([tenantId])
+  @@index([blockerId])
+}
+
+model RedeTesteProfileMute {
+  muterId   String
+  mutedId   String
+  createdAt DateTime @default(now())
+
+  muter User @relation("JqMuter", fields: [muterId], references: [id], onDelete: Cascade)
+  muted User @relation("JqMuted", fields: [mutedId], references: [id], onDelete: Cascade)
+
+  @@id([muterId, mutedId])
+  @@index([mutedId])
+}
+
+model RedeTesteProfileReport {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  reason         String   @db.VarChar(40)
+  details        String?  @db.VarChar(500)
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+
+  reporter User @relation("JqProfileReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("JqProfileReported", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([reportedUserId, status])
+}
+
+model RedeTesteReport {
+  id            String   @id @default(cuid())
+  tenantId      String
+  reporterId    String
+  publicationId String
+  reason        String   @db.VarChar(500)
+  createdAt     DateTime @default(now())
+
+  reporter    User                  @relation("JqReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([publicationId])
+  @@index([reporterId])
+}
+
+model RedeTesteConversation {
+  id        String   @id @default(cuid())
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  RedeTesteConversationMember[]
+  messages RedeTesteMessage[]
+
+  @@index([tenantId])
+  @@index([tenantId, updatedAt(sort: Desc)])
+}
+
+model RedeTesteConversationMember {
+  conversationId String
+  userId         String
+  tenantId       String
+  lastReadAt     DateTime?
+  archivedAt     DateTime?
+  deletedAt      DateTime?
+  joinedAt       DateTime @default(now())
+
+  conversation RedeTesteConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@index([userId, archivedAt])
+  @@index([userId, deletedAt])
+  @@index([tenantId])
+}
+
+model RedeTesteMessage {
+  id                  String   @id @default(cuid())
+  conversationId      String
+  senderId            String
+  body                String   @db.VarChar(2000)
+  sharedPublicationId String?
+  createdAt           DateTime @default(now())
+
+  conversation      RedeTesteConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender            User                    @relation("JqMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  sharedPublication RedeTestePublication?  @relation("JqDmSharedPublication", fields: [sharedPublicationId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([sharedPublicationId])
+}
+
+// ============================================================
+// AUDIT LOG (Art. 34 EOAB)
+// ============================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  userId      String?
+  action      String   // ex: client.create, case.update
+  entityType  String   // Client, Case, Intimation, etc.
+  entityId    String?
+  changes     Json?    // diff before/after
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant? @relation(fields: [tenantId], references: [id])
+  user        User? @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// JURISDIÇÃO — blog pessoal estilo Tumblr clássico (2010), app à parte
+// ============================================================
+
+enum JurisdicaoPostType {
+  TEXT
+  PHOTO
+  QUOTE
+  LINK
+  CHAT
+  VIDEO
+  AUDIO
+}
+
+model JurisdicaoBlog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  userId        String   @unique
+  handle        String   @unique
+  title         String   @db.VarChar(120)
+  description   String?  @db.VarChar(1000)
+  avatarUrl     String?
+  headerUrl     String?
+  bgColor       String   @default("#34465b")
+  textColor     String   @default("#f4f1ea")
+  accentColor   String   @default("#7fa8d4")
+  bgImageUrl    String?
+  fontFamily    String   @default("serif")
+  radioUrl      String?  @db.VarChar(2000)
+  radioLabel    String?  @db.VarChar(120)
+  radioAutoplay Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts     JurisdicaoPost[]
+  followers JurisdicaoFollow[]
+
+  @@index([tenantId])
+}
+
+model JurisdicaoPost {
+  id                  String             @id @default(cuid())
+  blogId              String
+  type                JurisdicaoPostType @default(TEXT)
+  title               String?            @db.VarChar(200)
+  body                String?            @db.Text
+  imageUrl            String?
+  imageUrls           String[]           @default([])
+  audioUrl            String?            @db.VarChar(2000)
+  quoteSource         String?            @db.VarChar(200)
+  linkUrl             String?            @db.VarChar(2000)
+  videoUrl            String?            @db.VarChar(2000)
+  tags                String[]           @default([])
+  likesCount          Int                @default(0)
+  reblogsCount        Int                @default(0)
+  rebloggedFromHandle String?
+  rebloggedFromTitle  String?
+  sourcePostId        String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  blog  JurisdicaoBlog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  likes JurisdicaoLike[]
+
+  @@index([blogId, createdAt(sort: Desc)])
+}
+
+model JurisdicaoLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post JurisdicaoPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model JurisdicaoFollow {
+  id             String   @id @default(cuid())
+  followerUserId String
+  blogId         String
+  createdAt      DateTime @default(now())
+
+  blog JurisdicaoBlog @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([followerUserId, blogId])
+  @@index([blogId])
+}
+
+// ============================================================
+// CRM, CATÁLOGO DE TAREFAS E PIPELINE (paridade ADVBOX)
+// ============================================================
+
+enum ProcessPhase {
+  TODAS
+  MARKETING
+  NEGOCIACAO
+  CONSULTORIA
+  ADMINISTRATIVO
+  JUDICIAL
+  RECURSAL
+  EXECUCAO_COBRANCA
+  RH_FINANCEIRO
+  ARQUIVAMENTO
+}
+
+enum TaskComplexity {
+  SIMPLES
+  MEDIA
+  MEDIA_ALTA
+  ALTA
+  ALTISSIMA
+}
+
+enum TaskAvgTime {
+  MIN_8
+  MIN_15
+  MIN_30
+  HORA_1
+  HORAS_2_MAIS
+}
+
+// Catálogo de tarefas do escritório → pontuação derivada de complexidade × tempo médio
+model TaskType {
+  id           String         @id @default(cuid())
+  tenantId     String
+  name         String
+  phase        ProcessPhase   @default(TODAS)
+  complexity   TaskComplexity @default(MEDIA)
+  avgTime      TaskAvgTime    @default(MIN_30)
+  points       Int            @default(0)
+  manualPoints Boolean        @default(false)
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([phase])
+}
+
+model ActionGroup {
+  id                String   @id @default(cuid())
+  tenantId          String
+  name              String
+  responsibleUserId String?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionTypes ActionType[]
+
+  @@index([tenantId])
+}
+
+model ActionType {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  actionGroupId String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actionGroup ActionGroup? @relation(fields: [actionGroupId], references: [id], onDelete: SetNull)
+  crmCards    CrmCard[]
+
+  @@index([tenantId])
+  @@index([actionGroupId])
+}
+
+// Etapas customizáveis (subdivisões das fases) → colunas do CRM
+model Stage {
+  id             String       @id @default(cuid())
+  tenantId       String
+  name           String
+  classification String?
+  phase          ProcessPhase @default(TODAS)
+  position       Int          @default(0)
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  crmCards CrmCard[]
+
+  @@index([tenantId])
+  @@index([position])
+}
+
+model CrmCard {
+  id                String    @id @default(cuid())
+  tenantId          String
+  stageId           String
+  title             String?
+  clientId          String?
+  caseId            String?
+  responsibleUserId String?
+  actionTypeId      String?
+  value             Decimal?  @db.Decimal(15, 2)
+  position          Int       @default(0)
+  stagnatedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stage      Stage       @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  actionType ActionType? @relation(fields: [actionTypeId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([stageId, position])
+  @@index([deletedAt])
+}
+
+// ============================================================
+// GESTÃO DE CONTRATOS (planilha legado → Postgres)
+// ============================================================
+
+// Exercício anual — fechar ano arquiva consulta (somente leitura)
+model ContractPeriod {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  ano                Int
+  fechadoEm          DateTime?
+  arquivadoPorUserId String?
+  arquivadoPorNome   String    @default("")
+  reabertoPorUserId  String?
+  reabertoPorNome    String    @default("")
+  reabertoEm         DateTime?
+  metaConversao      Int?      // meta de conversão % (0–100)
+  createdAt          DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, ano])
+  @@index([tenantId])
+}
+
+model ContractRecord {
+  id              String    @id @default(cuid())
+  tenantId        String
+  ano             Int       @default(2026) // exercício (ex.: 2026, 2027)
+  cliente         String
+  tipoAcao        String    @default("")
+  origem          String    @default("")
+  mes             String    @default("")
+  assinou         String    @default("NÃO") // SIM | NÃO
+  laudo           String    @default("NÃO")
+  /** Desistência após assinatura — débito contabilizado no mês de dataDesistencia. */
+  desistiu        String    @default("NÃO") // SIM | NÃO
+  dataDesistencia DateTime?
+  dataAssinatura  DateTime?
+  dataEntrada     DateTime?
+  obs             String    @default("")
+  link            String    @default("")
+  // Dados opcionais para importação no LinkLei
+  linkleiCpf            String    @default("")
+  linkleiRg             String    @default("")
+  linkleiOrgaoExpeditor String    @default("")
+  linkleiTelefone1      String    @default("")
+  linkleiTelefone2      String    @default("")
+  linkleiEmail          String    @default("")
+  linkleiDataNascimento DateTime?
+  linkleiNomeMae        String    @default("")
+  linkleiNomePai        String    @default("")
+  linkleiProfissao      String    @default("")
+  linkleiEstadoCivil    String    @default("")
+  linkleiNaturalidade   String    @default("")
+  linkleiNacionalidade  String    @default("")
+  linkleiCtps           String    @default("")
+  linkleiPis            String    @default("")
+  linkleiCep            String    @default("")
+  linkleiLogradouro     String    @default("")
+  linkleiNumero         String    @default("")
+  linkleiComplemento    String    @default("")
+  linkleiBairro         String    @default("")
+  linkleiCidade         String    @default("")
+  linkleiUf             String    @default("")
+  linkleiEnviado        Boolean   @default(false)
+  linkleiEnviadoEm      DateTime?
+  responsavelUserId     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  responsavel    User?                  @relation("ContractResponsavel", fields: [responsavelUserId], references: [id], onDelete: SetNull)
+  medicalReports MedicalReportRecord[]
+
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, ano])
+  @@index([tenantId, responsavelUserId])
+}
+
+/// Destinatários de alertas WhatsApp (contratos / [removido]).
+model GestaoAlertRecipient {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  userId              String
+  phone               String   @default("")
+  active              Boolean  @default(true)
+  ruleSemAssinatura   Boolean  @default(false)
+  ruleSemPastaDrive   Boolean  @default(false)
+  ruleLinkleiPendente Boolean  @default(false)
+  ruleSemLaudo          Boolean  @default(false)
+  ruleEntradaAntiga     Boolean  @default(false)
+  ruleLaudoNaoAgendado  Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+}
+
+// Laudos médicos — aba paralela à gestão de contratos (escritório [removido])
+model MedicalReportRecord {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  ano                 Int       @default(2026)
+  contractRecordId    String?   // vínculo opcional ao contrato de origem
+  cliente             String
+  mes                 String    @default("")
+  valorTotal          Decimal   @default(0) @db.Decimal(12, 2) // custo total do laudo
+  valorCliente        Decimal   @default(0) @db.Decimal(12, 2) // "pagará o laudo?" — valor que o cliente paga
+  valorEscritorio     Decimal   @default(0) @db.Decimal(12, 2) // participação do escritório (quanto o escritório paga)
+  dataSolicitacao     DateTime?
+  dataEntrega         DateTime?
+  status              String    @default("PENDENTE") // PENDENTE | SOLICITADO | EM_ANALISE | ENTREGUE
+  obs                 String    @default("")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contract ContractRecord? @relation(fields: [contractRecordId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, ano])
+  @@index([contractRecordId])
+}
+
+/// Controle operacional (planilha judicial / administrativo — [removido]).
+enum OperationalChannel {
+  JUDICIAL
+  ADMINISTRATIVO
+}
+
+model OperationalEntry {
+  id                  String             @id @default(cuid())
+  tenantId            String
+  channel             OperationalChannel
+  position            Int                @default(0)
+  processRef          String             @default("")
+  clientLabel         String
+  lastMovement        String             @default("") @db.Text
+  providence          String             @default("") @db.Text
+  providenceResponse  String             @default("") @db.Text
+  responsavel         String             @default("")
+  status              String             @default("")
+  dueDate             DateTime?
+  createdByUserId     String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  deletedAt           DateTime?
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation("OperationalEntryCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, channel, deletedAt])
+  @@index([tenantId, position])
+}
+
+// Requerimentos/tarefas do INSS (portal atendimento.inss.gov.br via extensão)
+// Sincronizados no navegador autenticado; upsert por protocolo.
+model InssRequerimento {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  protocolo             String
+  status                String    @default("PENDENTE") // PENDENTE | CANCELADA | CONCLUIDA | CUMPRIMENTO_DE_EXIGENCIA
+  cpfRequerente         String    @default("") // string p/ preservar zeros à esquerda
+  nomeRequerente        String    @default("")
+  nomeServico           String    @default("")
+  siglaServico          String    @default("")
+  nomeUnidade           String    @default("")
+  dataCriacao           DateTime?
+  dataUltimaAtualizacao DateTime?
+  teorExigencia         String?   @db.Text // teor da exigência (capturado em "Detalhar tarefa")
+  prazoExigencia        DateTime? // prazo p/ cumprir a exigência, quando disponível
+  readAt                DateTime? // marcado como lido (null = nova/não lida)
+  raw                   Json?
+  detalhe               Json?     // payload bruto do "Detalhar tarefa"
+  syncedByUserId        String?
+  lastSyncedAt          DateTime  @default(now())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  tenant  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eventos InssStatusEvent[]
+
+  @@unique([tenantId, protocolo])
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model InssStatusEvent {
+  id             String   @id @default(cuid())
+  tenantId       String
+  requerimentoId String
+  protocolo      String
+  statusAnterior String? // null = primeiro registro
+  statusNovo     String
+  createdAt      DateTime @default(now())
+
+  requerimento InssRequerimento @relation(fields: [requerimentoId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([requerimentoId])
+}
+
+enum StickyNoteVisibility {
+  PRIVATE // só o autor
+  TENANT // todos do escritório
+  USER // um usuário específico (targetUserId)
+}
+
+// Notas adesivas (observações pessoais) com visibilidade configurável.
+model StickyNote {
+  id           String               @id @default(cuid())
+  tenantId     String
+  authorId     String
+  authorName   String               @default("")
+  body         String               @db.Text
+  color        String               @default("amber") // amber | sky | emerald | rose | violet
+  visibility   StickyNoteVisibility @default(PRIVATE)
+  targetUserId String? // quando visibility = USER
+  pinned       Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  layouts      StickyNoteLayout[]
+
+  @@index([tenantId])
+  @@index([tenantId, authorId])
+  @@index([tenantId, targetUserId])
+}
+
+/** Posição e estado recolhido da nota — por usuário (cada um vê onde deixou). */
+model StickyNoteLayout {
+  id        String   @id @default(cuid())
+  tenantId  String
+  noteId    String
+  userId    String
+  posX      Float    @default(80)
+  posY      Float    @default(100)
+  collapsed Boolean  @default(false)
+  zIndex    Int      @default(1)
+  updatedAt DateTime @updatedAt
+  note      StickyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, userId])
+  @@index([tenantId, userId])
+}
+
+// Certificado A1 + fila de sync INSS Digital (worker Playwright — sem Chrome do usuário)
+model LawyerCertificate {
+  id          String    @id @default(cuid())
+  tenantId    String
+  userId      String
+  certId      String    @unique
+  /** "A1" (arquivo .pfx no servidor) ou "A3" (token físico — sem chave no servidor). */
+  certType    String    @default("A1")
+  /** Número de série do token A3 (apenas referência; nada sigiloso). */
+  serial      String?
+  /** A1 apenas: caminho do .pfx no vault. Nulo para A3. */
+  pfxPath     String?
+  /** A1 apenas: senha do .pfx cifrada (AES-256-GCM). Nulo para A3. */
+  passwordEnc String?
+  subjectCn   String?
+  validUntil  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  revokedAt   DateTime?
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs   InssDigitalSyncJob[]
+
+  @@index([tenantId, userId])
+}
+
+model InssDigitalSyncJob {
+  id            String    @id @default(cuid())
+  tenantId      String
+  certificateId String
+  status        String    @default("PENDING")
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  error         String?   @db.Text
+  imported      Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  certificate LawyerCertificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([certificateId])
+}
+
+// ============================================================
+// MODELOS DE DOCUMENTOS (paridade ADVBOX)
+// ============================================================
+
+enum DocumentCategory {
+  CONTRATO
+  PETICAO
+  RECURSO
+  DOCUMENTO
+}
+
+model DocumentTemplate {
+  id          String           @id @default(cuid())
+  tenantId    String? // null = modelo global (biblioteca pública)
+  title       String
+  contentHtml String           @db.Text
+  contentJson Json?            // { cabecalho, corpo, rodape } TipTap JSON
+  category    DocumentCategory @default(DOCUMENTO)
+  isPublic    Boolean          @default(false)
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+
+  tenant   Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions DocumentTemplateVersion[]
+
+  @@index([tenantId])
+  @@index([isPublic])
+  @@index([deletedAt])
+}
+
+model DocumentTemplateVersion {
+  id         String   @id @default(cuid())
+  templateId String
+  contentJson Json
+  label      String?
+  authorId   String?
+  authorName String?
+  archivedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, createdAt])
+}
+
+// ============================================================
+// ORIGENS DE PESSOAS + METAS POR GRUPO DE AÇÃO (paridade ADVBOX)
+// ============================================================
+
+model PersonOrigin {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model Goal {
+  id               String   @id @default(cuid())
+  tenantId         String
+  actionGroupId    String
+  mesReferencia    String   // "YYYY-MM"
+  metaFechamentos  Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, actionGroupId, mesReferencia])
+  @@index([tenantId])
+}
+
+// ============================================================
+// PARCEIROS, WORKFLOW, NOTIFICAÇÕES, INBOX, TERMOS, TIMES
+// ============================================================
+
+enum PartnerDemandStatus {
+  PENDENTE_ESCRITORIO
+  PENDENTE_PARCEIRO
+  CONCLUIDA
+}
+
+enum NotificationRuleEvent {
+  NOVO_CLIENTE
+  NOVO_PROCESSO
+  COMPARTILHAMENTO_PARCEIRO
+  INTIMACAO_JUDICIAL
+}
+
+model Partner {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  oabNumber String?
+  oabUf     String?  @db.VarChar(2)
+  email     String?
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shares PartnerCaseShare[]
+
+  @@index([tenantId])
+}
+
+model PartnerCaseShare {
+  id        String              @id @default(cuid())
+  tenantId  String
+  partnerId String
+  caseId    String?
+  title     String?
+  status    PartnerDemandStatus @default(PENDENTE_ESCRITORIO)
+  notes     String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+}
+
+model Workflow {
+  id             String   @id @default(cuid())
+  tenantId       String
+  name           String
+  triggerStageId String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  steps  WorkflowStep[]
+
+  @@index([tenantId])
+}
+
+model WorkflowStep {
+  id                String @id @default(cuid())
+  workflowId        String
+  taskTypeId        String?
+  title             String
+  responsibleUserId String?
+  prazoDias         Int    @default(3)
+  ordem             Int    @default(0)
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+}
+
+model InboxSection {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  position  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model MonitoredTerm {
+  id        String   @id @default(cuid())
+  tenantId  String
+  term      String
+  tipo      String   @default("NOME") // OAB, NOME, EMPRESA
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model TenantNotificationRule {
+  tenantId  String
+  event     NotificationRuleEvent
+  userIds   String   @default("[]") // JSON array de user ids
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, event])
+}
+
+model Squad {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members SquadMember[]
+
+  @@index([tenantId])
+}
+
+model SquadMember {
+  squadId String
+  userId  String
+
+  squad Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+
+  @@id([squadId, userId])
+}
+
+model TenantApiKey {
+  id         String    @id @default(cuid())
+  tenantId   String
+  name       String
+  keyPrefix  String    // primeiros 8 chars para identificação
+  keyHash    String    // bcrypt do token completo
+  lastUsedAt DateTime?
+  usageCount Int       @default(0)
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model TenantWebhook {
+  id        String   @id @default(cuid())
+  tenantId  String
+  url       String
+  events    String   @default("[]") // JSON: ["NOVO_CLIENTE", ...]
+  secret    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// --- Jurisprudência Rede Teste (motor tipo Jusbrasil) ---
+
+enum JurisFonte {
+  OFICIAL_DJEN
+  OFICIAL_DATAJUD
+  OFICIAL_STF
+  OFICIAL_STJ
+  OFICIAL_TST
+  OFICIAL_TRIBUNAL
+  EXTENSAO_JUSBRASIL
+}
+
+enum JurisDocStatus {
+  ATIVO
+  ANONIMIZADO
+  REMOVIDO
+}
+
+model JurisDocument {
+  id                 String         @id @default(cuid())
+  docIdExterno       String?
+  fonte              JurisFonte
+  fonteUrl           String?
+  slug               String         @unique
+  artifact           String         @default("JURISPRUDENCIA")
+  tribunal           String?
+  grau               String?
+  orgaoJulgador      String?
+  tipoDecisao        String?
+  classeProcessual   String?
+  numeroProcesso     String?
+  relator            String?
+  presidente         String?
+  dataJulgamento     DateTime?      @db.Date
+  dataPublicacao     DateTime?      @db.Date
+  titulo             String
+  ementa             String?        @db.Text
+  decisao            String?        @db.Text
+  fatos              String?        @db.Text
+  teseJuridica       String?        @db.Text
+  assunto            String?
+  inteiroTeorUrl     String?
+  readingTime        Int?
+  envolvidos         Json?
+  conteudoHash       String
+  status             JurisDocStatus @default(ATIVO)
+  capturadoEm        DateTime       @default(now())
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  tabs               JurisTab[]
+  anexos             JurisAnexo[]
+  referenciasLei     JurisReferenciaLei[]
+  referenciasJuris   JurisReferenciaJuris[] @relation("JurisRefFrom")
+  referenciasPara    JurisReferenciaJuris[] @relation("JurisRefTo")
+  publicacoes        JurisPublicacaoDiario[]
+  posts              JurisPost[]
+
+  @@unique([fonte, docIdExterno])
+  @@index([tribunal])
+  @@index([dataJulgamento])
+  @@index([status])
+  @@index([conteudoHash])
+}
+
+model JurisTab {
+  id         String   @id @default(cuid())
+  documentId String
+  label      String
+  url        String?
+
+  document JurisDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model JurisAnexo {
+  id         String   @id @default(cuid())
+  documentId String
+  titulo     String?
+  url        String
+  tipo       String?
+
+  document JurisDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model JurisReferenciaLei {
+  id         String  @id @default(cuid())
+  documentId String
+  texto      String
+  url        String?
+
+  document JurisDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model JurisReferenciaJuris {
+  id                String  @id @default(cuid())
+  documentId        String
+  docRelacionadoId  String?
+  titulo            String?
+  url               String?
+
+  document     JurisDocument  @relation("JurisRefFrom", fields: [documentId], references: [id], onDelete: Cascade)
+  relacionado  JurisDocument? @relation("JurisRefTo", fields: [docRelacionadoId], references: [id], onDelete: SetNull)
+
+  @@index([documentId])
+}
+
+model JurisPublicacaoDiario {
+  id         String    @id @default(cuid())
+  documentId String
+  diario     String?
+  data       DateTime? @db.Date
+  pagina     String?
+
+  document JurisDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model JurisTribunal {
+  id     String  @id @default(cuid())
+  sigla  String  @unique
+  nome   String
+  grau   String?
+  regiao String?
+
+  @@index([sigla])
+}
+
+model JurisAssunto {
+  id       String  @id @default(cuid())
+  nome     String
+  parentId String?
+
+  parent   JurisAssunto?  @relation("JurisAssuntoTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children JurisAssunto[] @relation("JurisAssuntoTree")
+
+  @@index([parentId])
+}
+
+model JurisPost {
+  id            String   @id @default(cuid())
+  publicationId String   @unique
+  documentId    String
+  titulo        String?
+  isArquivado   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  publication RedeTestePublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+  document    JurisDocument         @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+}
+
+model JurisIngestJob {
+  id         String    @id @default(cuid())
+  fonte      JurisFonte
+  status     String    @default("PENDING") // PENDING | RUNNING | DONE | FAILED
+  params     Json?
+  result     Json?
+  error      String?   @db.Text
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([status])
+  @@index([fonte])
+}

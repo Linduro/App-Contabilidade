@@ -338,6 +338,15 @@ export function ProgressionDashboard({ tourEnabled = false }: { tourEnabled?: bo
               <Button
                 variant="outline"
                 size="sm"
+                asChild
+                className="shrink-0 max-md:min-h-11"
+              >
+                <Link href="/dashboard/rede-teste/">Rede Teste</Link>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSignOut}
                 className="shrink-0 text-muted-foreground border-border/60 hover:text-foreground max-md:w-full max-md:min-h-11"
                 title="Sair da conta"

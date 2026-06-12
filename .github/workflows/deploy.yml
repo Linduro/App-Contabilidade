@@ -53,6 +53,7 @@ jobs:
           NEXT_PUBLIC_DATAJUD_PROXY_URL: ${{ vars.DATAJUD_PROXY_URL || '' }}
           NEXT_PUBLIC_AFS_API_URL: ${{ vars.AFS_API_URL || '' }}
           NEXT_PUBLIC_AFS_MARKET_API_URL: ${{ vars.AFS_MARKET_API_URL || '' }}
+          NEXT_PUBLIC_REDE_TESTE_URL: ${{ vars.REDE_TESTE_URL || '' }}
         run: npm run build
 
       - name: Install networking-web dependencies

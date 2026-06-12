@@ -1,0 +1,478 @@
+/* Rede Teste theme (copiado do módulo social, sem AdvForte) */
+.rt-portal-theme.rt-light {
+  --rt-primary: #1b2a4e;
+  --rt-on-primary: #ffffff;
+  --rt-accent: #c9a96e;
+  --rt-bg: #e8eaed;
+  --rt-surface: #f3f4f6;
+  --rt-text: #3d4451;
+  --rt-muted: #6b7280;
+  --rt-border: #d1d5db;
+  --rt-like: #e0245e;
+  --rt-repost: #17bf63;
+  --rt-reply: #1d9bf0;
+}
+
+/* Juridiquês — escuro padrão (quase preto) */
+[data-rede-teste].rt-theme.rt-dark,
+html.rt-portal-theme.rt-dark {
+  --rt-primary: #f0ede8;
+  --rt-on-primary: #0f1419;
+  --rt-accent: #d4cfc4;
+  --rt-bg: #0f1419;
+  --rt-surface: #16181c;
+  --rt-text: #e8eaed;
+  --rt-muted: #8b939f;
+  --rt-border: #23262e;
+  --rt-like: #f91880;
+  --rt-repost: #00ba7c;
+  --rt-reply: #1d9bf0;
+  --jq-primary: var(--rt-primary);
+  --jq-on-primary: var(--rt-on-primary);
+  --jq-accent: var(--rt-accent);
+  --jq-bg: var(--rt-bg);
+  --jq-surface: var(--rt-surface);
+  --jq-text: var(--rt-text);
+  --jq-muted: var(--rt-muted);
+  --jq-border: var(--rt-border);
+  --jq-like: var(--rt-like);
+  --jq-repost: var(--rt-repost);
+  --jq-reply: var(--rt-reply);
+}
+
+/* Portais Radix (dialog, dropdown, popover) fora do shell Juridiquês */
+html.rt-portal-theme [data-slot="dropdown-menu-content"],
+html.rt-portal-theme [data-slot="popover-content"] {
+  background-color: var(--rt-bg) !important;
+  color: var(--rt-text) !important;
+  border-color: var(--rt-border) !important;
+}
+
+html.rt-portal-theme [data-sonner-toast] {
+  background: var(--rt-surface) !important;
+  color: var(--rt-text) !important;
+  border-color: var(--rt-border) !important;
+}
+
+[data-rede-teste] .rt-btn-outline {
+  border-color: var(--rt-border);
+  background: var(--rt-surface);
+  color: var(--rt-text);
+}
+
+[data-rede-teste] .rt-btn-outline:hover {
+  background: color-mix(in srgb, var(--rt-surface) 85%, var(--rt-text));
+}
+
+/* Botões 'outline' do shadcn dentro do Juridiquês usam o token AdvForte (bg-background),
+   o que no tema escuro resultava em fundo branco com texto branco. Forçamos os tokens do tema. */
+[data-rede-teste] [data-slot="button"].bg-background:not(.bg-white) {
+  background: var(--rt-surface);
+  color: var(--rt-text);
+  border-color: var(--rt-border);
+}
+[data-rede-teste] [data-slot="button"].bg-background:not(.bg-white):hover {
+  background: color-mix(in srgb, var(--rt-surface) 85%, var(--rt-text));
+  color: var(--rt-text);
+}
+
+[data-rede-teste] em-emoji-picker,
+[data-rede-teste] .emoji-mart {
+  --em-rgb-background: var(--rt-bg);
+  --em-rgb-color: var(--rt-text);
+  --em-rgb-input: var(--rt-surface);
+}
+
+/* Scrollbar com cores do tema ativo do Juridiquês */
+[data-rede-teste] * {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--rt-muted) 55%, transparent) var(--rt-surface);
+}
+
+[data-rede-teste] *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-rede-teste] *::-webkit-scrollbar-track {
+  background: var(--rt-surface);
+}
+
+[data-rede-teste] *::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--rt-muted) 55%, transparent);
+  border-radius: 999px;
+  border: 2px solid var(--rt-surface);
+}
+
+[data-rede-teste] *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--rt-text) 35%, var(--rt-muted));
+}
+
+/* Juridiquês — layout 3 colunas estilo X (scroll único da janela) */
+[data-rede-teste].rt-theme {
+  overflow: visible;
+}
+
+.rt-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  align-items: stretch;
+  overflow: visible;
+}
+
+@media (min-width: 1024px) {
+  /* Colunas laterais coladas nos limites da tela; feed ocupa o restante (mais largo). */
+  .rt-layout {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr) clamp(300px, 22vw, 360px);
+    gap: 0;
+    align-items: start;
+    justify-content: stretch;
+    overflow: visible;
+    padding-inline: 12px;
+  }
+
+  /* Home agora também usa o feed largo (1fr) em vez do limite fixo X-like. */
+  .rt-layout--home {
+    grid-template-columns: 248px minmax(0, 1fr) clamp(300px, 22vw, 360px);
+  }
+
+  .rt-layout--no-right-rail {
+    grid-template-columns: 248px minmax(0, 1fr);
+    max-width: 100%;
+  }
+}
+
+.rt-sidebar-left {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  /* Menu fixo dentro da viewport, sem rolagem própria (conteúdo compactado p/ caber). */
+  .rt-sidebar-left {
+    display: block;
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100dvh;
+  }
+  .rt-sidebar-left .rt-sidebar-nav {
+    height: 100dvh;
+  }
+}
+
+.rt-feed-column {
+  min-width: 0;
+  min-height: 100vh;
+  overflow: visible;
+  border-left: 1px solid var(--rt-border);
+  border-right: 1px solid var(--rt-border);
+}
+
+@media (max-width: 1023px) {
+  .rt-feed-column {
+    border-left: none;
+    border-right: none;
+  }
+}
+
+.rt-feed {
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.rt-feed-tabs-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid color-mix(in srgb, var(--rt-border) 55%, transparent);
+  background: color-mix(in srgb, var(--rt-bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.rt-feed-tabs-sticky--scrolled {
+  background: color-mix(in srgb, var(--rt-bg) 58%, transparent);
+  border-bottom-color: var(--rt-border);
+}
+
+.rt-sidebar-right {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .rt-sidebar-right {
+    display: block;
+    position: static;
+    align-self: start;
+    padding: 0 16px;
+    overflow: visible;
+  }
+
+  /* Feed: rail direito gruda no fim da viewport após rolar todo o conteúdo dele */
+  .rt-layout--home[data-sticky-rails="true"] .rt-sidebar-right {
+    position: sticky;
+    top: var(--rt-right-rail-top, 0px);
+    align-self: start;
+  }
+
+  .rt-layout:not(.rt-layout--home)[data-sticky-rails="true"] .rt-sidebar-right {
+    position: sticky;
+    top: var(--rt-right-rail-top, 0px);
+    align-self: start;
+  }
+}
+
+.rt-rail-search-sticky {
+  position: static;
+  z-index: 15;
+  margin: 0 -16px;
+  padding: 8px 16px 12px;
+  border-bottom: 1px solid transparent;
+  background: color-mix(in srgb, var(--rt-bg) 92%, transparent);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    backdrop-filter 0.2s ease;
+}
+
+.rt-rail-search-sticky--scrolled {
+  background: color-mix(in srgb, var(--rt-bg) 58%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--rt-border) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Fora da home, pode manter a busca sticky no topo do rail */
+@media (min-width: 1024px) {
+  .rt-layout:not(.rt-layout--home) .rt-rail-search-sticky {
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* Troca AdvForte ↔ Juridiquês — véu suave (sem flash opaco) */
+.product-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
+}
+
+/* Escurece sem ir a preto total */
+.product-transition-overlay--to-rede-teste {
+  background: rgba(12, 14, 22, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Clareia sem branco estourado */
+.product-transition-overlay--to-saas {
+  background: rgba(245, 243, 238, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.product-transition-overlay.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.product-transition-overlay.is-releasing {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 0.48s;
+  transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-transition-overlay {
+    transition-duration: 0.12s;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .product-transition-overlay--to-rede-teste {
+    background: rgba(12, 14, 22, 0.35);
+  }
+  .product-transition-overlay--to-saas {
+    background: rgba(245, 243, 238, 0.35);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: var(--density-text);
+  }
+
+  [data-slot="button"],
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"],
+  [data-slot="table-cell"],
+  [data-slot="table-head"],
+  [data-slot="sidebar-menu-button"],
+  [data-slot="tabs-trigger"] {
+    font-size: var(--density-text);
+    border-radius: var(--density-radius);
+  }
+
+  [data-slot="button"]:not(.h-9):not(.size-9):not(.size-8) {
+    padding-block: var(--density-y);
+    padding-inline: var(--density-x);
+  }
+
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"] {
+    padding-block: calc(var(--density-y) * 0.85);
+    padding-inline: var(--density-x);
+  }
+
+  [data-slot="table"] {
+    font-size: var(--density-text);
+  }
+
+  [data-slot="table-cell"],
+  [data-slot="table-head"] {
+    padding-block: calc(var(--density-y) * 0.65);
+    padding-inline: var(--density-x);
+  }
+
+}
+
+/* FullCalendar — agenda */
+.fc {
+  --fc-border-color: var(--border);
+  --fc-button-bg-color: var(--primary);
+  --fc-button-border-color: var(--primary);
+  --fc-button-hover-bg-color: var(--gold-dark);
+  --fc-today-bg-color: oklch(0.96 0.02 85);
+}
+.fc .fc-toolbar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+@media print {
+  [data-slot="sidebar"],
+  header,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  body {
+    background: white !important;
+  }
+}
+
+/* Agenda (FullCalendar) — dia atual amarelo com números/cabeçalho pretos */
+.fc .fc-day-today {
+  background-color: #f3d27a !important;
+}
+.fc .fc-day-today .fc-daygrid-day-number,
+.fc .fc-day-today .fc-daygrid-day-top,
+.fc .fc-col-header-cell.fc-day-today,
+.fc .fc-col-header-cell.fc-day-today a,
+.fc .fc-timegrid-axis.fc-day-today {
+  color: #111827 !important;
+  font-weight: 700;
+}
+
+/* Modo escuro — barra dos dias da semana (dom/seg/ter…) amarela com letras pretas */
+.dark .fc .fc-col-header-cell {
+  background-color: #f3d27a !important;
+}
+.dark .fc .fc-col-header-cell,
+.dark .fc .fc-col-header-cell a,
+.dark .fc .fc-col-header-cell .fc-col-header-cell-cushion {
+  color: #111827 !important;
+  font-weight: 700;
+}
+
+/* Notas adesivas — rich text (TipTap) */
+.ml-sticky-note-body p,
+.ml-sticky-note-body ul,
+.ml-sticky-note-body ol,
+.ml-sticky-note-body h2,
+.ml-sticky-note-body h3 {
+  margin: 0.25em 0;
+}
+.ml-sticky-note-body ul,
+.ml-sticky-note-body ol,
+.ml-sticky-note-editor .ProseMirror ul,
+.ml-sticky-note-editor .ProseMirror ol {
+  list-style-position: outside;
+  padding-left: 1.5rem;
+}
+.ml-sticky-note-body ul,
+.ml-sticky-note-editor .ProseMirror ul {
+  list-style-type: disc;
+}
+.ml-sticky-note-body ol,
+.ml-sticky-note-editor .ProseMirror ol {
+  list-style-type: decimal;
+}
+.ml-sticky-note-body li,
+.ml-sticky-note-editor .ProseMirror li {
+  display: list-item;
+}
+.ml-sticky-note-body li > p,
+.ml-sticky-note-editor .ProseMirror li > p {
+  margin: 0;
+}
+.ml-sticky-note-body strong,
+.ml-sticky-note-editor .ProseMirror strong {
+  font-weight: 700;
+}
+.ml-sticky-note-body em,
+.ml-sticky-note-editor .ProseMirror em {
+  font-style: italic;
+}
+.ml-sticky-note-body u,
+.ml-sticky-note-editor .ProseMirror u {
+  text-decoration: underline;
+}
+.ml-sticky-note-body p:first-child,
+.ml-sticky-note-body ul:first-child,
+.ml-sticky-note-body ol:first-child {
+  margin-top: 0;
+}
+.ml-sticky-note-body p:last-child,
+.ml-sticky-note-body ul:last-child,
+.ml-sticky-note-body ol:last-child {
+  margin-bottom: 0;
+}
+.ml-sticky-note-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: #64748b;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.ml-rich-text-resizable.min-h-\[7\.5rem\] .ProseMirror {
+  min-height: 7.5rem;
+}
+.ml-rich-text-resizable.min-h-\[4\.5rem\] .ProseMirror {
+  min-height: 4.5rem;
+}
+.ml-rich-text-resizable.min-h-\[2\.25rem\] .ProseMirror {
+  min-height: 2.25rem;
+}
+

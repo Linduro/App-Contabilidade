@@ -12,6 +12,7 @@ const nextConfig = {
     NEXT_PUBLIC_AFS_API_URL: process.env.NEXT_PUBLIC_AFS_API_URL ?? '',
     NEXT_PUBLIC_AFS_MARKET_API_URL: process.env.NEXT_PUBLIC_AFS_MARKET_API_URL ?? '',
     NEXT_PUBLIC_GITHUB_PAGES: isGithubPages ? 'true' : '',
+    NEXT_PUBLIC_REDE_TESTE_URL: process.env.NEXT_PUBLIC_REDE_TESTE_URL ?? '',
   },
   async rewrites() {
     if (isGithubPages) return []
