@@ -1,42 +1,58 @@
 import type { PrismaClient } from "@prisma/client"
 import { ensureRedeTesteProfile } from "./rede-teste/ensure-profile"
 
-const GLOBAL_TENANT_ID = "rede-teste-global"
+export const GLOBAL_TENANT_ID = "rede-teste-global"
+const FALLBACK_TENANT_SLUG = "rede-teste-fipecafi"
+
+/** Resolve tenant global — evita conflito de slug com tenants do Juridiquês no mesmo Postgres. */
+export async function resolveGlobalTenantId(prisma: PrismaClient): Promise<string> {
+  const byId = await prisma.tenant.findUnique({ where: { id: GLOBAL_TENANT_ID } })
+  if (byId) return byId.id
+
+  const bySlug = await prisma.tenant.findUnique({ where: { slug: "rede-teste" } })
+  if (bySlug) return bySlug.id
+
+  const created = await prisma.tenant.create({
+    data: {
+      id: GLOBAL_TENANT_ID,
+      name: "Rede Teste",
+      slug: FALLBACK_TENANT_SLUG,
+      status: "ACTIVE",
+    },
+  })
+  return created.id
+}
 
 export async function provisionPortalUser(
   prisma: PrismaClient,
   input: { uid: string; email: string; name: string; image?: string | null },
 ) {
-  await prisma.tenant.upsert({
-    where: { id: GLOBAL_TENANT_ID },
-    create: {
-      id: GLOBAL_TENANT_ID,
-      name: "Rede Teste",
-      slug: "rede-teste",
-      status: "ACTIVE",
-    },
-    update: {},
-  })
-
+  const tenantId = await resolveGlobalTenantId(prisma)
   const email = input.email.toLowerCase()
-  const user = await prisma.user.upsert({
-    where: { email },
-    create: {
-      id: input.uid,
-      email,
-      name: input.name || email.split("@")[0],
-      image: input.image ?? null,
-      tenantId: GLOBAL_TENANT_ID,
-      tenantRole: "ADMIN",
-      emailVerified: true,
-    },
-    update: {
-      name: input.name || undefined,
-      image: input.image ?? undefined,
-      tenantId: GLOBAL_TENANT_ID,
-    },
-  })
 
-  await ensureRedeTesteProfile(prisma, user.id, GLOBAL_TENANT_ID)
+  const existing = await prisma.user.findUnique({ where: { email } })
+  const user = existing
+    ? await prisma.user.update({
+        where: { email },
+        data: {
+          name: input.name || existing.name,
+          image: input.image ?? existing.image,
+          tenantId,
+          emailVerified: true,
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          id: input.uid,
+          email,
+          name: input.name || email.split("@")[0],
+          image: input.image ?? null,
+          tenantId,
+          tenantRole: "ADMIN",
+          emailVerified: true,
+        },
+      })
+
+  await ensureRedeTesteProfile(prisma, user.id, tenantId)
   return user
 }

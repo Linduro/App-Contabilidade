@@ -52,7 +52,14 @@ export async function POST(req: Request) {
     res.cookies.set(PORTAL_SESSION_COOKIE, token, portalSessionCookieOptions())
     return res
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
     console.error("[rede-teste] portal auth", err)
-    return NextResponse.json({ error: "Sessão inválida" }, { status: 401 })
+    const hint =
+      message.includes("Tenant") || message.includes("tenant") || message.includes("P20")
+        ? "Erro de banco — tente de novo em 1 minuto"
+        : message.includes("Token") || message.includes("jwt") || message.includes("JWT")
+          ? "Token Firebase expirado — volte ao portal e clique Rede Teste de novo"
+          : "Sessão inválida"
+    return NextResponse.json({ error: hint }, { status: 401 })
   }
 }

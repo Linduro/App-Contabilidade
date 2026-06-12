@@ -3,21 +3,11 @@ import { TRPCError } from "@trpc/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getPortalSessionFromCookies } from "@/lib/portal-session"
-
-const GLOBAL_TENANT_ID = "rede-teste-global"
+import { resolveGlobalTenantId } from "@/lib/provision-portal-user"
 
 async function resolveTenant() {
-  let tenant = await prisma.tenant.findUnique({ where: { id: GLOBAL_TENANT_ID } })
-  if (!tenant) {
-    tenant = await prisma.tenant.create({
-      data: {
-        id: GLOBAL_TENANT_ID,
-        name: "Rede Teste",
-        slug: "rede-teste",
-        status: "ACTIVE",
-      },
-    })
-  }
+  const id = await resolveGlobalTenantId(prisma)
+  const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id } })
   return tenant
 }
 
@@ -61,9 +51,10 @@ export async function createTRPCContext(opts: { req: Request | NextRequest }) {
     : null
 
   if (dbUser && !dbUser.tenantId) {
+    const tenantId = await resolveGlobalTenantId(prisma)
     await prisma.user.update({
       where: { id: dbUser.id },
-      data: { tenantId: GLOBAL_TENANT_ID, tenantRole: "ADMIN" },
+      data: { tenantId, tenantRole: "ADMIN" },
     })
   }
 
@@ -71,15 +62,21 @@ export async function createTRPCContext(opts: { req: Request | NextRequest }) {
     ? { user, session: { id: "portal-session", userId: user.id } }
     : betterSession
 
+  const resolvedTenantId = tenant.id
+
   return {
     prisma,
     session,
     user: user ?? betterSession?.user ?? null,
     dbUser: dbUser
-      ? { ...dbUser, tenantId: dbUser.tenantId ?? GLOBAL_TENANT_ID, tenantRole: dbUser.tenantRole ?? "ADMIN" }
+      ? {
+          ...dbUser,
+          tenantId: dbUser.tenantId ?? resolvedTenantId,
+          tenantRole: dbUser.tenantRole ?? "ADMIN",
+        }
       : null,
     tenant,
-    tenantId: tenant.id,
+    tenantId: resolvedTenantId,
     headers,
     ip,
     userAgent,
