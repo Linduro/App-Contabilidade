@@ -94,3 +94,10 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Import único do Firestore na primeira carga (`firestore-adapter.js`)
 - UI legada em `#/legacy` (`static/legacy/page.html` + `js/legacy/app.js`)
 - Módulo Home `#/apps` com cards de onboarding e oportunidades do dia
+
+## v3.1 — CRM Pipelines (fase 3a)
+
+- `#/crm/pipelines`: Kanban SortableJS, drag entre etapas, visão lista
+- Modal **Novo Negócio**, drawer de detalhe, Pipe Metrics
+- `#/crm/oportunidades`: 6 cards-resumo + tabela de oportunidades ativas
+- Sincroniza etapa do negócio com `status_funil` do lead

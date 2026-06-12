@@ -5,6 +5,8 @@ import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
 import { renderHome } from '../modules/home.js';
+import { renderPipelines } from '../modules/crm-pipelines.js';
+import { renderOportunidades } from '../modules/crm-oportunidades.js';
 import { placeholderModule } from '../modules/placeholder.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 
@@ -39,9 +41,9 @@ function registerAllRoutes() {
   register('/prospeccao', ph('Prospecção', 'Filtros accordion + tabela (fase 3).'));
   register('/prospeccao/dead-zone', ph('Dead Zone', 'Use UI legada (#/legacy) até migrar.'));
   register('/prospeccao/transicao', ph('Transição de Regime'));
-  register('/crm/pipelines', ph('Pipelines CRM', 'Kanban — próxima fase.'));
+  register('/crm/pipelines', renderPipelines);
   register('/crm/leads', ph('Leads CRM'));
-  register('/crm/oportunidades', ph('Oportunidades'));
+  register('/crm/oportunidades', renderOportunidades);
   register('/tarefas', ph('Atividades'));
   register('/parceiros', ph('Parceiros B2B2B'));
   register('/configuracoes', ph('Configurações', 'Scoring e pipelines.'));

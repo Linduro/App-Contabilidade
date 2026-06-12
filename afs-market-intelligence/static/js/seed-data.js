@@ -62,6 +62,8 @@ const LEADS = [
 const DEALS = [
   { id: 'deal_1', titulo: 'BPO + Transição LR — Beta', lead_id: 'ld_2', pipeline_id: 'pipe_vendas', stage_id: 'st_neg', valor: 85000, responsavel_id: 'u_owner', status: 'aberto', produtos: [{ product_id: 'prod_bpo', qtd: 1, preco: 4500 }, { product_id: 'prod_trans', qtd: 1, preco: 12000 }] },
   { id: 'deal_2', titulo: 'Consultoria Fiscal — Delta', lead_id: 'ld_4', pipeline_id: 'pipe_vendas', stage_id: 'st_prop', valor: 12000, responsavel_id: 'u_gabriel', status: 'aberto', produtos: [{ product_id: 'prod_consult', qtd: 12, preco: 350 }] },
+  { id: 'deal_3', titulo: 'BPO Patrimonial — Alfa', lead_id: 'ld_1', pipeline_id: 'pipe_vendas', stage_id: 'st_prosp', valor: 54000, responsavel_id: 'u_owner', status: 'aberto', produtos: [{ product_id: 'prod_bpo', qtd: 1, preco: 4500 }] },
+  { id: 'deal_4', titulo: 'Abertura filial — Épsilon', lead_id: 'ld_5', pipeline_id: 'pipe_vendas', stage_id: 'st_contato', valor: 2800, responsavel_id: 'u_gabriel', status: 'aberto', produtos: [{ product_id: 'prod_abertura', qtd: 1, preco: 2800 }] },
 ];
 
 const ACTIVITIES = [
@@ -76,7 +78,14 @@ const PARTNERS = [
 
 export function seedIfEmpty() {
   const db = store.getDb();
-  if (db.meta.seededAt) return false;
+  if (db.meta.seededAt && db.meta.seedVersion >= 2) return false;
+
+  if (db.meta.seededAt && db.meta.seedVersion < 2) {
+    const existingIds = new Set((db.collections.deals || []).map((d) => d.id));
+    DEALS.forEach((d) => { if (!existingIds.has(d.id)) db.collections.deals.push(d); });
+    store.setMeta({ seedVersion: 2 });
+    return true;
+  }
 
   const collections = { ...db.collections };
   collections.users = USERS;
@@ -92,7 +101,7 @@ export function seedIfEmpty() {
 
   store.replaceDb({
     ...db,
-    meta: { ...db.meta, seededAt: new Date().toISOString() },
+    meta: { ...db.meta, seededAt: new Date().toISOString(), seedVersion: 2 },
     collections,
   });
   return true;
