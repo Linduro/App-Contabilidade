@@ -59,3 +59,11 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 
 - Login Firebase Email/Senha antes de renderizar a SPA
 - Regras Firestore e tratamento de erros `[AFS-ERROR]`
+
+## Pós-refatoração
+
+- Bootstrap async: `config.json` carregado antes dos módulos ES (corrige race condition)
+- Filtro `isAfsMarketLead()` isola leads B2B dos leads trabalhistas na mesma coleção
+- Regras mescladas em `site-de-notas-futurista/firestore.rules` e deployadas
+- Script `scripts/seed-firestore.mjs` para dados de demonstração
+- `static/config.json.example` para configuração sem expor credenciais no repo
