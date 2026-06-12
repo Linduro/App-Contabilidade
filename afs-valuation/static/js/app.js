@@ -1048,6 +1048,16 @@ async function loadSpreadsheetRowsForEvaluation() {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--status-error);">Erro ao carregar ativos: ${data.message || 'Erro desconhecido'}</td></tr>`;
             return;
         }
+
+        // Carregar avaliações já existentes para reidratar status/Revisar
+        const evalIndex = {};
+        try {
+            const evalData = await apiFetch('/api/evaluations');
+            (evalData.evaluations || []).forEach(ev => {
+                if (ev.row_index != null && evalIndex[`r:${ev.row_index}`] == null) evalIndex[`r:${ev.row_index}`] = ev;
+                if (ev.control != null && ev.control !== '' && evalIndex[`c:${ev.control}`] == null) evalIndex[`c:${ev.control}`] = ev;
+            });
+        } catch (_) { /* sem avaliações */ }
         
         tbody.innerHTML = '';
         const rows = data.rows || [];
@@ -1059,6 +1069,7 @@ async function loadSpreadsheetRowsForEvaluation() {
 
         let pending = 0;
         let ignored = 0;
+        let done = 0;
         
         rows.forEach(row => {
             const rowIdx = row._row_index;
@@ -1070,10 +1081,15 @@ async function loadSpreadsheetRowsForEvaluation() {
             const fotoSpec = rowPhotos[1]?.url || "Sem foto especificação";
             const fotoTag = rowPhotos[2]?.url || "Sem foto tag";
             const link1Val = link1Letter ? row[link1Letter] : null;
+
+            const existingEval = evalIndex[`r:${rowIdx}`] || (controlVal != null ? evalIndex[`c:${controlVal}`] : null);
             
             // Determinar status
             let status = "Pendente";
-            if (link1Val !== null && link1Val !== undefined && String(link1Val).trim() !== "") {
+            if (existingEval) {
+                status = "Concluído";
+                done++;
+            } else if (link1Val !== null && link1Val !== undefined && String(link1Val).trim() !== "") {
                 status = "Ignorado";
                 ignored++;
             } else {
@@ -1092,19 +1108,26 @@ async function loadSpreadsheetRowsForEvaluation() {
             rowEl.dataset.photoSpec = fotoSpec;
             rowEl.dataset.photoTag = fotoTag;
             rowEl.dataset.status = status;
+            if (existingEval) rowEl.dataset.eval_id = existingEval.id;
             
             const controlText = formatControlLabel(controlVal, rowIdx);
             
             let statusColor = 'var(--text-color)';
             if (status === 'Ignorado') statusColor = 'var(--text-muted)';
             if (status === 'Pendente') statusColor = 'var(--status-info)';
+            if (status === 'Concluído') statusColor = 'var(--status-ok)';
+
+            const ctrlEsc = (controlVal != null ? String(controlVal) : '').replace(/'/g, "\\'");
+            const btnHtml = existingEval
+                ? `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${existingEval.id}, ${rowIdx}, '${ctrlEsc}')">Revisar</button>`
+                : `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
             
             rowEl.innerHTML = `
                 <td>${controlText}</td>
                 <td title="${assetText || descText}">${formatEvalAssetCell(assetText, descText)}</td>
                 <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
                 <td>-</td>
-                <td><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button></td>
+                <td>${btnHtml}</td>
             `;
             
             rowEl.style.cursor = 'pointer';
@@ -1113,7 +1136,7 @@ async function loadSpreadsheetRowsForEvaluation() {
                 document.querySelectorAll('#evaluationTable tr').forEach(r => r.classList.remove('selected-row'));
                 rowEl.classList.add('selected-row');
                 loadSidePanelDetails(
-                    null, 
+                    existingEval ? existingEval.id : null, 
                     rowIdx, 
                     controlVal, 
                     fotoUrl, 
@@ -1130,7 +1153,7 @@ async function loadSpreadsheetRowsForEvaluation() {
         // Atualizar contadores na interface
         document.getElementById('countPending').textContent = pending;
         document.getElementById('countProcessing').textContent = 0;
-        document.getElementById('countDone').textContent = 0;
+        document.getElementById('countDone').textContent = done;
         document.getElementById('countIgnored').textContent = ignored;
         document.getElementById('tokenCounter').textContent = '0';
         

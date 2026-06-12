@@ -171,6 +171,23 @@ function afsLookupPhotoUrl(assetId, photoIdx, photoLookup) {
     return null;
 }
 
+// Descobre, varrendo TODAS as colunas da linha, qual valor é a chave de foto.
+// Não depende de a coluna A conter o código (ex: A=1 mas código=31807.198 em outra coluna).
+function afsFindRowPhotoBase(row, photoLookup) {
+    if (!row || !photoLookup) return null;
+    for (const k of Object.keys(row)) {
+        if (k === '_row_index') continue;
+        const val = row[k];
+        if (val == null || val === '') continue;
+        const id = afsNormalizeAssetId(val);
+        if (!id) continue;
+        for (const idx of ['0', '1', '2']) {
+            if (afsLookupPhotoUrl(id, idx, photoLookup)) return id;
+        }
+    }
+    return null;
+}
+
 function afsResolvePhotoUrl(assetId, photoIdx, photoLookup, rawCellValue) {
     const fromLookup = afsLookupPhotoUrl(assetId, photoIdx, photoLookup);
     if (fromLookup) return fromLookup;
@@ -182,7 +199,7 @@ function afsResolvePhotoUrl(assetId, photoIdx, photoLookup, rawCellValue) {
 function afsResolveRowPhotos(row, headers, photoLookup, mappings) {
     if (!row) return row;
     const lookup = photoLookup || {};
-    const assetId = row['A'];
+    const assetId = afsFindRowPhotoBase(row, lookup) || row['A'];
     const headerMap = {};
     (headers || []).forEach(h => { if (h.letter) headerMap[h.letter] = h.name; });
 
@@ -233,8 +250,8 @@ function afsResolveAllRowsPhotos(spreadsheet, mappings) {
 
 function afsCollectPhotosForRow(row, mappings, photoLookup, headers) {
     const photos = [];
-    const assetId = row['A'];
     const lookup = photoLookup || {};
+    const assetId = afsFindRowPhotoBase(row, lookup) || row['A'];
     const headerMap = {};
     (headers || []).forEach(h => { if (h.letter) headerMap[h.letter] = h.name; });
 
@@ -268,6 +285,7 @@ function afsCollectPhotosForRow(row, mappings, photoLookup, headers) {
 }
 
 window.normalizePhotoUrl = normalizePhotoUrl;
+window.afsFindRowPhotoBase = afsFindRowPhotoBase;
 window.afsBuildPhotoLookupFromWorkbook = afsBuildPhotoLookupFromWorkbook;
 window.afsResolveRowPhotos = afsResolveRowPhotos;
 window.afsResolveAllRowsPhotos = afsResolveAllRowsPhotos;
