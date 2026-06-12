@@ -46,6 +46,7 @@ jobs:
 
       - name: Enable required APIs
         if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        continue-on-error: true
         run: |
           gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
 
