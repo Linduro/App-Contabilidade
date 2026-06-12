@@ -57,12 +57,29 @@ jobs:
           DATABASE_URL: ${{ secrets.REDE_TESTE_DATABASE_URL }}
           AUTH_SECRET: ${{ secrets.REDE_TESTE_AUTH_SECRET }}
         run: |
+          python3 - <<'PY'
+          import json, os
+          env = {
+              "DATABASE_URL": os.environ["DATABASE_URL"],
+              "BETTER_AUTH_SECRET": os.environ["AUTH_SECRET"],
+              "NEXT_PUBLIC_PORTAL_URL": "https://linduro.github.io/App-Contabilidade",
+              "FIREBASE_PROJECT_ID": "contabilidade-ebed6",
+              "NODE_ENV": "production",
+          }
+          with open("/tmp/rede-teste-env.yaml", "w", encoding="utf-8") as f:
+              for key, value in env.items():
+                  f.write(f"{key}: {json.dumps(value)}\n")
+          PY
           gcloud run deploy "${{ env.SERVICE_NAME }}" \
             --source . \
             --region "${{ env.GCP_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "DATABASE_URL=${DATABASE_URL},BETTER_AUTH_SECRET=${AUTH_SECRET},NEXT_PUBLIC_PORTAL_URL=https://linduro.github.io/App-Contabilidade,FIREBASE_PROJECT_ID=contabilidade-ebed6,NODE_ENV=production" \
+            --env-vars-file /tmp/rede-teste-env.yaml \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 300 \
+            --max-instances 3 \
             --quiet
 
       - name: Set BETTER_AUTH_URL to service URL
