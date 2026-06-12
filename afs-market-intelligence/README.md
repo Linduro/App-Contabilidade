@@ -53,9 +53,40 @@ python app.py
 
 Servidor: `http://localhost:5001`
 
-## Portal
+## Portal (SPA + Firestore)
 
 Integrado ao portal principal em `/dashboard/afs-market-intelligence/` (mesmo padrão do AFS Valuation).
+
+A interface web usa **Firebase SDK v9 modular** (vanilla JS) com coleções:
+
+- `leads` — empresas ICP (filtradas por `cnpj_basico` / `perfil_icp`, separadas dos leads trabalhistas)
+- `historico_contato`, `parceiros`, `configuracoes`
+
+### Configuração Firebase
+
+1. Copie `static/config.json.example` → `site-de-notas-futurista/public/afs-market-intelligence/config.json`
+2. Preencha `firebase` com as credenciais do projeto (não commitar secrets reais)
+3. Habilite **Email/Senha** no Firebase Authentication
+4. Deploy das regras (no portal):
+
+```bash
+cd site-de-notas-futurista
+npx firebase deploy --only firestore:rules
+```
+
+5. Seed de demonstração (requer credencial de service account):
+
+```bash
+cd afs-market-intelligence
+GOOGLE_APPLICATION_CREDENTIALS=../path/sa.json node scripts/seed-firestore.mjs
+```
+
+6. Rebuild estático após alterações:
+
+```bash
+cd site-de-notas-futurista
+node scripts/copy-afs-market-static.mjs
+```
 
 ## Perfis de uso
 

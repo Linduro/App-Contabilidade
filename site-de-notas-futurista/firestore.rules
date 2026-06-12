@@ -68,8 +68,34 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    function isMarketLead() {
+      return resource.data.keys().hasAny(['cnpj_basico', 'perfil_icp', 'regime_tributario']);
+    }
+
+    function isMarketLeadCreate() {
+      return request.resource.data.keys().hasAny(['cnpj_basico', 'perfil_icp']);
+    }
+
     match /leads/{docId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || (request.auth != null && isMarketLead());
+      allow create: if isAdmin() || (request.auth != null && isMarketLeadCreate());
+      allow update: if isAdmin() || (request.auth != null && isMarketLead());
+      allow delete: if isAdmin();
+    }
+
+    match /historico_contato/{docId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+
+    match /parceiros/{docId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if isAdmin();
+    }
+
+    match /configuracoes/{docId} {
+      allow read, create, update: if request.auth != null;
+      allow delete: if isAdmin();
     }
 
     match /execucoesRurais/{docId} {
