@@ -20,12 +20,23 @@ services:
     plan: free
     healthCheckPath: /rede-teste
     envVars:
+      # Postgres + Storage do Supabase (mesmo projeto do Juridiquês — preencher no 1º deploy)
       - key: DATABASE_URL
-        fromDatabase:
-          name: rede-teste-db
-          property: connectionString
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://diuudxdcemegubuajvql.supabase.co
+      - key: SUPABASE_URL
+        value: https://diuudxdcemegubuajvql.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: advforte
       - key: BETTER_AUTH_SECRET
-        generateValue: true
+        sync: false
       - key: BETTER_AUTH_URL
         value: https://rede-teste.onrender.com
       - key: NEXT_PUBLIC_PORTAL_URL
@@ -34,9 +45,3 @@ services:
         value: contabilidade-ebed6
       - key: NODE_ENV
         value: production
-
-databases:
-  - name: rede-teste-db
-    plan: free
-    databaseName: rede_teste
-    user: rede_teste
