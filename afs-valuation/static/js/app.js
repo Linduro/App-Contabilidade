@@ -1810,9 +1810,15 @@ function updateSidePhotoUI() {
         const dbg = window.__lastPhotoDebug;
         if (dbg) {
             const cc = dbg.countColumns || {};
+            const staleMsg = dbg.stale
+                ? `<div style="background: rgba(249,115,22,0.18); border: 1px solid var(--afs-orange-400); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; color: var(--afs-orange-400); font-weight: bold;">
+                       ⚠ Planilha em cache antigo (sem índice de fotos). Vá em Inicialização → reenvie o .xlsx.
+                   </div>`
+                : '';
             empty.innerHTML = `
                 <i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
                 <div style="font-size: 0.7rem; line-height: 1.45; text-align: left; padding: 0 8px;">
+                    ${staleMsg}
                     <strong>Col A:</strong> ${dbg.colA ?? '-'} → <code>${dbg.assetCode ?? '?'}</code><br>
                     <strong>Qtd:</strong> bem=${cc.bem?.count ?? 0} (${cc.bem?.letter || '-'}) · esp=${cc.spec?.count ?? 0} · tag=${cc.tag?.count ?? 0}<br>
                     <strong>Índice:</strong> bem ${dbg.lookupSizes?.bem ?? 0} · esp ${dbg.lookupSizes?.spec ?? 0} · tag ${dbg.lookupSizes?.tag ?? 0}<br>
@@ -1872,9 +1878,17 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
             const session = await apiFetch('/api/session-state');
             const spreadsheet = session.spreadsheet_preview || state.spreadsheetData || {};
             const mappings = session.column_mappings || {};
+            const lookups = (typeof afsGetPhotoLookups === 'function')
+                ? afsGetPhotoLookups(spreadsheet)
+                : (spreadsheet.photo_lookups || { bem: {}, spec: {}, tag: {} });
             const retry = resolveRowPhotosForDisplay(rowObj, mappings, spreadsheet);
             if (retry.length) sidePhotos = retry.filter(p => isValidPhotoUrl(p.url));
-            window.__lastPhotoDebug = afsDebugPhotoResolution(rowObj, mappings, spreadsheet.photo_lookups || spreadsheet, spreadsheet.headers);
+            const stale = !spreadsheet.photo_lookups
+                || (!Object.keys(lookups.bem).length && !Object.keys(lookups.spec).length && !Object.keys(lookups.tag).length);
+            window.__lastPhotoDebug = {
+                ...afsDebugPhotoResolution(rowObj, mappings, lookups, spreadsheet.headers),
+                stale
+            };
             console.info('[AFS Foto Debug]', window.__lastPhotoDebug);
         } catch (e) {
             window.__lastPhotoDebug = null;

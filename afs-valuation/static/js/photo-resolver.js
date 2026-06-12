@@ -290,11 +290,19 @@ function afsGetPhotoLookups(spreadsheet) {
     return afsNormalizeLookups(spreadsheet?.photo_lookups || spreadsheet?.photo_lookup);
 }
 
+function afsLooksLikeSpreadsheet(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    return ('rows' in obj) || ('headers' in obj) || ('preview' in obj)
+        || ('status' in obj) || ('total_rows' in obj) || ('sheet_names' in obj);
+}
+
 function afsNormalizeLookups(photoLookups) {
-    if (!photoLookups) return { bem: {}, spec: {}, tag: {} };
+    if (!photoLookups || typeof photoLookups !== 'object') return { bem: {}, spec: {}, tag: {} };
     if (photoLookups.bem || photoLookups.spec || photoLookups.tag) {
         return { bem: photoLookups.bem || {}, spec: photoLookups.spec || {}, tag: photoLookups.tag || {} };
     }
+    // Nunca tratar o objeto da planilha inteira como um lookup plano.
+    if (afsLooksLikeSpreadsheet(photoLookups)) return { bem: {}, spec: {}, tag: {} };
     return { bem: photoLookups, spec: {}, tag: {} };
 }
 
