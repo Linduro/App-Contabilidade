@@ -50,4 +50,4 @@ npm run dev
 
 O portal acadêmico (`site-de-notas-futurista`) integra a home no estilo perfil e link em `/dashboard/rede-teste/`.
 
-<!-- deploy-trigger: 2026-06-03 -->
+<!-- deploy-trigger: 2026-06-03-retry -->
