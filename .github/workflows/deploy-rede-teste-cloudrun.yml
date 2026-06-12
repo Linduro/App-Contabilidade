@@ -57,6 +57,14 @@ jobs:
           DATABASE_URL: ${{ secrets.REDE_TESTE_DATABASE_URL }}
           AUTH_SECRET: ${{ secrets.REDE_TESTE_AUTH_SECRET }}
         run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "Secret REDE_TESTE_DATABASE_URL ausente ou vazio."
+            exit 1
+          fi
+          if [ -z "${AUTH_SECRET}" ]; then
+            echo "Secret REDE_TESTE_AUTH_SECRET ausente ou vazio."
+            exit 1
+          fi
           python3 - <<'PY'
           import json, os
           env = {
