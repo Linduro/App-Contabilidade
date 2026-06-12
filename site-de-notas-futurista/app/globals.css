@@ -220,8 +220,8 @@
   .radio-volume-vertical {
     writing-mode: vertical-lr;
     direction: rtl;
-    width: 0.35rem;
-    height: 3.5rem;
+    width: 0.4rem;
+    height: 5rem;
     appearance: none;
     background: transparent;
   }
