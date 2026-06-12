@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { createPgPool } from './pg-connection';
+import { createPgPool, resolveDatabaseUrl } from './pg-connection';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -10,9 +10,7 @@ declare global {
 }
 
 function createPrisma(): PrismaClient {
-  const url =
-    process.env.DATABASE_URL ??
-    "postgresql://127.0.0.1:5432/portal?schema=public";
+  const url = resolveDatabaseUrl();
   const pool = createPgPool(url);
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
@@ -32,9 +30,7 @@ function disconnectStale(client: PrismaClient | undefined) {
 }
 
 export const prisma = (() => {
-  const url =
-    process.env.DATABASE_URL ??
-    "postgresql://127.0.0.1:5432/portal?schema=public";
+  const url = resolveDatabaseUrl();
   if (global.__prisma && global.__prismaUrl !== url) {
     disconnectStale(global.__prisma);
     global.__prisma = undefined;
