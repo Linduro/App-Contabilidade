@@ -287,6 +287,131 @@ function unlockTab(tabId) {
     }
 }
 
+function lockTab(tabId) {
+    const btn = document.querySelector(`[data-tab="${tabId}"]`);
+    if (!btn) return;
+    btn.classList.add('disabled');
+    if (!btn.querySelector('.tab-lock')) {
+        const lock = document.createElement('span');
+        lock.className = 'tab-lock';
+        lock.textContent = '🔒';
+        btn.appendChild(lock);
+    }
+}
+
+function resetEvaluationControls() {
+    browserEvaluationRunning = false;
+    window.__afs_eval_paused = false;
+    const btnPlay = document.getElementById('btnPlay');
+    const btnPause = document.getElementById('btnPause');
+    if (btnPlay) btnPlay.disabled = false;
+    if (btnPause) btnPause.disabled = true;
+    if (evaluationEventSource) {
+        evaluationEventSource.close();
+        evaluationEventSource = null;
+    }
+}
+
+function resetInitFlowAfterSpreadsheetChange(hasExistingMappings) {
+    state.initialized = false;
+    resetEvaluationControls();
+    lockTab('research');
+    switchTab('init');
+
+    const step4 = document.getElementById('step4');
+    const connector3 = document.getElementById('connector3');
+    if (step4) {
+        step4.classList.remove('completed');
+        const num = step4.querySelector('.init-step-number');
+        if (num) num.textContent = '4';
+    }
+    if (connector3) connector3.classList.remove('completed');
+
+    if (hasExistingMappings) {
+        updateStep(3, 'completed');
+        updateStep(4, 'active');
+    } else {
+        updateStep(3, 'active');
+        updateStep(4, 'active');
+    }
+
+    const finalizeSection = document.getElementById('cardFinalize');
+    if (finalizeSection) finalizeSection.style.display = 'block';
+
+    const dot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    if (dot) dot.classList.remove('active');
+    if (statusText) {
+        statusText.textContent = hasRemoteApi() ? 'API remota conectada' : 'Modo navegador (sem servidor)';
+    }
+}
+
+async function maybeAutoFinalizeIfReady() {
+    if (!state.hasApiKey || !state.hasSpreadsheet) return false;
+    try {
+        const session = await apiFetch('/api/session-state');
+        const mappings = session.column_mappings || {};
+        if (!Object.keys(mappings).length) return false;
+        const data = await apiFetch('/api/finalize-init', { method: 'POST' });
+        if (data.status === 'ok') {
+            state.initialized = true;
+            updateStep(4, 'completed');
+            unlockTab('research');
+            const dot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            if (dot) dot.classList.add('active');
+            if (statusText) statusText.textContent = 'Sistema ativo';
+            showAlert('Mapeamento encontrado — aba de avaliação liberada. Clique em Pesquisa & Avaliação e depois Play.', 'success');
+            return true;
+        }
+    } catch (_) { /* manual finalize */ }
+    return false;
+}
+
+async function clearSpreadsheetSessionUI() {
+    state.hasSpreadsheet = false;
+    state.hasMappings = false;
+    state.initialized = false;
+    state.spreadsheetHeaders = [];
+    state.spreadsheetData = null;
+    resetEvaluationControls();
+    lockTab('research');
+    switchTab('init');
+
+    updateStep(2, 'active');
+    updateStep(3, 'active');
+    updateStep(4, 'active');
+    ['step2', 'step3', 'step4'].forEach((id, i) => {
+        const step = document.getElementById(id);
+        if (step) {
+            step.classList.remove('completed');
+            const num = step.querySelector('.init-step-number');
+            if (num) num.textContent = String(i + 2);
+        }
+    });
+    document.getElementById('connector1')?.classList.remove('completed');
+    document.getElementById('connector2')?.classList.remove('completed');
+    document.getElementById('connector3')?.classList.remove('completed');
+
+    const zone = document.getElementById('uploadZone');
+    const fileInfo = document.getElementById('fileInfo');
+    zone?.classList.remove('has-file');
+    fileInfo?.classList.remove('visible');
+
+    document.getElementById('cardMapping')?.classList.remove('visible');
+    document.getElementById('cardFinalize').style.display = 'none';
+
+    const tbody = document.getElementById('evaluationTableBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Nenhuma planilha carregada.</td></tr>';
+
+    const dot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    if (dot) dot.classList.remove('active');
+    if (statusText) {
+        statusText.textContent = hasRemoteApi() ? 'API remota conectada' : 'Modo navegador (sem servidor)';
+    }
+}
+
 // ---------- Session State ----------
 function showSpreadsheetFileInfo(name, metaText) {
     const zone = document.getElementById('uploadZone');
@@ -523,9 +648,19 @@ async function handleFileUpload(file) {
                 : '';
             showAlert(`Planilha carregada: ${data.total_rows} linhas, ${data.headers.length} colunas${photoMsg}`, data.photo_count === 0 ? 'warning' : 'success');
 
+            const sessionAfter = await apiFetch('/api/session-state');
+            const hasMaps = Boolean(sessionAfter.column_mappings && Object.keys(sessionAfter.column_mappings).length);
+            resetInitFlowAfterSpreadsheetChange(hasMaps);
+
             // Show mapping section
             buildMappingUI(data);
+            applySavedMappings(sessionAfter.column_mappings);
             loadSpreadsheetRegistry();
+
+            const autoReady = await maybeAutoFinalizeIfReady();
+            if (!autoReady) {
+                showAlert('Salve o mapeamento de colunas e clique em "Iniciar Sistema" para habilitar o Play.', 'info');
+            }
         } else {
             showAlert(data.message || 'Erro ao processar planilha', 'error');
             zone.classList.remove('has-file');
@@ -851,9 +986,12 @@ function updateStep(stepNum, status) {
     step.classList.remove('active', 'completed');
     step.classList.add(status);
 
+    const numEl = step.querySelector('.init-step-number');
     if (status === 'completed') {
-        step.querySelector('.init-step-number').textContent = '✓';
+        if (numEl) numEl.textContent = '✓';
         if (connector) connector.classList.add('completed');
+    } else if (numEl) {
+        numEl.textContent = String(stepNum);
     }
 }
 
@@ -1023,8 +1161,8 @@ async function loadSpreadsheetRowsForEvaluation() {
     const tbody = document.getElementById('evaluationTableBody');
     if (!tbody) return;
     
-    // Se o EventSource estiver ativo ou se o botão de play estiver desabilitado (está rodando), não recarrega.
-    if (evaluationEventSource !== null || browserEvaluationRunning || document.getElementById('btnPlay').disabled) {
+    // Se o EventSource estiver ativo ou avaliação rodando, não recarrega.
+    if (evaluationEventSource !== null || browserEvaluationRunning) {
         return;
     }
     
@@ -1819,12 +1957,26 @@ async function deleteSpreadsheet(type, filename) {
     if (!confirm(`Excluir planilha "${filename}"?`)) return;
     try {
         const path = type === 'input' ? '/api/spreadsheets/input' : '/api/spreadsheets/output';
-        await apiFetch(path, {
+        const data = await apiFetch(path, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filename })
         });
+        if (data.status !== 'ok') {
+            showAlert(data.message || 'Erro ao excluir planilha.', 'error');
+            return;
+        }
         showAlert('Planilha removida.', 'success');
+        const session = await apiFetch('/api/session-state');
+        if (!session.has_spreadsheet) {
+            await clearSpreadsheetSessionUI();
+        } else {
+            await restoreSpreadsheetMappingUI(session);
+            const autoReady = await maybeAutoFinalizeIfReady();
+            if (!autoReady && !session.initialized) {
+                resetInitFlowAfterSpreadsheetChange(Boolean(session.has_mappings));
+            }
+        }
         loadSpreadsheetRegistry();
     } catch (e) {
         showAlert('Erro ao excluir: ' + e.message, 'error');
@@ -1847,6 +1999,12 @@ async function activateSpreadsheet(filename) {
         sessionData.spreadsheet_preview = preview;
         if (data.column_mappings) sessionData.column_mappings = data.column_mappings;
         await restoreSpreadsheetMappingUI(sessionData);
+        resetEvaluationControls();
+        const autoReady = await maybeAutoFinalizeIfReady();
+        if (!autoReady) {
+            resetInitFlowAfterSpreadsheetChange(Boolean(data.column_mappings && Object.keys(data.column_mappings).length));
+            applySavedMappings(data.column_mappings);
+        }
         showAlert(`Planilha "${filename}" selecionada.`, 'success');
         loadSpreadsheetRegistry();
         document.getElementById('cardMapping')?.scrollIntoView({ behavior: 'smooth', block: 'start' });

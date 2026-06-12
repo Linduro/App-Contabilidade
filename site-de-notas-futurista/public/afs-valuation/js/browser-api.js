@@ -233,8 +233,35 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok', files };
     }
 
+    if (path === '/api/spreadsheets/input' && method === 'DELETE') {
+        const filename = body?.filename;
+        if (!filename) return { status: 'error', message: 'Nome do arquivo não informado' };
+        s.uploads = (s.uploads || []).filter(u => u.name !== filename);
+        if (s.spreadsheet_mappings) delete s.spreadsheet_mappings[filename];
+        if (s.spreadsheet?.file_name === filename) {
+            s.spreadsheet = null;
+            s.column_mappings = {};
+            s.initialized = false;
+            if (s.uploads.length > 0) {
+                const next = s.uploads[0];
+                s.spreadsheet = next.data;
+                s.column_mappings = (s.spreadsheet_mappings || {})[next.name] || {};
+            }
+        }
+        afsSaveState(s);
+        return { status: 'ok', message: `Planilha ${filename} removida` };
+    }
+
     if (path === '/api/spreadsheets/output' && method === 'GET') {
         return { status: 'ok', files: s.outputs || [] };
+    }
+
+    if (path === '/api/spreadsheets/output' && method === 'DELETE') {
+        const filename = body?.filename;
+        if (!filename) return { status: 'error', message: 'Nome do arquivo não informado' };
+        s.outputs = (s.outputs || []).filter(o => o.name !== filename);
+        afsSaveState(s);
+        return { status: 'ok', message: `Output ${filename} removido` };
     }
 
     if (path === '/api/spreadsheets/input/activate' && method === 'POST') {
@@ -249,6 +276,7 @@ async function browserApiFetch(path, options = {}) {
         s.spreadsheet = sheetData;
         const saved = (s.spreadsheet_mappings || {})[filename];
         s.column_mappings = saved || {};
+        s.initialized = false;
         afsSaveState(s);
         return { status: 'ok', message: `Planilha ${filename} ativada`, preview: sheetData, column_mappings: s.column_mappings };
     }
@@ -340,6 +368,8 @@ async function browserHandleUpload(file) {
         s.spreadsheet_mappings[file.name] = {};
     }
     s.column_mappings = s.spreadsheet_mappings[file.name];
+    s.initialized = false;
+    window.__afs_eval_paused = false;
     afsSaveState(s);
     return parsed;
 }
