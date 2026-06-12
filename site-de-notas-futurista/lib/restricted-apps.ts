@@ -1,22 +1,20 @@
-import type { LucideIcon } from "lucide-react"
-import {
-  Briefcase,
-  Building2,
-  Landmark,
-  Scale,
-  Search,
-  Sprout,
-} from "lucide-react"
 import { assetPath } from "@/lib/base-path"
 
 export type RestrictedAppCategory = "judiciais" | "avaliatorios" | "marketing"
+export type RestrictedAppIconId =
+  | "scale"
+  | "sprout"
+  | "landmark"
+  | "briefcase"
+  | "building"
+  | "search"
 
 export interface RestrictedApp {
   id: string
   title: string
   description: string
   href: string
-  icon: LucideIcon
+  iconId: RestrictedAppIconId
   category: RestrictedAppCategory
   external?: boolean
 }
@@ -49,7 +47,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "Licitações",
     description: "Monitoramento e classificação de editais jurídicos.",
     href: "/dashboard/licitacoes/",
-    icon: Scale,
+    iconId: "scale",
     category: "judiciais",
   },
   {
@@ -57,7 +55,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "Execuções rurais",
     description: "Coleta e análise de execuções em área rural.",
     href: "/dashboard/execucoes-rurais/",
-    icon: Sprout,
+    iconId: "sprout",
     category: "judiciais",
   },
   {
@@ -65,7 +63,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "Execuções +500k",
     description: "Execuções acima de R$ 500 mil no DataJud.",
     href: "/dashboard/execucoes-alto-valor/",
-    icon: Landmark,
+    iconId: "landmark",
     category: "judiciais",
   },
   {
@@ -73,7 +71,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "Leads TRT",
     description: "Kanban de leads trabalhistas por região.",
     href: "/dashboard/trabalhista-leads/",
-    icon: Briefcase,
+    iconId: "briefcase",
     category: "judiciais",
   },
   {
@@ -81,7 +79,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "AFS Valuation",
     description: "Avaliação patrimonial com apoio de IA.",
     href: assetPath("/afs-valuation/index.html"),
-    icon: Building2,
+    iconId: "building",
     category: "avaliatorios",
     external: true,
   },
@@ -90,7 +88,7 @@ export const RESTRICTED_APPS: RestrictedApp[] = [
     title: "AFS Intelligence",
     description: "Prospecção B2B e inteligência de mercado.",
     href: "/dashboard/afs-market-intelligence/",
-    icon: Search,
+    iconId: "search",
     category: "marketing",
   },
 ]

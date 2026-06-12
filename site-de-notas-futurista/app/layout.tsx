@@ -12,16 +12,14 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
 
 const siteBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+const faviconHref = `${siteBasePath}/icon.svg`
+const isGithubPages = process.env.NEXT_PUBLIC_GITHUB_PAGES === 'true'
 
 export const metadata: Metadata = {
   title: 'AdvForte Portal | Notas e organização acadêmica',
   description:
     'Ferramenta feita de aluno para aluno: grade, notas, lembretes e links úteis para o curso de contabilidade. Não é página oficial da faculdade.',
   generator: 'v0.app',
-  icons: {
-    icon: `${siteBasePath}/icon.svg`,
-    apple: `${siteBasePath}/icon.svg`,
-  },
 }
 
 export const viewport: Viewport = {
@@ -39,6 +37,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable} bg-background`}>
       <head>
+        <link rel="icon" href={faviconHref} type="image/svg+xml" />
+        <link rel="apple-touch-icon" href={faviconHref} />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var uid=localStorage.getItem('advforte-theme-last-uid');var t=uid?localStorage.getItem('advforte-theme-'+uid):null;t=t||localStorage.getItem('advforte-theme')||localStorage.getItem('nexus-theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`,
@@ -54,7 +54,7 @@ export default function RootLayout({
           </AuthProvider>
         </ThemeProvider>
         <FirebaseAnalytics />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {!isGithubPages && process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )

@@ -6,13 +6,8 @@
     </linearGradient>
   </defs>
   <rect width="180" height="180" rx="40" fill="url(#bg)"/>
-  <text
-    x="90"
-    y="122"
-    text-anchor="middle"
-    font-family="Inter, system-ui, sans-serif"
-    font-size="108"
-    font-weight="700"
+  <path
     fill="#ffffff"
-  >F</text>
+    d="M52 44h76v20H78v24h42v20H78v28H52V44z"
+  />
 </svg>

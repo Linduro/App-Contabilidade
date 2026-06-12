@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowLeft, ExternalLink } from "lucide-react"
+import { ArrowLeft, Briefcase, Building2, ExternalLink, Landmark, Scale, Search, Sprout } from "lucide-react"
 import { RequireAuth } from "@/components/require-auth"
 import { RequireOwner } from "@/components/require-owner"
 import { Button } from "@/components/ui/button"
@@ -9,10 +9,20 @@ import {
   RESTRICTED_APP_CATEGORIES,
   appsByCategory,
   type RestrictedApp,
+  type RestrictedAppIconId,
 } from "@/lib/restricted-apps"
 
+const RESTRICTED_APP_ICONS = {
+  scale: Scale,
+  sprout: Sprout,
+  landmark: Landmark,
+  briefcase: Briefcase,
+  building: Building2,
+  search: Search,
+} satisfies Record<RestrictedAppIconId, typeof Scale>
+
 function AppCard({ app }: { app: RestrictedApp }) {
-  const Icon = app.icon
+  const Icon = RESTRICTED_APP_ICONS[app.iconId]
   const className =
     "glass-card rounded-xl p-3 neon-border group hover:scale-[1.01] transition-transform duration-200 flex flex-col h-full min-h-0"
 
