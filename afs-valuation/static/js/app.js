@@ -1052,7 +1052,47 @@ function showAlert(message, type = 'info') {
 let evaluationEventSource = null;
 let browserEvaluationRunning = false;
 
+function updateEvalProgressUI(data) {
+    const wrap = document.getElementById('evalProgressWrap');
+    if (!wrap) return;
+    const label = document.getElementById('evalStepLabel');
+    const bar = document.getElementById('evalProgressBar');
+    const detail = document.getElementById('evalStepDetail');
+    const pct = document.getElementById('evalProgressPct');
+
+    if (data.status === 'finished') {
+        if (bar) bar.style.width = '100%';
+        if (pct) pct.textContent = '100%';
+        if (label) label.textContent = data.stepLabel || 'Avaliação finalizada';
+        if (detail) detail.textContent = data.message || '';
+        return;
+    }
+
+    if (data.stepLabel && label) label.textContent = data.stepLabel;
+    if (data.overallPercent != null) {
+        const p = Math.min(100, Math.max(0, data.overallPercent));
+        if (bar) bar.style.width = `${p}%`;
+        if (pct) pct.textContent = `${p}%`;
+    }
+    if (detail) {
+        const ctrl = formatControlLabel(data.control, data.row);
+        const parts = [];
+        if (ctrl && ctrl !== '—') parts.push(`Controle: ${ctrl}`);
+        if (data.itemPercent != null) parts.push(`etapa do item: ${data.itemPercent}%`);
+        if (data.totalPending) parts.push(`${data.totalPending} pendente(s)`);
+        detail.textContent = parts.join(' · ');
+    }
+}
+
+function resetEvalProgressUI() {
+    updateEvalProgressUI({ stepLabel: 'Aguardando início...', overallPercent: 0, itemPercent: 0 });
+    const detail = document.getElementById('evalStepDetail');
+    if (detail) detail.textContent = '';
+}
+
 function processEvaluationEvent(data, counters, pendingAtStart) {
+    updateEvalProgressUI(data);
+
     if (data.status === 'finished') {
         document.getElementById('btnPlay').disabled = false;
         document.getElementById('btnPause').disabled = true;
@@ -1343,6 +1383,11 @@ async function startEvaluation() {
         return;
     }
 
+    window.__afs_eval_paused = false;
+    resetEvalProgressUI();
+    const progressWrap = document.getElementById('evalProgressWrap');
+    if (progressWrap) progressWrap.style.display = 'block';
+
     document.getElementById('btnPlay').disabled = true;
     document.getElementById('btnPause').disabled = false;
 
@@ -1519,9 +1564,29 @@ function showCorrectionBlock() {
 
 function cancelCorrection() {
     document.getElementById('correctionFormBlock').style.display = 'none';
-    document.getElementById('btnShowCorrection').style.display = 'inline-block';
+    const btnShow = document.getElementById('btnShowCorrection');
+    if (btnShow) btnShow.style.display = 'inline-block';
     document.getElementById('feedbackCorrectedValue').value = '';
     document.getElementById('feedbackComment').value = '';
+}
+
+function reEvaluateWithFeedback() {
+    const block = document.getElementById('correctionFormBlock');
+    const hasValue = document.getElementById('feedbackCorrectedValue').value.trim();
+    const hasComment = document.getElementById('feedbackComment').value.trim();
+    const blockVisible = block && block.style.display === 'flex';
+
+    if (!blockVisible) {
+        showCorrectionBlock();
+        block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showAlert('Informe o valor corrigido ou instrução para a IA e clique novamente em Re-avaliar.', 'info');
+        return;
+    }
+    if (!hasValue && !hasComment) {
+        showAlert('Informe um valor corrigido ou instrução para a IA.', 'warning');
+        return;
+    }
+    submitReviewFeedback(false, true);
 }
 
 function parseBrazilianNumber(raw) {

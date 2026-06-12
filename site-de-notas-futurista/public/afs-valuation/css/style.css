@@ -1228,3 +1228,43 @@ body {
 .side-info-grid .info-frame-asset .info-frame-value {
     font-size: 1.05rem;
 }
+
+/* ---------- Evaluation progress ---------- */
+.eval-progress-track {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.eval-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--afs-orange-500), var(--afs-orange-300));
+    border-radius: 999px;
+    transition: width 0.35s ease;
+}
+
+/* ---------- Review modal scroll ---------- */
+.review-modal-content {
+    max-width: 900px;
+    width: 95%;
+}
+
+.review-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: calc(100vh - 220px);
+}
+
+.review-modal-footer {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.2);
+}

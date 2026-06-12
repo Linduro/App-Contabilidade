@@ -14,12 +14,13 @@ function afsLoadState() {
             spreadsheet_mappings: {},
             initialized: false,
             evaluations: [],
+            evaluated_rows: [],
             uploads: [],
             outputs: [],
             feedback: []
         };
     } catch {
-        return { api_key: null, spreadsheet: null, column_mappings: {}, spreadsheet_mappings: {}, initialized: false, evaluations: [], uploads: [], outputs: [], feedback: [] };
+        return { api_key: null, spreadsheet: null, column_mappings: {}, spreadsheet_mappings: {}, initialized: false, evaluations: [], evaluated_rows: [], uploads: [], outputs: [], feedback: [] };
     }
 }
 
@@ -295,6 +296,10 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok', evaluations: s.evaluations || [] };
     }
 
+    if (path === '/api/evaluated-rows' && method === 'GET') {
+        return { status: 'ok', rows: s.evaluated_rows || [] };
+    }
+
     if (path === '/api/feedback' && method === 'POST') {
         const evaluationId = body?.evaluation_id;
         const accepted = Boolean(body?.accepted);
@@ -308,6 +313,10 @@ async function browserApiFetch(path, options = {}) {
 
         const evIdx = (s.evaluations || []).findIndex(e => e.id === evaluationId);
         const ev = evIdx >= 0 ? s.evaluations[evIdx] : null;
+
+        if (ev && accepted && rowIdx) {
+            afsMarkRowEvaluated(s, parseInt(rowIdx, 10));
+        }
 
         if (ev && !accepted) {
             s.auto_aprendizados = s.auto_aprendizados || [];
@@ -377,7 +386,27 @@ async function browserHandleUpload(file) {
     return parsed;
 }
 
-window.browserApiFetch = browserApiFetch;
+function afsMarkRowEvaluated(s, rowIdx) {
+    if (rowIdx == null) return;
+    const idx = parseInt(rowIdx, 10);
+    s.evaluated_rows = s.evaluated_rows || [];
+    if (!s.evaluated_rows.includes(idx)) s.evaluated_rows.push(idx);
+}
+
+function afsIsRowPendingEvaluation(row, s, mappings) {
+    const rowIdx = row._row_index;
+    const evaluatedSet = new Set(s.evaluated_rows || []);
+    if (evaluatedSet.has(rowIdx)) return false;
+    const hasEval = (s.evaluations || []).some(e => e.row_index === rowIdx);
+    if (hasEval) return false;
+    const link1Letter = mappings.link1;
+    const link1Val = link1Letter ? row[link1Letter] : null;
+    if (link1Val != null && String(link1Val).trim() !== '') return false;
+    return true;
+}
+
+window.afsMarkRowEvaluated = afsMarkRowEvaluated;
+window.afsIsRowPendingEvaluation = afsIsRowPendingEvaluation;
 window.browserHandleUpload = browserHandleUpload;
 window.afsLoadState = afsLoadState;
 window.afsGeminiRequest = afsGeminiRequest;

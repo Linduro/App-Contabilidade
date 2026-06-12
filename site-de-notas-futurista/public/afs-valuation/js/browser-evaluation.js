@@ -95,7 +95,11 @@ function buildVisionContext(visionData) {
     return parts.length ? '\n\nCONTEXTO DE IDENTIFICAÇÃO VISUAL (Google Lens):\n' + parts.join('\n') : '';
 }
 
-async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbackCtx = '') {
+async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbackCtx = '', onStep = null) {
+    const emit = (stepLabel, itemPercent) => {
+        if (onStep) onStep({ stepLabel, itemPercent });
+    };
+
     const s = afsLoadState();
     const letter = (field) => {
         const m = mappings[field];
@@ -107,6 +111,8 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     const descLetter = letter('desc_original');
     const controlVal = controlLetter ? row[controlLetter] : null;
     const descricao = descLetter ? row[descLetter] : 'Item sem descrição';
+
+    emit('Preparando item e coletando fotos...', 8);
 
     const resolvedRow = typeof afsResolveRowPhotos === 'function'
         ? afsResolveRowPhotos(row, spreadsheet.headers, spreadsheet.photo_lookup || {}, mappings)
@@ -126,29 +132,40 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     const imageUrls = afsCollectImageUrls(resolvedRow, mappings, spreadsheet);
 
     if (options.runTag || options.runAge || options.runConservation || imageUrls.length) {
+        emit(`Análise visual (Vision): ${imageUrls.length} foto(s) — identificando bem...`, 18);
         const parts = [{ text: AFS_VISION_PROMPT }];
         for (const url of imageUrls) {
             const part = await urlToInlinePart(url);
             if (part) parts.push(part);
         }
         if (parts.length > 1) {
+            emit('Enviando imagens ao Gemini Vision...', 32);
             try {
                 const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', parts, true);
                 totalTokens += res.tokens || 0;
                 visionData = parseGeminiJson(res.text);
+                emit('Vision concluída — processando identificação visual...', 48);
             } catch (e) {
                 console.warn('Vision error:', e);
+                emit('Aviso: falha parcial na análise visual, continuando...', 48);
             }
+        } else {
+            emit('Sem fotos válidas para Vision — pulando etapa visual...', 48);
         }
     }
 
     if (options.runMarket || options.runCategoria || options.runAtivo) {
+        emit('Avaliação de mercado: buscando comparáveis e valores...', 58);
         const ctx = buildVisionContext(visionData) + (feedbackCtx || '');
         const prompt = `${AFS_VALUATION_PROMPT}\n\nBEM:\n${descricao}${ctx}`;
+        emit('Consultando Gemini para precificação e raciocínio...', 72);
         const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', [{ text: prompt }], true);
         totalTokens += res.tokens || 0;
         marketData = parseGeminiJson(res.text);
+        emit('Mercado concluído — consolidando valores e metodologia...', 88);
     }
+
+    emit('Finalizando avaliação do item...', 96);
 
     const evaluation = {
         row_index: rowIdx,
@@ -210,6 +227,31 @@ async function browserRunEvaluation(options, onProgress) {
     };
     const link1Letter = letter('link1');
 
+    const pendingRows = rows.filter(r =>
+        typeof afsIsRowPendingEvaluation === 'function'
+            ? afsIsRowPendingEvaluation(r, s, mappings)
+            : true
+    );
+    const totalPending = pendingRows.length;
+    let completedCount = 0;
+
+    if (totalPending === 0) {
+        onProgress({
+            status: 'finished',
+            stepLabel: 'Nenhum item pendente para avaliar.',
+            overallPercent: 100,
+            message: 'Todos os itens já foram avaliados ou ignorados.'
+        });
+        return;
+    }
+
+    onProgress({
+        status: 'started',
+        stepLabel: `${totalPending} item(ns) pendente(s) — iniciando...`,
+        overallPercent: 0,
+        totalPending
+    });
+
     for (const row of rows) {
         if (window.__afs_eval_paused) break;
 
@@ -237,20 +279,43 @@ async function browserRunEvaluation(options, onProgress) {
             tokens: totalTokens
         };
 
-        if (link1Val != null && String(link1Val).trim() !== '') {
+        const isPending = typeof afsIsRowPendingEvaluation === 'function'
+            ? afsIsRowPendingEvaluation(row, s, mappings)
+            : (link1Val == null || String(link1Val).trim() === '');
+
+        if (!isPending) {
             onProgress({ ...basePayload, status: 'Ignorado' });
             continue;
         }
 
-        onProgress({ ...basePayload, status: 'Avaliando' });
+        const itemNum = completedCount + 1;
+        onProgress({
+            ...basePayload,
+            status: 'Avaliando',
+            stepLabel: `Item ${itemNum}/${totalPending}: preparando avaliação...`,
+            overallPercent: Math.round((completedCount / totalPending) * 100),
+            itemPercent: 0
+        });
 
         try {
-            const result = await afsEvaluateSingleRow(row, options, spreadsheet, mappings);
+            const result = await afsEvaluateSingleRow(row, options, spreadsheet, mappings, '', (step) => {
+                onProgress({
+                    ...basePayload,
+                    status: 'Avaliando',
+                    stepLabel: `Item ${itemNum}/${totalPending}: ${step.stepLabel}`,
+                    overallPercent: Math.round((completedCount / totalPending) * 100 + (step.itemPercent || 0) / totalPending),
+                    itemPercent: step.itemPercent || 0
+                });
+            });
             totalTokens += result.tokens;
 
             const evaluation = { id: evalIdCounter++, ...result.evaluation };
             s.evaluations = s.evaluations || [];
             s.evaluations.unshift(evaluation);
+
+            if (typeof afsMarkRowEvaluated === 'function') {
+                afsMarkRowEvaluated(s, rowIdx);
+            }
 
             if (options.runAtivo && letter('asset_output') && result.evaluation.asset_normalized) {
                 row[letter('asset_output')] = result.evaluation.asset_normalized;
@@ -260,6 +325,7 @@ async function browserRunEvaluation(options, onProgress) {
             }
 
             afsSaveState(s);
+            completedCount++;
 
             onProgress({
                 ...basePayload,
@@ -272,15 +338,25 @@ async function browserRunEvaluation(options, onProgress) {
                 conservation_state: result.evaluation.conservation_state,
                 tag_verificada: result.visionData.tag_encontrada,
                 raciocinio_visual: result.visionData.raciocinio_visual,
-                valuation: result.marketData
+                valuation: result.marketData,
+                stepLabel: `Item ${itemNum}/${totalPending}: avaliação concluída ✓`,
+                overallPercent: Math.round((completedCount / totalPending) * 100),
+                itemPercent: 100
             });
         } catch (e) {
-            onProgress({ ...basePayload, status: 'Erro API', tokens: totalTokens, error: e.message });
+            onProgress({
+                ...basePayload,
+                status: 'Erro API',
+                tokens: totalTokens,
+                error: e.message,
+                stepLabel: `Erro no item ${itemNum}/${totalPending}: ${e.message}`,
+                overallPercent: Math.round((completedCount / totalPending) * 100)
+            });
             break;
         }
     }
 
-    onProgress({ status: 'finished' });
+    onProgress({ status: 'finished', overallPercent: 100, stepLabel: 'Avaliação finalizada.' });
 }
 
 async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correctedValue, model }) {

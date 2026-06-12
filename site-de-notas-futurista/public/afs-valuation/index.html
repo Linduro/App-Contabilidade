@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Asset Solutions Valuation — Avaliação e conciliação de ativo imobilizado patrimonial">
     <title>Asset Solutions Valuation</title>
-    <link rel="stylesheet" href="./css/style.css?v=20">
+    <link rel="stylesheet" href="./css/style.css?v=21">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23f97316'/><text x='16' y='22' text-anchor='middle' font-family='Inter,sans-serif' font-size='16' font-weight='700' fill='white'>A</text></svg>">
 </head>
@@ -292,7 +292,7 @@
                         </select>
                     </div>
 
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
                         <button class="btn btn-primary" id="btnPlay" onclick="startEvaluation()">
                             <span class="spinner"></span>
                             <span class="btn-text">▶ Iniciar / Play</span>
@@ -301,6 +301,17 @@
                             <span class="btn-text">⏸ Pausar</span>
                         </button>
                     </div>
+                </div>
+
+                <div id="evalProgressWrap" style="display: none; margin-bottom: 16px; padding: 12px 14px; background: rgba(0,0,0,0.15); border: 1px solid var(--border-subtle); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <div id="evalStepLabel" style="font-size: 0.85rem; font-weight: 600; color: var(--afs-orange-300);">Aguardando início...</div>
+                        <div id="evalProgressPct" style="font-size: 0.8rem; font-weight: 700; color: var(--afs-orange-400);">0%</div>
+                    </div>
+                    <div class="eval-progress-track">
+                        <div id="evalProgressBar" class="eval-progress-bar"></div>
+                    </div>
+                    <div id="evalStepDetail" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;"></div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 16px;">
@@ -494,17 +505,18 @@
      MODAL DE REVISÃO
      ========================================== -->
 <div class="modal-overlay" id="reviewModal" style="display: none;">
-    <div class="modal-content" style="max-width: 900px; width: 90%; background: var(--bg-card); border-radius: 12px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column;">
+    <div class="modal-content review-modal-content">
         <!-- Header -->
-        <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+        <div class="modal-header">
             <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
                 <i class="fa-solid fa-microscope" style="color: var(--afs-orange-400);"></i> Revisão de Avaliação
             </h2>
             <button class="btn btn-secondary" onclick="closeReviewModal()" style="padding: 4px 12px;">✕ Fechar</button>
         </div>
         
-        <!-- Body -->
-        <div style="display: flex; flex-direction: row; flex-wrap: wrap; padding: 0;">
+        <!-- Scrollable Body -->
+        <div class="review-modal-body">
+        <div style="display: flex; flex-direction: row; flex-wrap: wrap;">
             <!-- Left side: Photo and basic info -->
             <div style="flex: 1; min-width: 300px; padding: 24px; border-right: 1px solid var(--border-color); background: rgba(0,0,0,0.1);">
                 <div class="form-label" style="margin-top: 0;">Foto do Bem (Vision)</div>
@@ -571,6 +583,7 @@
                 </div>
             </div>
         </div>
+        </div>
         
         <!-- correctionFormBlock -->
         <div id="correctionFormBlock" style="display: none; padding: 16px 24px; border-top: 1px solid var(--border-color); background: rgba(249, 115, 22, 0.05); flex-direction: column; gap: 10px;">
@@ -593,10 +606,13 @@
         </div>
 
         <!-- Footer -->
-        <div style="padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: rgba(0,0,0,0.2);">
+        <div class="modal-footer review-modal-footer">
             <button class="btn btn-secondary" onclick="closeReviewModal()">Fechar</button>
             <button class="btn btn-primary" onclick="submitReviewFeedback(true)">✓ Aceitar Avaliação</button>
             <button class="btn btn-primary" id="btnShowCorrection" onclick="showCorrectionBlock()" style="background: var(--bg-card); border: 1px solid var(--afs-orange-500); color: var(--afs-orange-500);">Corrigir Valor</button>
+            <button class="btn btn-primary" onclick="reEvaluateWithFeedback()" style="background: var(--status-info);">
+                <i class="fa-solid fa-rotate"></i> Re-avaliar com IA (feedback)
+            </button>
         </div>
     </div>
 </div>
@@ -725,10 +741,10 @@
         }
       })();
     </script>
-    <script src="./js/photo-resolver.js?v=20"></script>
-    <script src="./js/learning-rules.js?v=20"></script>
-    <script src="./js/browser-evaluation.js?v=20"></script>
-    <script src="./js/browser-api.js?v=20"></script>
-    <script src="./js/app.js?v=20"></script>
+    <script src="./js/photo-resolver.js?v=21"></script>
+    <script src="./js/learning-rules.js?v=21"></script>
+    <script src="./js/browser-evaluation.js?v=21"></script>
+    <script src="./js/browser-api.js?v=21"></script>
+    <script src="./js/app.js?v=21"></script>
 </body>
 </html>
