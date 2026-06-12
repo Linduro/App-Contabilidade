@@ -172,3 +172,6 @@ exports.scoreExecucaoAltoValorOnWrite = functions.firestore
   .onWrite(scoreExecucaoAltoValorOnWrite)
 
 exports.datajudSearch = datajudSearch
+
+const { syncAfsAdminClaims } = require("./afs-market-admin")
+exports.syncAfsAdminClaims = syncAfsAdminClaims

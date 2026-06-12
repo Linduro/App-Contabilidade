@@ -76,3 +76,12 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - **Bloco 3:** Drawer com localização, sócios, links clicáveis, badge de status
 - **Bloco 7:** Tabela de transição restrita aos últimos 90 dias
 - **Bloco 10:** `data-label` nas células para responsividade mobile
+
+## 100% do plano (fechamento final)
+
+- **Bloco 1:** `schemas.js` com validação de payloads e enums das coleções
+- **Bloco 3:** Porte MEI–Grande, score máx., drawer completo
+- **Bloco 4:** Execução por etapa individual + animação de progresso
+- **Bloco 5:** Tempo médio entre transições no histórico (por lead)
+- **Bloco 8:** Botão Editar parceiro + e-mail/telefone no modal
+- **Bloco 11:** `syncAfsAdminClaims` (Cloud Function) + `role == admin` nas rules + `[AFS-ERROR]` em todos os catches

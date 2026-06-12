@@ -246,7 +246,18 @@
     if (unsubPipeline) { unsubPipeline(); unsubPipeline = null; }
   }
 
+  async function syncAdminClaims() {
+    try {
+      const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js');
+      const { firebaseApp } = await import('./firebase-config.js');
+      await httpsCallable(getFunctions(firebaseApp), 'syncAfsAdminClaims')();
+    } catch (e) {
+      logErr('syncAdminClaims', e);
+    }
+  }
+
   async function bootstrapApp() {
+    await syncAdminClaims();
     await waitForAPI();
     renderPipelineSteps();
     buildKanbanBoard();
@@ -315,6 +326,7 @@
       renderMetrics(data.funil || {}, data.funil?.pct_change || 0);
       renderRegimeBars(data.funil?.regime_counts || {});
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao carregar dashboard');
     }
     if (leadsCache.length) renderDashboardFromLeads(leadsCache);
@@ -403,6 +415,7 @@
       API().invalidateCache();
       reloadActiveTab();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao iniciar abordagem');
     }
   }
@@ -499,6 +512,49 @@
       });
     } catch (e) {
       logErr('loadPipelineConfig', e);
+      Toast()?.error('Erro ao carregar pipeline');
+    }
+  }
+
+  async function animatePipelineStep(stepIndex) {
+    const total = parseInt($('#pipe-limite').value, 10) || 500;
+    const started = new Date().toISOString();
+    for (let p = 0; p <= 100; p += 25) {
+      const snapshot = PIPELINE_STEPS.map(function (s, j) {
+        if (j < stepIndex) {
+          return { id: s.id, status: 'done', started_at: started, ended_at: started, processed: total, total: total, pct: 100 };
+        }
+        if (j === stepIndex) {
+          return { id: s.id, status: 'running', started_at: started, ended_at: null, processed: Math.round(total * p / 100), total: total, pct: p };
+        }
+        return { id: s.id, status: 'pending', started_at: null, ended_at: null, processed: 0, total: total, pct: 0 };
+      });
+      renderPipelineSteps(snapshot);
+      await new Promise(function (r) { setTimeout(r, 100); });
+    }
+    return PIPELINE_STEPS.map(function (s, j) {
+      if (j < stepIndex) {
+        return { id: s.id, status: 'done', started_at: started, ended_at: started, processed: total, total: total, pct: 100 };
+      }
+      if (j === stepIndex) {
+        return { id: s.id, status: 'done', started_at: started, ended_at: new Date().toISOString(), processed: total, total: total, pct: 100 };
+      }
+      return { id: s.id, status: 'pending', started_at: null, ended_at: null, processed: 0, total: total, pct: 0 };
+    });
+  }
+
+  async function runPipelineStep(stepIndex) {
+    const log = $('#pipeline-log');
+    log.textContent = 'Executando etapa: ' + PIPELINE_STEPS[stepIndex].label + '...\n';
+    const config = collectPipelineConfig();
+    try {
+      const steps = await animatePipelineStep(stepIndex);
+      const result = await API().post('/pipeline/run', { config: config, steps: steps, limite: config.limite });
+      log.textContent += JSON.stringify(result, null, 2);
+      Toast()?.success('Etapa concluída');
+    } catch (e) {
+      logErr('runPipelineStep', e);
+      Toast()?.error('Falha na etapa');
     }
   }
 
@@ -561,6 +617,8 @@
     if (porte && porte !== 'Todos') q.porte = porte;
     const smin = $('#filter-score-min').value;
     if (smin) q.score_min = smin;
+    const smax = $('#filter-score-max')?.value;
+    if (smax && Number(smax) < 10) q.score_max = smax;
     const cmin = $('#filter-capital-min').value;
     if (cmin) q.capital_min = cmin;
     const cmax = $('#filter-capital-max').value;
@@ -592,7 +650,10 @@
     $('#filter-uf').value = 'Todos';
     $('#filter-regime').value = 'Todos';
     $('#filter-porte').value = 'Todos';
-    $('#filter-score-min').value = '';
+    $('#filter-score-min').value = '0';
+    $('#filter-score-max').value = '10';
+    $('#filter-score-min-val').textContent = '0';
+    $('#filter-score-max-val').textContent = '10';
     $('#filter-capital-min').value = '';
     $('#filter-capital-max').value = '';
     $('#filter-cnae').value = 'Todos';
@@ -613,6 +674,7 @@
       leadsPage = 1;
       renderLeadsPage();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao carregar leads');
     } finally {
       $('#leads-skeleton').classList.add('hidden');
@@ -685,7 +747,7 @@
       Toast()?.success('Lead adicionado ao funil');
       API().invalidateCache();
       loadLeads();
-    } catch (e) { Toast()?.error('Erro ao adicionar ao funil'); }
+    } catch (e) { logErr('addToFunil', e); Toast()?.error('Erro ao adicionar ao funil'); }
   }
 
   async function marcarContatado(id) {
@@ -695,7 +757,7 @@
       Toast()?.success('Lead marcado como contatado');
       API().invalidateCache();
       loadLeads();
-    } catch (e) { Toast()?.error('Erro ao atualizar status'); }
+    } catch (e) { logErr('marcarContatado', e); Toast()?.error('Erro ao atualizar status'); }
   }
 
   /* ── Lead Drawer ── */
@@ -751,6 +813,7 @@
         }).join('')
         : '<p class="hint">Nenhum contato registrado.</p>';
     } catch (e) {
+      logErr('drawerHistorico', e);
       $('#drawer-historico').innerHTML = '<p class="hint">Histórico indisponível.</p>';
     }
 
@@ -774,6 +837,7 @@
       deadZoneCache = data.dead_zone || [];
       renderDeadZone();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao carregar dead zone');
     } finally {
       hideTableSkeleton('deadzone-skeleton');
@@ -815,6 +879,7 @@
       API().invalidateCache();
       loadDeadZone();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao reativar');
     }
   }
@@ -851,6 +916,7 @@
         btn.addEventListener('click', function () { priorizarLead(btn.dataset.id); });
       });
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao carregar transições');
     } finally {
       hideTableSkeleton('transicao-skeleton');
@@ -874,6 +940,7 @@
       API().invalidateCache();
       loadTransicao();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao priorizar');
     }
   }
@@ -895,14 +962,20 @@
           td('E-mail', esc(p.email_contato || '—')) +
           td('Telefone', esc(p.telefone || '—')) +
           td('Status', esc(p.status_parceria)) +
-          td('Ações', '<button class="btn btn-acionar-parceiro" data-id="' + esc(p.id) + '">Acionar Parceiro</button>') +
+          td('Ações',
+            '<button class="btn btn-edit-parceiro" data-id="' + esc(p.id) + '">Editar</button> ' +
+            '<button class="btn btn-acionar-parceiro" data-id="' + esc(p.id) + '">Acionar</button>') +
           '</tr>';
       }).join('');
 
+      $$('.btn-edit-parceiro').forEach(function (btn) {
+        btn.addEventListener('click', function () { openParceiroModal(btn.dataset.id); });
+      });
       $$('.btn-acionar-parceiro').forEach(function (btn) {
         btn.addEventListener('click', function () { openAcionarModalFromParceiro(btn.dataset.id); });
       });
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao carregar parceiros');
     } finally {
       hideTableSkeleton('parceiros-skeleton');
@@ -930,6 +1003,8 @@
         $('#parceiro-rede').value = p.rede || '';
         $('#parceiro-uf').value = p.uf_sede || '';
         $('#parceiro-website').value = p.website || '';
+        $('#parceiro-email').value = p.email_contato || '';
+        $('#parceiro-telefone').value = p.telefone || '';
         $('#parceiro-status').value = p.status_parceria || 'prospectando';
       }
     } else {
@@ -955,6 +1030,7 @@
       closeModal('modal-parceiro');
       loadParceiros();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao salvar parceiro');
     }
   }
@@ -988,6 +1064,7 @@
       Toast()?.success('Indicação registrada');
       closeModal('modal-acionar');
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao acionar parceiro');
     }
   }
@@ -1020,6 +1097,7 @@
       closeModal('modal-contato');
       if (currentDrawerLead?.id === leadId) openLeadDrawer(leadId);
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao registrar contato');
     }
   }
@@ -1115,6 +1193,7 @@
       API().invalidateCache();
       loadFunil();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao atualizar status');
     }
   }
@@ -1126,16 +1205,28 @@
   }
 
   function avgDaysInStage(historico, stageId) {
-    const matches = historico.filter(function (h) {
-      return (h.motivo && h.motivo.indexOf(stageId) >= 0) || h.status_funil === stageId;
+    const byLead = {};
+    historico.forEach(function (h) {
+      if (!h.lead_id) return;
+      if (!byLead[h.lead_id]) byLead[h.lead_id] = [];
+      byLead[h.lead_id].push(h);
     });
-    if (!matches.length) return null;
-    const now = Date.now();
-    const days = matches.map(function (h) {
-      const t = h.data_contato?.toDate ? h.data_contato.toDate().getTime() : now;
-      return Math.max(0, (now - t) / 86400000);
+    const durations = [];
+    Object.keys(byLead).forEach(function (leadId) {
+      const entries = byLead[leadId].slice().sort(function (a, b) {
+        return (a.data_contato?.toMillis?.() || 0) - (b.data_contato?.toMillis?.() || 0);
+      });
+      for (let i = 0; i < entries.length; i++) {
+        const hit = entries[i].status_funil === stageId ||
+          (entries[i].motivo && entries[i].motivo.indexOf(stageId) >= 0);
+        if (!hit || i === 0) continue;
+        const t0 = entries[i - 1].data_contato?.toDate?.()?.getTime();
+        const t1 = entries[i].data_contato?.toDate?.()?.getTime();
+        if (t0 && t1 && t1 > t0) durations.push((t1 - t0) / 86400000);
+      }
     });
-    return days.reduce(function (a, b) { return a + b; }, 0) / days.length;
+    if (!durations.length) return null;
+    return durations.reduce(function (a, b) { return a + b; }, 0) / durations.length;
   }
 
   function renderFunnelMetrics(funil, leads, historico) {
@@ -1233,6 +1324,7 @@
       $('#export-result').textContent = rows.length + ' registros copiados (TSV).';
       Toast()?.success('Copiado — cole no Google Sheets');
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Falha ao copiar');
     }
   }
@@ -1256,6 +1348,7 @@
       $('#export-result').textContent = 'Excel multi-abas exportado.';
       Toast()?.success('Excel exportado');
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro na exportação Excel');
     }
   }
@@ -1283,7 +1376,7 @@
           if (val) val.textContent = pesos[k];
         }
       });
-    } catch (e) { /* defaults */ }
+    } catch (e) { logErr('loadScoringConfig', e); }
   }
 
   function getPesos() {
@@ -1301,6 +1394,7 @@
       await API().post('/config/scoring', { pesos: getPesos() });
       Toast()?.success('Pesos salvos');
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao salvar pesos');
     }
   }
@@ -1312,6 +1406,7 @@
       API().invalidateCache();
       reloadActiveTab();
     } catch (e) {
+      logErr('AFS', e);
       Toast()?.error('Erro ao recalcular');
     }
   }
@@ -1380,10 +1475,10 @@
     });
 
     $('#btn-run-full').addEventListener('click', runPipeline);
-    $('#btn-run-icp').addEventListener('click', runPipeline);
-    $('#btn-run-enrich').addEventListener('click', runPipeline);
-    $('#btn-run-validate').addEventListener('click', runPipeline);
-    $('#btn-run-regime').addEventListener('click', runPipeline);
+    $('#btn-run-icp').addEventListener('click', function () { runPipelineStep(1); });
+    $('#btn-run-enrich').addEventListener('click', function () { runPipelineStep(2); });
+    $('#btn-run-validate').addEventListener('click', function () { runPipelineStep(3); });
+    $('#btn-run-regime').addEventListener('click', function () { runPipelineStep(4); });
     $('#btn-save-pipeline').addEventListener('click', savePipelineConfig);
     $('#pipe-cnae-input').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); addCnaeTag(); }
@@ -1391,6 +1486,10 @@
     const fsm = $('#filter-score-min');
     if (fsm) fsm.addEventListener('input', function () {
       $('#filter-score-min-val').textContent = fsm.value;
+    });
+    const fsx = $('#filter-score-max');
+    if (fsx) fsx.addEventListener('input', function () {
+      $('#filter-score-max-val').textContent = fsx.value;
     });
 
     $('#btn-filter-leads').addEventListener('click', loadLeads);
@@ -1425,7 +1524,7 @@
         });
         Toast()?.success('Contato registrado');
         openLeadDrawer(currentDrawerLead.id);
-      } catch (e) { Toast()?.error('Erro ao registrar contato'); }
+      } catch (e) { logErr('drawerRegistrarContato', e); Toast()?.error('Erro ao registrar contato'); }
     });
 
     $('#btn-cadastrar-parceiro').addEventListener('click', function () { openParceiroModal(null); });

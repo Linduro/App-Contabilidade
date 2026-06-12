@@ -2,6 +2,7 @@
  * AFS Market Intelligence — API compatível (window.AFSMarketAPI) com backend Firestore.
  */
 import { db, auth } from './firebase-config.js';
+import { validateLeadPayload, validateHistoricoPayload, validateLeadPartial } from './schemas.js';
 import {
   collection,
   doc,
@@ -105,6 +106,7 @@ function applyClientFilters(leads, params) {
   if (params.capital_min) list = list.filter((l) => l.capital_social >= Number(params.capital_min));
   if (params.capital_max) list = list.filter((l) => l.capital_social <= Number(params.capital_max));
   if (params.score_min) list = list.filter((l) => l.score >= Number(params.score_min));
+  if (params.score_max) list = list.filter((l) => l.score <= Number(params.score_max));
   if (params.transicao === 'true') list = list.filter((l) => l.transicao_regime);
   if (params.email_validado === 'true') list = list.filter((l) => l.email && l.email.includes('@'));
   if (params.situacao_ativa === 'true') list = list.filter((l) => l.situacao_cadastral === 'ATIVA');
@@ -242,6 +244,8 @@ async function getParceiros() {
 }
 
 async function postFeedback(body) {
+  const v = validateHistoricoPayload(body);
+  if (!v.ok) throw new Error(v.error);
   const leadId = String(body.lead_id || body.leadId);
   await addDoc(collection(db, HISTORICO), {
     lead_id: leadId,
@@ -427,6 +431,8 @@ window.AFSMarketAPI = {
   },
   getHistorico: getHistorico,
   updateLead: async function (id, data) {
+    const v = validateLeadPartial(data);
+    if (!v.ok) throw new Error(v.error);
     await updateDoc(doc(db, LEADS, id), { ...data, atualizado_em: serverTimestamp() });
     const idx = _leadsCache.findIndex((l) => l.id === id);
     if (idx >= 0) Object.assign(_leadsCache[idx], data);
@@ -449,7 +455,11 @@ window.AFSMarketAPI = {
       { cnpj_basico: '87654321', razao_social: 'Indústria Beta EPP', cnae_codigo: '2511-0/00', cnae_descricao: 'Fabricação de estruturas metálicas', regime_tributario: 'LP', capital_social: 800000, porte_empresa: 'EPP', qtd_filiais: 1, situacao_cadastral: 'ATIVA', uf: 'MG', municipio: 'Belo Horizonte', telefone: '(31) 3200-0002', email: 'financeiro@betaind.com.br', cluster: 'Industrial', score: 6.2, transicao_regime: false, perfil_icp: 'generico', status_funil: 'contato_feito', criado_em: daysAgo(30), atualizado_em: serverTimestamp() },
       { cnpj_basico: '11223344', razao_social: 'Comércio Gama ME', cnae_codigo: '4711-3/01', cnae_descricao: 'Comércio varejista', regime_tributario: 'SN', capital_social: 50000, porte_empresa: 'ME', situacao_cadastral: 'ATIVA', uf: 'RJ', municipio: 'Rio de Janeiro', telefone: '(21) 2500-0003', email: '', cluster: 'Varejo', score: 3.1, transicao_regime: false, perfil_icp: 'generico', status_funil: 'dead_zone', motivo_dead_zone: 'Sem e-mail válido', rota_recomendada: 'LinkedIn', prioridade: 'Média', criado_em: daysAgo(45), atualizado_em: serverTimestamp() },
     ];
-    for (const s of samples) await addDoc(collection(db, LEADS), s);
+    for (const s of samples) {
+      const v = validateLeadPayload({ ...s, perfil_icp: s.perfil_icp || 'generico', status_funil: s.status_funil || 'prospectado' });
+      if (!v.ok) throw new Error(v.error);
+      await addDoc(collection(db, LEADS), s);
+    }
     await setDoc(doc(db, CONFIG, 'status'), { online: true, updated_at: serverTimestamp() }, { merge: true });
     _leadsCache = [];
     return { status: 'ok', count: samples.length };

@@ -39,10 +39,15 @@ async function sendLeadFcm(db, leadId, leadData) {
   }
 }
 
+function isAfsMarketLead(data) {
+  return Boolean(data && (data.cnpj_basico || data.perfil_icp || data.regime_tributario))
+}
+
 async function handleLeadScoring(change, context) {
   const db = admin.firestore()
   const after = change.after.exists ? change.after.data() : null
   if (!after) return null
+  if (isAfsMarketLead(after)) return null
 
   const leadId = context.params.leadId
   const { score, score_motivo } = computeLeadScore(after)
