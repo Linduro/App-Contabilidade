@@ -45,6 +45,7 @@ const POST_TEMPLATES = [
 
 export function OnboardingView() {
   const router = useRouter();
+  const [step, setStep] = useState(1);
   const me = trpc.redeTeste.me.useQuery();
   const suggestions = trpc.redeTeste.onboardingSuggestions.useQuery(undefined, {
     enabled: step >= 4,
@@ -58,7 +59,6 @@ export function OnboardingView() {
     },
   });
 
-  const [step, setStep] = useState(1);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [userType, setUserType] = useState<string>("Advogado");
