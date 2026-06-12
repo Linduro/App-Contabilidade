@@ -18,7 +18,7 @@ services:
     rootDir: rede-teste-web
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /rede-teste
+    healthCheckPath: /api/health
     envVars:
       # Postgres Render (auto). Workflow configure-rede-teste-render troca para Supabase quando RENDER_API_KEY existir.
       - key: DATABASE_URL
