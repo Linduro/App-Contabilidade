@@ -3,6 +3,7 @@ name: Deploy Rede Teste (Cloud Run)
 # Ativar:
 #   Settings → Secrets: FIREBASE_SERVICE_ACCOUNT, REDE_TESTE_DATABASE_URL, REDE_TESTE_AUTH_SECRET
 #   Settings → Variables: ENABLE_REDE_TESTE_CLOUD_RUN = true
+#   FIREBASE_SERVICE_ACCOUNT deve ser JSON do projeto contabilidade-ebed6 (mesmo do portal Firebase).
 #   Depois do 1º deploy: REDE_TESTE_URL = URL do Cloud Run (para o portal GitHub Pages)
 
 on:
@@ -43,6 +44,24 @@ jobs:
         if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
         with:
           project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Verify service account project matches GCP_PROJECT
+        if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
+        env:
+          CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          SA_PROJECT=$(python3 - <<'PY'
+          import json, os
+          print(json.loads(os.environ["CREDENTIALS_JSON"]).get("project_id", ""))
+          PY
+          )
+          echo "Service account project: ${SA_PROJECT}"
+          echo "Workflow GCP_PROJECT: ${{ env.GCP_PROJECT }}"
+          if [ "${SA_PROJECT}" != "${{ env.GCP_PROJECT }}" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT pertence a '${SA_PROJECT}', mas o workflow usa '${{ env.GCP_PROJECT }}'."
+            echo "Gere a chave em Firebase Console → projeto contabilidade-ebed6 → Service accounts."
+            exit 1
+          fi
 
       - name: Enable required APIs
         if: ${{ vars.ENABLE_REDE_TESTE_CLOUD_RUN == 'true' }}
