@@ -207,9 +207,24 @@
 
   /* ── Auth ── */
 
+  function onDocumentReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else {
+      fn();
+    }
+  }
+
   async function initAuth() {
+    const fallbackLink = $('#login-fallback-link');
+    if (fallbackLink) fallbackLink.href = portalSignInUrl();
     const auth = await waitForFB();
-    if (!auth) return;
+    if (!auth) {
+      logErr('initAuth', new Error('Firebase Auth não inicializou'));
+      $('#login-status').textContent = 'Não foi possível verificar a sessão. Redirecionando…';
+      window.location.replace(portalSignInUrl());
+      return;
+    }
     const { onAuthStateChanged, signInWithEmailAndPassword, signOut } = await getAuthMod();
 
     window.AFSAuth = {
@@ -235,7 +250,14 @@
       } else {
         teardownApp();
         $('#login-status').textContent = 'Redirecionando para o login do portal…';
-        window.location.replace(portalSignInUrl());
+        const signIn = portalSignInUrl();
+        const fallback = $('#login-fallback');
+        const fallbackLink = $('#login-fallback-link');
+        if (fallback && fallbackLink) {
+          fallback.classList.remove('hidden');
+          fallbackLink.href = signIn;
+        }
+        window.location.replace(signIn);
       }
     });
   }
@@ -1547,7 +1569,7 @@
     initSearch();
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  onDocumentReady(function () {
     bindEvents();
     initAuth();
   });
