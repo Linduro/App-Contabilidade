@@ -1,4 +1,8 @@
+import dns from "node:dns";
 import pg from "pg";
+
+// Render e outros hosts sem IPv6 de saída falham em db.*.supabase.co (AAAA-only).
+dns.setDefaultResultOrder("ipv4first");
 
 export function stripSslQueryParams(url: string): string {
   return url
