@@ -1,3 +1,4 @@
+// Regras canônicas: site-de-notas-futurista/firestore.rules (deploy via firebase deploy)
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {

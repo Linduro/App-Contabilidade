@@ -74,20 +74,18 @@ cd site-de-notas-futurista
 npx firebase deploy --only firestore:rules
 ```
 
-5. Seed de demonstração (sem service account — via REST):
+5. Provisionar usuários (owner + Gabriel):
 
 ```bash
 cd site-de-notas-futurista
-npm run afs:seed
+npm run afs:setup
 ```
 
-Cria usuário `afs.market.demo@gmail.com` / `AfsMarket2026!` e 4 leads de exemplo.
+Contas autorizadas: `cartoonhq@gmail.com` e `gabrieldouran@gmail.com`.
+Se a conta já existir, envia e-mail de redefinição de senha.
+Define senha inicial com `AFS_USER_PASSWORD="..."` se for conta nova.
 
-Alternativa após login na SPA (console do browser):
-
-```js
-await AFSMarketAPI.seedDemo()
-```
+Popula leads demo apenas se a base AFS estiver vazia.
 
 6. Rebuild estático após alterações:
 

@@ -67,3 +67,4 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Regras mescladas em `site-de-notas-futurista/firestore.rules` e deployadas
 - Script `scripts/seed-firestore.mjs` para dados de demonstração
 - `static/config.json.example` para configuração sem expor credenciais no repo
+- `npm run afs:setup` — provisiona `cartoonhq@gmail.com` e `gabrieldouran@gmail.com`
