@@ -1,5 +1,6 @@
 import * as store from '../core/store.js';
 import { openModal, closeModal, bindModalCloses } from '../components/modal.js';
+import { recalculateAllScores } from '../core/scoring.js';
 
 const SCORING_KEYS = [
   { key: 'capital', label: 'Capital social' },
@@ -73,7 +74,8 @@ export async function renderConfiguracoes({ mount }) {
   mount.innerHTML =
     '<div class="crm-toolbar"><h2 style="margin:0">Configurações</h2></div>' +
     '<div class="config-grid">' +
-      '<section class="l2-card"><h3>Scoring ICP</h3><p class="hint">Pesos para cálculo do score (0–10)</p><div id="cfg-scoring"></div></section>' +
+      '<section class="l2-card"><h3>Scoring ICP</h3><p class="hint">Pesos para cálculo do score (0–10)</p><div id="cfg-scoring"></div>' +
+      '<button type="button" class="btn sm" id="cfg-recalc-scores" style="margin-top:0.75rem">Recalcular scores dos leads</button></section>' +
       '<section class="l2-card"><h3>Pipelines</h3><div id="cfg-pipelines"></div></section>' +
       '<section class="l2-card"><h3>Tags <button type="button" class="btn sm" id="tag-new">+ Tag</button></h3><div id="cfg-tags"></div></section>' +
       '<section class="l2-card"><h3>Usuários autorizados</h3><div id="cfg-users"></div></section>' +
@@ -89,6 +91,11 @@ export async function renderConfiguracoes({ mount }) {
   renderPipelines(mount);
   renderTags(mount);
   renderUsers(mount);
+
+  mount.querySelector('#cfg-recalc-scores')?.addEventListener('click', () => {
+    const n = recalculateAllScores();
+    window.AFSToast?.success('Scores recalculados em ' + n + ' leads');
+  });
 
   mount.querySelector('#tag-new')?.addEventListener('click', () => openModal('modal-tag'));
   mount.querySelector('#tag-save')?.addEventListener('click', () => {

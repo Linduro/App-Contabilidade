@@ -127,3 +127,10 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - `#/parceiros`: CRUD parceiros B2B2B + acionar indicação
 - `#/configuracoes`: scoring ICP, pipelines, tags e usuários
 - Seed v4: conversas, mensagens, segmentações, automações, campanhas, metas, LPs, forms, empresas demo
+
+## v3.5 — Ingestão RF gratuita (BrasilAPI)
+
+- `adapters/brasilapi-cnpj.js`: consulta CNPJ real (dados abertos RF) no browser
+- `#/prospeccao`: painel consulta unitária + importação em lote com rate limit
+- `core/scoring.js`: score ICP + botão recalcular em Configurações
+- Mapeamento regime/porte/situação/CNAE/sócios a partir da resposta oficial
