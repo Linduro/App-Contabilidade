@@ -83,7 +83,18 @@
         }
         .pipeline-step.running { border-color: var(--afs-orange-500); background: rgba(249,115,22,0.1); }
         .pipeline-step.done { border-color: var(--status-ok); }
+        .pipeline-step.error { border-color: #ef4444; }
         .pipeline-step .step-icon { font-size: 1.25rem; margin-bottom: 0.25rem; }
+        .pipeline-step .step-meta { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.35rem; text-align: left; }
+        .pipeline-step .step-progress { height: 4px; background: var(--bg-card); border-radius: 2px; margin-top: 0.4rem; overflow: hidden; }
+        .pipeline-step .step-progress-fill { height: 100%; background: var(--afs-orange-500); transition: width 0.3s; }
+        .tag-input-wrap { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; min-height: 2rem; padding: 0.35rem; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; }
+        .tag-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(232,104,26,0.15); border: 1px solid var(--afs-orange-500); padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.75rem; }
+        .tag-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; }
+        .drawer-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.72rem; background: rgba(232,104,26,0.2); color: var(--afs-orange-400); margin-top: 0.35rem; }
+        .drawer-socios { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+        .drawer-socios th, .drawer-socios td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-subtle); text-align: left; }
+        .funnel-timing { margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); }
         .filters-panel {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             gap: 0.75rem; margin-bottom: 1rem;
@@ -319,28 +330,62 @@
         <!-- Pipeline -->
         <section class="tab-panel" id="tab-pipeline">
             <div class="card" id="pipeline-config">
-                <h3>Configuração do Pipeline</h3>
-                <div class="form-row">
+                <h3>Configurar Pipeline</h3>
+                <div class="filters-panel">
+                    <div class="form-field">
+                        <label for="pipe-ufs">UF alvo (multi)</label>
+                        <select id="pipe-ufs" multiple size="4">
+                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                            <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                            <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                            <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                            <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                            <option value="SP" selected>SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Regimes a incluir</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="SN" checked> Simples Nacional</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="LP" checked> Lucro Presumido</label>
+                        <label style="display:flex;gap:0.35rem;cursor:pointer"><input type="checkbox" class="pipe-regime" value="LR" checked> Lucro Real</label>
+                    </div>
+                    <div class="form-field">
+                        <label>CNAEs alvo (tags)</label>
+                        <div class="tag-input-wrap" id="pipe-cnae-tags"></div>
+                        <input type="text" id="pipe-cnae-input" placeholder="Código CNAE + Enter" style="margin-top:0.35rem">
+                    </div>
+                    <div class="form-field">
+                        <label for="pipe-capital-min">Capital mínimo (R$)</label>
+                        <input type="number" id="pipe-capital-min" value="0" min="0">
+                    </div>
                     <div class="form-field">
                         <label for="pipe-perfil">Perfil alvo</label>
                         <select id="pipe-perfil">
                             <option value="patrimonial">Patrimonial</option>
                             <option value="generico">Genérico</option>
+                            <option value="transicao_regime">Transição Regime</option>
                         </select>
                     </div>
                     <div class="form-field">
                         <label for="pipe-limite">Limite de leads</label>
                         <input type="number" id="pipe-limite" value="500" min="10" max="5000">
                     </div>
-                    <div class="form-field" style="display:flex;align-items:flex-end">
+                    <div class="form-field" style="display:flex;flex-direction:column;gap:0.5rem;justify-content:flex-end">
                         <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
-                            <input type="checkbox" id="pipe-pular-ingestao" checked> Pular ingestão RF
+                            <input type="checkbox" id="pipe-pular-ingestao" checked> Pular ingestão RF (usar base existente)
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                            <input type="checkbox" id="pipe-forcar-enrich"> Forçar reenriquecimento de leads já enriquecidos
                         </label>
                     </div>
                 </div>
             </div>
             <div class="card">
-                <h3>Pipeline Visual</h3>
+                <h3>Progresso do Pipeline</h3>
+                <p class="hint">[Ingestão RF] → [ICP/Cluster] → [Enriquecimento] → [Validação E-mail] → [Monitor Regime]</p>
                 <div class="pipeline-steps" id="pipeline-steps"></div>
                 <div class="btn-group">
                     <button class="btn primary" id="btn-run-full">Pipeline Completo</button>
@@ -386,8 +431,9 @@
                         </select>
                     </div>
                     <div class="form-field">
-                        <label>Score mín.</label>
-                        <input type="number" id="filter-score-min" min="0" max="10" step="0.5" placeholder="0">
+                        <label>Score mín. (0–10)</label>
+                        <input type="range" id="filter-score-min" min="0" max="10" step="0.5" value="0">
+                        <span id="filter-score-min-val" class="hint">0</span>
                     </div>
                     <div class="form-field">
                         <label>Capital mín.</label>
@@ -541,6 +587,7 @@
                 <div class="kanban-board" id="kanban-board"></div>
                 <h3 style="margin-top:1rem">Métricas do Funil</h3>
                 <div class="funnel" id="funnel-metrics"></div>
+                <div id="funnel-timing" class="funnel-timing"></div>
                 <div id="funnel-bars" style="margin-top:1rem"></div>
             </div>
         </section>
@@ -628,20 +675,28 @@
         <div>
             <h3 id="drawer-title">—</h3>
             <p class="hint" id="drawer-subtitle" style="margin:0"></p>
+            <span class="drawer-badge" id="drawer-status-badge"></span>
         </div>
         <button class="btn" id="drawer-close">✕</button>
     </div>
     <div class="drawer-section">
-        <h4>Dados da Empresa</h4>
+        <h4>Dados Cadastrais</h4>
         <dl class="drawer-grid" id="drawer-empresa"></dl>
     </div>
     <div class="drawer-section">
-        <h4>Contato</h4>
+        <h4>Localização</h4>
+        <dl class="drawer-grid" id="drawer-localizacao"></dl>
+    </div>
+    <div class="drawer-section">
+        <h4>Contatos</h4>
         <dl class="drawer-grid" id="drawer-contato"></dl>
     </div>
     <div class="drawer-section">
-        <h4>Comercial</h4>
-        <dl class="drawer-grid" id="drawer-comercial"></dl>
+        <h4>Sócios</h4>
+        <table class="drawer-socios" id="drawer-socios">
+            <thead><tr><th>Nome</th><th>Qualificação</th><th>E-mail</th></tr></thead>
+            <tbody></tbody>
+        </table>
     </div>
     <div class="drawer-section">
         <h4>Histórico de Contato</h4>

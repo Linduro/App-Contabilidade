@@ -68,3 +68,11 @@ Refatoração completa da plataforma de prospecção B2B (Asset Flow Solutions).
 - Script `scripts/seed-firestore.mjs` para dados de demonstração
 - `static/config.json.example` para configuração sem expor credenciais no repo
 - `npm run afs:setup` — provisiona `cartoonhq@gmail.com` e `gabrieldouran@gmail.com`
+
+## Fechamento de lacunas (blocos 3–5, 7, 10)
+
+- **Bloco 4:** Config pipeline completa (UF/regimes multi, CNAE tags, capital mín., toggles), progresso visual com timestamps e barras %
+- **Bloco 5:** Tempo médio por etapa do funil via `historico_contato`
+- **Bloco 3:** Drawer com localização, sócios, links clicáveis, badge de status
+- **Bloco 7:** Tabela de transição restrita aos últimos 90 dias
+- **Bloco 10:** `data-label` nas células para responsividade mobile

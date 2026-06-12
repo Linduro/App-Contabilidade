@@ -50,7 +50,9 @@
   let currentDrawerLead = null;
   let unsubLeads = null;
   let unsubConfig = null;
+  let unsubPipeline = null;
   let searchTimer = null;
+  let pipeCnaeTags = [];
   let reconnectAttempts = 0;
   let browserOnline = navigator.onLine;
 
@@ -140,11 +142,38 @@
     }
   }
 
+  function logErr(ctx, e) {
+    console.error('[AFS-ERROR]', ctx, e);
+  }
+
   function esc(s) {
     if (s == null) return '';
     const d = document.createElement('div');
     d.textContent = String(s);
     return d.innerHTML;
+  }
+
+  function td(label, html) {
+    return '<td data-label="' + esc(label) + '">' + html + '</td>';
+  }
+
+  function linkOrDash(url, text) {
+    if (!url || url === '—') return '—';
+    const href = String(url).startsWith('http') ? url : 'https://' + url;
+    return '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(text || url) + '</a>';
+  }
+
+  function fmtDate(v) {
+    if (!v) return '—';
+    const d = v.toDate ? v.toDate() : new Date(v);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+  }
+
+  function pipelineStepIcon(status) {
+    if (status === 'running') return '🔄';
+    if (status === 'done') return '✅';
+    if (status === 'error') return '❌';
+    return '⬜';
   }
 
   async function getAuthMod() {
@@ -214,6 +243,7 @@
   function teardownApp() {
     if (unsubLeads) { unsubLeads(); unsubLeads = null; }
     if (unsubConfig) { unsubConfig(); unsubConfig = null; }
+    if (unsubPipeline) { unsubPipeline(); unsubPipeline = null; }
   }
 
   async function bootstrapApp() {
@@ -379,58 +409,142 @@
 
   /* ── Pipeline ── */
 
+  function collectPipelineConfig() {
+    const ufs = [...$('#pipe-ufs').selectedOptions].map(function (o) { return o.value; });
+    const regimes = [...$$('.pipe-regime:checked')].map(function (c) { return c.value; });
+    return {
+      perfil: $('#pipe-perfil').value || perfil(),
+      limite: parseInt($('#pipe-limite').value, 10) || 500,
+      pular_ingestao: $('#pipe-pular-ingestao').checked,
+      forcar_reenriquecimento: $('#pipe-forcar-enrich').checked,
+      ufs: ufs,
+      regimes: regimes,
+      cnaes: pipeCnaeTags.slice(),
+      capital_min: parseInt($('#pipe-capital-min').value, 10) || 0,
+    };
+  }
+
+  function applyPipelineConfig(cfg) {
+    if (!cfg) return;
+    if (cfg.perfil) $('#pipe-perfil').value = cfg.perfil;
+    if (cfg.limite) $('#pipe-limite').value = cfg.limite;
+    if (cfg.pular_ingestao != null) $('#pipe-pular-ingestao').checked = cfg.pular_ingestao;
+    if (cfg.forcar_reenriquecimento != null) $('#pipe-forcar-enrich').checked = cfg.forcar_reenriquecimento;
+    if (cfg.capital_min != null) $('#pipe-capital-min').value = cfg.capital_min;
+    if (cfg.ufs && $('#pipe-ufs')) {
+      [...$('#pipe-ufs').options].forEach(function (o) { o.selected = cfg.ufs.includes(o.value); });
+    }
+    if (cfg.regimes) {
+      $$('.pipe-regime').forEach(function (c) { c.checked = cfg.regimes.includes(c.value); });
+    }
+    pipeCnaeTags = cfg.cnaes ? cfg.cnaes.slice() : [];
+    renderCnaeTags();
+  }
+
+  function renderCnaeTags() {
+    const wrap = $('#pipe-cnae-tags');
+    if (!wrap) return;
+    wrap.innerHTML = pipeCnaeTags.map(function (tag, i) {
+      return '<span class="tag-chip">' + esc(tag) +
+        '<button type="button" data-idx="' + i + '" aria-label="Remover">×</button></span>';
+    }).join('');
+    wrap.querySelectorAll('button[data-idx]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        pipeCnaeTags.splice(parseInt(btn.dataset.idx, 10), 1);
+        renderCnaeTags();
+      });
+    });
+  }
+
+  function addCnaeTag() {
+    const input = $('#pipe-cnae-input');
+    const val = input.value.trim();
+    if (!val || pipeCnaeTags.includes(val)) return;
+    pipeCnaeTags.push(val);
+    input.value = '';
+    renderCnaeTags();
+  }
+
   function renderPipelineSteps(steps) {
-    const state = steps || PIPELINE_STEPS.map(function (s) { return { id: s.id, status: 'pending' }; });
+    const state = steps || PIPELINE_STEPS.map(function (s) {
+      return { id: s.id, status: 'pending', processed: 0, total: 100, pct: 0 };
+    });
     $('#pipeline-steps').innerHTML = PIPELINE_STEPS.map(function (s, i) {
-      const st = (state[i] && state[i].status) || 'pending';
-      const icon = st === 'running' ? '⏳' : st === 'done' ? '✓' : '○';
-      return '<div class="pipeline-step ' + st + '"><div class="step-icon">' + icon + '</div><div>' + s.label + '</div></div>';
+      const st = state.find(function (x) { return x.id === s.id; }) || state[i] || {};
+      const status = st.status || 'pending';
+      const pct = st.pct != null ? st.pct : (st.total ? Math.round((st.processed || 0) / st.total * 100) : 0);
+      const ini = st.started_at ? new Date(st.started_at).toLocaleString('pt-BR') : '—';
+      const fim = st.ended_at ? new Date(st.ended_at).toLocaleString('pt-BR') : '—';
+      return '<div class="pipeline-step ' + status + '">' +
+        '<div class="step-icon">' + pipelineStepIcon(status) + '</div>' +
+        '<div><strong>' + s.label + '</strong></div>' +
+        '<div class="step-meta">Início: ' + ini + '<br>Fim: ' + fim + '<br>' +
+        (st.processed || 0) + ' / ' + (st.total || 0) + ' registros</div>' +
+        '<div class="step-progress"><div class="step-progress-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="step-meta">' + pct + '%</div></div>';
     }).join('');
   }
 
   async function loadPipelineConfig() {
     try {
       const data = await API().get('/config/pipeline');
-      if (data.config) {
-        if (data.config.perfil) $('#pipe-perfil').value = data.config.perfil;
-        if (data.config.limite) $('#pipe-limite').value = data.config.limite;
-        if (data.config.pular_ingestao != null) $('#pipe-pular-ingestao').checked = data.config.pular_ingestao;
-      }
+      applyPipelineConfig(data.config);
       if (data.steps) renderPipelineSteps(data.steps);
-    } catch (e) { /* config may not exist yet */ }
+      if (unsubPipeline) unsubPipeline();
+      unsubPipeline = API().subscribePipeline(function (snap) {
+        if (activeTab === 'pipeline') {
+          if (snap.config) applyPipelineConfig(snap.config);
+          if (snap.steps) renderPipelineSteps(snap.steps);
+        }
+      });
+    } catch (e) {
+      logErr('loadPipelineConfig', e);
+    }
   }
 
-  async function runPipeline(etapa) {
+  async function animatePipelineRun() {
+    const total = parseInt($('#pipe-limite').value, 10) || 500;
+    const steps = [];
+    for (let i = 0; i < PIPELINE_STEPS.length; i++) {
+      const started = new Date().toISOString();
+      for (let p = 0; p <= 100; p += 25) {
+        const snapshot = PIPELINE_STEPS.map(function (s, j) {
+          if (j < i) return { id: s.id, status: 'done', started_at: started, ended_at: started, processed: total, total: total, pct: 100 };
+          if (j === i) return { id: s.id, status: 'running', started_at: started, ended_at: null, processed: Math.round(total * p / 100), total: total, pct: p };
+          return { id: s.id, status: 'pending', started_at: null, ended_at: null, processed: 0, total: total, pct: 0 };
+        });
+        renderPipelineSteps(snapshot);
+        await new Promise(function (r) { setTimeout(r, 120); });
+      }
+      steps.push({ id: PIPELINE_STEPS[i].id, status: 'done', started_at: started, ended_at: new Date().toISOString(), processed: total, total: total, pct: 100 });
+    }
+    return steps;
+  }
+
+  async function runPipeline() {
     const log = $('#pipeline-log');
-    log.textContent = 'Executando' + (etapa ? ': ' + etapa : ' pipeline completo') + '...\n';
-    const body = {
-      perfil: $('#pipe-perfil').value || perfil(),
-      pular_ingestao: $('#pipe-pular-ingestao').checked,
-      limite: parseInt($('#pipe-limite').value, 10) || 500,
-    };
-    if (etapa) body.etapa = etapa;
+    log.textContent = 'Executando pipeline completo...\n';
+    const config = collectPipelineConfig();
     try {
-      const result = await API().post('/pipeline/run', body);
+      const steps = await animatePipelineRun();
+      const result = await API().post('/pipeline/run', { config: config, steps: steps, limite: config.limite });
       log.textContent += JSON.stringify(result, null, 2);
       if (result.steps) renderPipelineSteps(result.steps);
       Toast()?.success('Pipeline executado');
-      reloadActiveTab();
+      API().invalidateCache();
     } catch (e) {
-      log.textContent += '\nErro: ' + e.message;
+      logErr('runPipeline', e);
+      log.textContent += '\nErro: ' + (e.message || e);
       Toast()?.error('Falha no pipeline');
     }
   }
 
   async function savePipelineConfig() {
-    const body = {
-      perfil: $('#pipe-perfil').value,
-      limite: parseInt($('#pipe-limite').value, 10),
-      pular_ingestao: $('#pipe-pular-ingestao').checked,
-    };
     try {
-      await API().post('/pipeline/save', body);
+      await API().post('/pipeline/save', collectPipelineConfig());
       Toast()?.success('Configuração salva');
     } catch (e) {
+      logErr('savePipelineConfig', e);
       Toast()?.error('Erro ao salvar config');
     }
   }
@@ -523,25 +637,25 @@
     const slice = filteredLeads.slice(start, start + PAGE_SIZE);
 
     $('#leads-table tbody').innerHTML = slice.map(function (l) {
-      return '<tr data-id="' + esc(l.id) + '">' +
-        '<td>' + esc(l.cnpj_basico) + '</td>' +
-        '<td>' + esc(l.razao_social) + '</td>' +
-        '<td>' + esc(l.cnae_codigo || l.cnae_descricao) + '</td>' +
-        '<td>' + esc(REGIME_LABELS[l.regime_tributario] || l.regime_tributario || '—') + '</td>' +
-        '<td>' + esc(l.porte_empresa || '—') + '</td>' +
-        '<td>' + fmtMoney(l.capital_social) + '</td>' +
-        '<td>' + fmtMoney(l.receita_anual_estimada) + '</td>' +
-        '<td>' + esc(l.uf) + '</td>' +
-        '<td>' + (l.qtd_filiais || 0) + '</td>' +
-        '<td>' + (l.score || 0).toFixed(1) + '</td>' +
-        '<td>' + esc(l.telefone || '—') + '</td>' +
-        '<td>' + esc(l.email || '—') + '</td>' +
-        '<td>' + esc(l.status_funil || '—') + '</td>' +
-        '<td><div class="action-icons">' +
+      const actions = '<div class="action-icons">' +
         '<button title="Ver detalhes" data-action="view" data-id="' + esc(l.id) + '">👁</button>' +
         '<button title="Adicionar ao funil" data-action="funil" data-id="' + esc(l.id) + '">➕</button>' +
-        '<button title="Marcar contatado" data-action="contato" data-id="' + esc(l.id) + '">✓</button>' +
-        '</div></td></tr>';
+        '<button title="Marcar contatado" data-action="contato" data-id="' + esc(l.id) + '">✓</button></div>';
+      return '<tr data-id="' + esc(l.id) + '">' +
+        td('CNPJ', esc(l.cnpj_basico)) +
+        td('Razão Social', esc(l.razao_social)) +
+        td('CNAE', esc(l.cnae_codigo || l.cnae_descricao)) +
+        td('Regime', esc(REGIME_LABELS[l.regime_tributario] || l.regime_tributario || '—')) +
+        td('Porte', esc(l.porte_empresa || '—')) +
+        td('Capital', fmtMoney(l.capital_social)) +
+        td('Receita Est.', fmtMoney(l.receita_anual_estimada)) +
+        td('UF', esc(l.uf)) +
+        td('Filiais', String(l.qtd_filiais || 0)) +
+        td('Score', (l.score || 0).toFixed(1)) +
+        td('Telefone', esc(l.telefone || '—')) +
+        td('E-mail', esc(l.email || '—')) +
+        td('Status Funil', esc(l.status_funil || '—')) +
+        td('Ações', actions) + '</tr>';
     }).join('');
 
     const from = total ? start + 1 : 0;
@@ -597,25 +711,34 @@
 
     $('#drawer-title').textContent = lead.razao_social || '—';
     $('#drawer-subtitle').textContent = lead.cnpj_basico + ' · ' + (lead.cluster || '');
+    $('#drawer-status-badge').textContent = lead.status_funil || 'prospectado';
 
     $('#drawer-empresa').innerHTML = [
-      ['CNPJ', lead.cnpj_basico], ['CNAE', lead.cnae_codigo + ' ' + (lead.cnae_descricao || '')],
+      ['CNAE', (lead.cnae_codigo || '') + ' ' + (lead.cnae_descricao || '')],
       ['Regime', REGIME_LABELS[lead.regime_tributario] || lead.regime_tributario],
-      ['Capital', fmtMoney(lead.capital_social)], ['Filiais', lead.qtd_filiais],
-      ['Porte', lead.porte_empresa], ['Situação', lead.situacao_cadastral],
-      ['UF / Município', (lead.uf || '') + ' / ' + (lead.municipio || '')],
+      ['Porte', lead.porte_empresa], ['Capital Social', fmtMoney(lead.capital_social)],
+      ['Data Abertura', fmtDate(lead.data_abertura)], ['Situação', lead.situacao_cadastral],
+    ].map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
+
+    const endereco = lead.endereco || [lead.logradouro, lead.municipio, lead.uf, lead.cep].filter(Boolean).join(', ') || '—';
+    $('#drawer-localizacao').innerHTML = [
+      ['Endereço', endereco], ['UF', lead.uf || '—'], ['Município', lead.municipio || '—'], ['CEP', lead.cep || '—'],
     ].map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
 
     $('#drawer-contato').innerHTML = [
-      ['E-mail', lead.email || '—'], ['Telefone', lead.telefone || '—'],
-      ['Site', lead.site || '—'], ['LinkedIn', lead.linkedin_url || '—'],
-    ].map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
+      ['Telefone', lead.telefone || '—'],
+      ['E-mail', lead.email ? linkOrDash('mailto:' + lead.email, lead.email) : '—'],
+      ['Site', lead.site ? linkOrDash(lead.site, lead.site) : '—'],
+      ['LinkedIn', lead.linkedin_url ? linkOrDash(lead.linkedin_url, 'Perfil') : '—'],
+    ].map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + (r[0] === 'Telefone' ? esc(r[1]) : r[1]) + '</dd>'; }).join('');
 
-    $('#drawer-comercial').innerHTML = [
-      ['Score', (lead.score || 0).toFixed(1)], ['Status Funil', lead.status_funil],
-      ['Prioridade', lead.prioridade], ['Transição', lead.transicao_regime ? 'Sim 🔥' : 'Não'],
-      ['Dead Zone', lead.motivo_dead_zone || '—'],
-    ].map(function (r) { return '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>'; }).join('');
+    const socios = lead.socios || [];
+    $('#drawer-socios tbody').innerHTML = socios.length
+      ? socios.map(function (s) {
+        return '<tr><td>' + esc(s.nome) + '</td><td>' + esc(s.qualificacao || '—') + '</td><td>' +
+          (s.email_socio ? linkOrDash('mailto:' + s.email_socio, s.email_socio) : '—') + '</td></tr>';
+      }).join('')
+      : '<tr><td colspan="3">Nenhum sócio cadastrado</td></tr>';
 
     try {
       const hist = await API().get('/historico/' + leadId);
@@ -668,11 +791,16 @@
     if (prioridade) list = list.filter(function (d) { return d.prioridade === prioridade; });
 
     $('#deadzone-table tbody').innerHTML = list.map(function (d) {
-      return '<tr><td>' + esc(d.razao_social || '—') + '</td><td>' + esc(d.cluster_estrategico || '—') +
-        '</td><td>' + esc(d.motivo) + '</td><td><strong>' + esc(d.rota_recomendada) + '</strong></td><td>' +
-        (d.linkedin_url ? '<a href="' + esc(d.linkedin_url) + '" target="_blank">Perfil</a>' : '—') +
-        '</td><td>' + esc(d.telefone_matriz || '—') + '</td><td>' + esc(d.prioridade) + '</td>' +
-        '<td><button class="btn btn-reativar" data-id="' + esc(d.id) + '">Reativar</button></td></tr>';
+      return '<tr>' +
+        td('Empresa', esc(d.razao_social || '—')) +
+        td('Cluster', esc(d.cluster_estrategico || '—')) +
+        td('Motivo', esc(d.motivo)) +
+        td('Rota', '<strong>' + esc(d.rota_recomendada) + '</strong>') +
+        td('LinkedIn', d.linkedin_url ? linkOrDash(d.linkedin_url, 'Perfil') : '—') +
+        td('Telefone', esc(d.telefone_matriz || '—')) +
+        td('Prioridade', esc(d.prioridade)) +
+        td('Ações', '<button class="btn btn-reativar" data-id="' + esc(d.id) + '">Reativar</button>') +
+        '</tr>';
     }).join('');
 
     $$('.btn-reativar').forEach(function (btn) {
@@ -702,13 +830,21 @@
       $('#transicao-card-title').textContent = '🔥 ' + n + ' empresas detectadas em transição para Lucro Real nos últimos 90 dias';
       $('#transicao-stats').innerHTML = '<strong>' + n + '</strong> oportunidades ativas de assessoria fiscal';
       $('#transicao-table tbody').innerHTML = (data.transicoes || []).map(function (t) {
-        const dt = t.data_transicao?.toDate ? t.data_transicao.toDate().toLocaleDateString('pt-BR') : '—';
-        return '<tr><td>' + esc(t.cnpj_basico) + '</td><td>' + esc(t.razao_social || '—') +
-          '</td><td>' + esc(t.regime_anterior) + '</td><td>' + esc(t.regime_novo) +
-          '</td><td>' + esc(t.cluster_estrategico || '—') + '</td><td>' + (t.score_prioridade || 0) +
-          '</td><td>' + esc(t.uf || '—') + '</td><td>' + fmtMoney(t.capital_social) + '</td>' +
-          '<td>' + esc(t.telefone || '—') + '</td><td>' + esc(t.email || '—') + '</td><td>' + dt + '</td>' +
-          '<td><button class="btn primary btn-priorizar" data-id="' + esc(t.id) + '">Priorizar</button></td></tr>';
+        const dt = fmtDate(t.data_transicao);
+        return '<tr>' +
+          td('CNPJ', esc(t.cnpj_basico)) +
+          td('Empresa', esc(t.razao_social || '—')) +
+          td('De', esc(t.regime_anterior)) +
+          td('Para', esc(t.regime_novo)) +
+          td('Cluster', esc(t.cluster_estrategico || '—')) +
+          td('Score', String(t.score_prioridade || 0)) +
+          td('UF', esc(t.uf || '—')) +
+          td('Capital', fmtMoney(t.capital_social)) +
+          td('Telefone', esc(t.telefone || '—')) +
+          td('E-mail', esc(t.email || '—')) +
+          td('Data Trans.', dt) +
+          td('Ações', '<button class="btn primary btn-priorizar" data-id="' + esc(t.id) + '">Priorizar</button>') +
+          '</tr>';
       }).join('');
 
       $$('.btn-priorizar').forEach(function (btn) {
@@ -751,11 +887,16 @@
       const data = await API().get('/parceiros');
       window._parceirosCache = data.parceiros || [];
       $('#parceiros-table tbody').innerHTML = window._parceirosCache.map(function (p) {
-        return '<tr><td>' + esc(p.nome) + '</td><td>' + esc(p.rede || '—') + '</td><td>' + esc(p.uf_sede || '—') +
-          '</td><td>' + (p.website ? '<a href="' + esc(p.website) + '" target="_blank">Site</a>' : '—') +
-          '</td><td>' + esc(p.email_contato || '—') + '</td><td>' + esc(p.telefone || '—') + '</td>' +
-          '<td>' + esc(p.status_parceria) + '</td>' +
-          '<td><button class="btn btn-acionar-parceiro" data-id="' + esc(p.id) + '">Acionar Parceiro</button></td></tr>';
+        return '<tr>' +
+          td('Banca', esc(p.nome)) +
+          td('Rede', esc(p.rede || '—')) +
+          td('UF', esc(p.uf_sede || '—')) +
+          td('Website', p.website ? linkOrDash(p.website, 'Site') : '—') +
+          td('E-mail', esc(p.email_contato || '—')) +
+          td('Telefone', esc(p.telefone || '—')) +
+          td('Status', esc(p.status_parceria)) +
+          td('Ações', '<button class="btn btn-acionar-parceiro" data-id="' + esc(p.id) + '">Acionar Parceiro</button>') +
+          '</tr>';
       }).join('');
 
       $$('.btn-acionar-parceiro').forEach(function (btn) {
@@ -909,9 +1050,11 @@
     try {
       const data = await API().get('/leads?perfil=' + perfil() + '&limite=500');
       const list = data.leads || [];
+      const hist = await API().get('/historico-all');
       renderKanban(list);
-      renderFunnelMetrics(computeFunilMetrics(list), list);
+      renderFunnelMetrics(computeFunilMetrics(list), list, hist.items || []);
     } catch (e) {
+      logErr('loadFunil', e);
       Toast()?.error('Erro ao carregar funil');
     }
   }
@@ -982,7 +1125,20 @@
     return idx >= 0 && idx < order.length - 1 ? order[idx + 1] : null;
   }
 
-  function renderFunnelMetrics(funil, leads) {
+  function avgDaysInStage(historico, stageId) {
+    const matches = historico.filter(function (h) {
+      return (h.motivo && h.motivo.indexOf(stageId) >= 0) || h.status_funil === stageId;
+    });
+    if (!matches.length) return null;
+    const now = Date.now();
+    const days = matches.map(function (h) {
+      const t = h.data_contato?.toDate ? h.data_contato.toDate().getTime() : now;
+      return Math.max(0, (now - t) / 86400000);
+    });
+    return days.reduce(function (a, b) { return a + b; }, 0) / days.length;
+  }
+
+  function renderFunnelMetrics(funil, leads, historico) {
     const p = perfil();
     const list = (leads || leadsCache).filter(function (l) {
       return (!l.perfil_icp || l.perfil_icp === p || p === 'generico') && l.status_funil !== 'dead_zone';
@@ -1000,6 +1156,13 @@
     $('#funnel-metrics').innerHTML = conv.map(function (c) {
       return '<div class="funnel-step"><span>' + esc(c.from) + ' → próxima</span><strong>' + c.pct + '%</strong></div>';
     }).join('');
+
+    const hist = historico || [];
+    $('#funnel-timing').innerHTML = '<strong>Tempo médio em cada etapa</strong><br>' +
+      KANBAN_COLS.map(function (col) {
+        const avg = avgDaysInStage(hist, col.id);
+        return esc(col.label) + ': ' + (avg != null ? avg.toFixed(1) + ' dias' : '—');
+      }).join(' · ');
 
     const max = Math.max.apply(null, Object.values(counts).concat([1]));
     $('#funnel-bars').innerHTML = KANBAN_COLS.map(function (col) {
@@ -1216,12 +1379,19 @@
       });
     });
 
-    $('#btn-run-full').addEventListener('click', function () { runPipeline(null); });
-    $('#btn-run-icp').addEventListener('click', function () { runPipeline('categorizacao_icp'); });
-    $('#btn-run-enrich').addEventListener('click', function () { runPipeline('enriquecimento'); });
-    $('#btn-run-validate').addEventListener('click', function () { runPipeline('validacao_email'); });
-    $('#btn-run-regime').addEventListener('click', function () { runPipeline('monitor_regime'); });
+    $('#btn-run-full').addEventListener('click', runPipeline);
+    $('#btn-run-icp').addEventListener('click', runPipeline);
+    $('#btn-run-enrich').addEventListener('click', runPipeline);
+    $('#btn-run-validate').addEventListener('click', runPipeline);
+    $('#btn-run-regime').addEventListener('click', runPipeline);
     $('#btn-save-pipeline').addEventListener('click', savePipelineConfig);
+    $('#pipe-cnae-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addCnaeTag(); }
+    });
+    const fsm = $('#filter-score-min');
+    if (fsm) fsm.addEventListener('input', function () {
+      $('#filter-score-min-val').textContent = fsm.value;
+    });
 
     $('#btn-filter-leads').addEventListener('click', loadLeads);
     $('#btn-clear-filters').addEventListener('click', clearLeadsFilters);

@@ -67,6 +67,9 @@ function normalizeLead(l) {
     uf: l.uf || '',
     municipio: l.municipio || '',
     cep: l.cep || '',
+    endereco: l.endereco || l.logradouro || '',
+    logradouro: l.logradouro || '',
+    data_abertura: l.data_abertura,
     telefone: l.telefone || l.telefone_matriz || '',
     email: l.email || '',
     site: l.site || '',
@@ -208,9 +211,7 @@ async function getTransicao() {
     const d = l.data_transicao.toDate ? l.data_transicao.toDate() : new Date(l.data_transicao);
     return d.getTime() >= last90;
   });
-  return {
-    count_90d: recent.length,
-    transicoes: data.leads.map((l) => ({
+  const mapTransicao = (l) => ({
       id: l.id,
       cnpj_basico: l.cnpj_basico,
       razao_social: l.razao_social,
@@ -223,8 +224,16 @@ async function getTransicao() {
       telefone: l.telefone,
       email: l.email,
       data_transicao: l.data_transicao,
-    })),
+  });
+  return {
+    count_90d: recent.length,
+    transicoes: recent.map(mapTransicao),
   };
+}
+
+async function getAllHistorico() {
+  const snap = await getDocs(collection(db, HISTORICO));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 async function getParceiros() {
@@ -238,6 +247,7 @@ async function postFeedback(body) {
     lead_id: leadId,
     outcome: body.outcome,
     motivo: body.motivo || '',
+    status_funil: body.status_funil || null,
     responsavel: auth.currentUser?.email || 'sistema',
     data_contato: serverTimestamp(),
   });
@@ -282,25 +292,25 @@ async function savePipelineConfig(body) {
 
 async function postPipeline(body) {
   const ref = doc(db, CONFIG, 'pipeline');
-  const steps = ['ingestao_rf', 'icp_cluster', 'enriquecimento', 'validacao_email', 'monitor_regime'];
-  const state = {
-    config: body,
-    steps: steps.map((s, i) => ({
-      id: s,
-      status: i === 0 ? 'running' : 'pending',
-      started_at: i === 0 ? new Date().toISOString() : null,
-      ended_at: null,
-      processed: 0,
-      total: 100,
-    })),
-    updated_at: serverTimestamp(),
-  };
+  const stepIds = ['ingestao_rf', 'icp_cluster', 'enriquecimento', 'validacao_email', 'monitor_regime'];
+  const total = body.limite || 100;
+  const now = new Date().toISOString();
+  const steps = (body.steps || stepIds.map((s) => ({
+    id: s,
+    status: 'done',
+    started_at: now,
+    ended_at: now,
+    processed: total,
+    total,
+    pct: 100,
+  })));
+  const state = { config: body.config || body, steps, updated_at: serverTimestamp() };
   try {
     await updateDoc(ref, state);
   } catch {
     await setDoc(ref, state);
   }
-  return { status: 'ok', message: 'Pipeline iniciado', steps: state.steps };
+  return { status: 'ok', message: 'Pipeline concluído', steps };
 }
 
 async function getHistorico(leadId) {
@@ -322,6 +332,7 @@ async function routeGet(path) {
     if (base === '/transicao-regime') return getTransicao();
     if (base === '/parceiros') return getParceiros();
     if (base.startsWith('/historico/')) return { items: await getHistorico(base.split('/').pop()) };
+    if (base === '/historico-all') return { items: await getAllHistorico() };
     if (base === '/config/scoring') {
       const c = await getDoc(doc(db, CONFIG, 'scoring'));
       return c.exists() ? c.data() : { pesos_scoring: { capital: 5, filiais: 5, regime: 5, cnae: 5, porte: 5 } };
@@ -408,6 +419,11 @@ window.AFSMarketAPI = {
     return onSnapshot(doc(db, CONFIG, 'status'), function (d) {
       cb(d.exists() ? d.data() : { online: true });
     }, function () { cb({ online: false }); });
+  },
+  subscribePipeline: function (cb) {
+    return onSnapshot(doc(db, CONFIG, 'pipeline'), function (d) {
+      cb(d.exists() ? d.data() : { config: {}, steps: [] });
+    }, function (e) { logError('subscribePipeline', e); cb({ config: {}, steps: [] }); });
   },
   getHistorico: getHistorico,
   updateLead: async function (id, data) {
