@@ -61,6 +61,9 @@ function RedeTesteShellInner({ children, user }: RedeTesteShellProps) {
     }
   }, [me.data?.onboardingCompleted, isOnboarding, router]);
 
+  const needsOnboarding =
+    !me.isLoading && !!me.data && !me.data.onboardingCompleted;
+
   const shareQuery = trpc.redeTeste.buildIntimationShare.useQuery(
     { intimationId: shareDraftId! },
     { enabled: !!shareDraftId },
@@ -90,10 +93,14 @@ function RedeTesteShellInner({ children, user }: RedeTesteShellProps) {
   }
 
   if (isOnboarding) {
-    return <>{children}</>;
+    return (
+      <div className="min-h-svh bg-[var(--jq-bg)] text-[var(--jq-text)]">
+        {children}
+      </div>
+    );
   }
 
-  if (me.isLoading) {
+  if (me.isLoading || needsOnboarding) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-[var(--jq-bg)] text-[var(--jq-muted)]">
         <Loader2 className="size-8 animate-spin" aria-label="Carregando Rede Teste" />
