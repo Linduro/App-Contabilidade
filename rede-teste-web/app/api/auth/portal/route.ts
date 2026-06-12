@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { verifyFirebasePortalIdToken } from "@/lib/firebase-verify-portal-token"
 import { getFirebaseAdminAuth } from "@/lib/firebase-admin"
 import { prisma } from "@/lib/prisma"
 import { provisionPortalUser } from "@/lib/provision-portal-user"
@@ -8,6 +9,19 @@ import {
   signPortalSession,
 } from "@/lib/portal-session"
 
+async function verifyPortalToken(idToken: string) {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) {
+    const decoded = await getFirebaseAdminAuth().verifyIdToken(idToken)
+    return {
+      uid: decoded.uid,
+      email: decoded.email ?? null,
+      name: decoded.name ?? null,
+      picture: decoded.picture ?? null,
+    }
+  }
+  return verifyFirebasePortalIdToken(idToken)
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { idToken?: string }
@@ -15,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Token ausente" }, { status: 400 })
     }
 
-    const decoded = await getFirebaseAdminAuth().verifyIdToken(body.idToken)
+    const decoded = await verifyPortalToken(body.idToken)
     const email = decoded.email
     if (!email) {
       return NextResponse.json({ error: "E-mail não encontrado no token" }, { status: 400 })

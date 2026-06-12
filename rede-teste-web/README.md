@@ -34,17 +34,11 @@ npm run dev
 2. Clica em **Rede Teste** no dashboard → `/dashboard/rede-teste/`.
 3. O portal envia o token Firebase para `/auth/portal` e cria o perfil automaticamente no Neon.
 
-## Deploy online (Cloud Run + GitHub Pages)
+## Deploy online
 
-1. GitHub → **Settings → Secrets**:
-   - `REDE_TESTE_DATABASE_URL` (Neon)
-   - `REDE_TESTE_AUTH_SECRET`
-   - `FIREBASE_SERVICE_ACCOUNT` (JSON — mesmo do projeto GCP)
-2. GitHub → **Settings → Variables**:
-   - `ENABLE_REDE_TESTE_CLOUD_RUN` = `true`
-3. Push em `main` → workflow `Deploy Rede Teste (Cloud Run)`.
-4. Copie a URL do Cloud Run para a variable **`REDE_TESTE_URL`**.
-5. Novo deploy do portal (GitHub Pages) para embutir a URL no botão Rede Teste.
+**Recomendado:** [Deploy to Render](https://render.com/deploy?repo=https://github.com/Linduro/App-Contabilidade) (1 clique — Postgres + app inclusos). Ver `DEPLOY.md`.
+
+Cloud Run (legado): secrets `REDE_TESTE_*` + `FIREBASE_SERVICE_ACCOUNT` + IAM GCP.
 
 ## Portal
 

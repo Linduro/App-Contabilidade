@@ -24,7 +24,11 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY scripts/start-production.sh ./start-production.sh
+RUN chmod +x start-production.sh
 
 USER nextjs
 EXPOSE 8080
-CMD ["node", "server.js"]
+CMD ["sh", "start-production.sh"]
