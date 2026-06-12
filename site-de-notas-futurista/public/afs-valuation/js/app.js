@@ -31,6 +31,15 @@ function hasRemoteApi() {
     return Boolean(base && base.trim());
 }
 
+/** GitHub Pages não tem backend Flask — export/API de arquivo é sempre no navegador */
+function isGitHubPagesHost() {
+    return typeof window !== 'undefined' && /github\.io$/i.test(window.location.hostname || '');
+}
+
+function useBrowserSpreadsheetExport() {
+    return !hasRemoteApi() || isGitHubPagesHost();
+}
+
 async function loadApiConfig() {
     try {
         const configPath = window.location.pathname.replace(/\/[^/]*$/, '/config.json');
@@ -2067,20 +2076,37 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
 
 // ---------- Download & Spreadsheet Registry ----------
 async function downloadResults() {
-    if (!hasRemoteApi()) {
+    if (useBrowserSpreadsheetExport()) {
         try {
-            if (typeof browserExportSpreadsheet === 'function') {
-                browserExportSpreadsheet();
-                showAlert('Planilha exportada com os resultados da IA.', 'success');
-            } else {
-                showAlert('Exportação indisponível no modo navegador.', 'error');
+            if (typeof browserExportSpreadsheet !== 'function') {
+                throw new Error('Exportação não disponível. Recarregue com Ctrl+Shift+R (?v=23).');
             }
+            if (typeof XLSX === 'undefined') {
+                throw new Error('Biblioteca XLSX não carregada. Recarregue a página.');
+            }
+            browserExportSpreadsheet();
+            showAlert('Download iniciado — planilha com resultados da IA.', 'success');
         } catch (e) {
             showAlert('Erro ao exportar: ' + e.message, 'error');
         }
         return;
     }
-    window.location.href = downloadFileUrl('/api/download-excel');
+    try {
+        const res = await fetch(apiUrl('/api/download-excel'));
+        if (!res.ok) throw new Error('Servidor não retornou o arquivo');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'planilha-afs-resultado.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showAlert('Planilha exportada.', 'success');
+    } catch (e) {
+        showAlert('Erro ao exportar: ' + e.message, 'error');
+    }
 }
 
 function formatFileSize(bytes) {
@@ -2109,9 +2135,11 @@ function renderRegistryList(containerId, files, type) {
         const rowClick = type === 'input'
             ? ` onclick="activateSpreadsheet('${escapedName}')" style="cursor:pointer;" title="Selecionar planilha"`
             : '';
-        const downloadBtn = type === 'output'
+        const downloadBtn = type === 'output' && !useBrowserSpreadsheetExport()
             ? `<a class="btn btn-secondary btn-sm" href="${downloadFileUrl('/api/download-output/' + encodeURIComponent(f.name))}" title="Download">⬇</a>`
-            : '';
+            : (type === 'output' && useBrowserSpreadsheetExport()
+                ? `<button class="btn btn-secondary btn-sm" onclick="downloadResults()" title="Exportar planilha atual">⬇</button>`
+                : '');
         return `<div class="registry-item${activeClass}"${rowClick}>
             <span class="registry-item-name" title="${f.name}">${f.name}${f.active ? ' (ativa)' : ''}<br><small style="color:var(--text-muted)">${formatFileSize(f.size)} · ${date}</small></span>
             <div class="registry-item-actions" onclick="event.stopPropagation()">
