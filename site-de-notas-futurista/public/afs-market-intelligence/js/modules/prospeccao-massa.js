@@ -283,7 +283,8 @@ function renderMain() {
       '<div class="ps-topbar">' +
         '<input type="search" id="ps-q" class="ps-search-input" placeholder="Razão social ou CNPJ…" value="' + esc(state.filtros.q) + '">' +
         '<div class="ps-topbar-actions">' +
-          '<button type="button" class="btn sm" id="ps-btn-admin">⚙ Base de dados</button>' +
+          '<button type="button" class="btn sm" id="ps-btn-ops">⚙ Operações</button>' +
+          '<button type="button" class="btn sm" id="ps-btn-admin">Base de dados</button>' +
           '<button type="button" class="btn sm" id="ps-btn-intel">📊 Mapas</button>' +
         '</div>' +
       '</div>' +
@@ -562,6 +563,11 @@ function bindEvents(root) {
 
   root.querySelector('#ps-btn-admin')?.addEventListener('click', function () {
     openAdminDrawer(root);
+  });
+
+  root.querySelector('#ps-btn-ops')?.addEventListener('click', function () {
+    try { sessionStorage.setItem('afs_last_filtros', JSON.stringify(state.filtros)); } catch (_) {}
+    location.hash = '#/prospeccao/operacoes';
   });
 
   root.querySelector('#ps-btn-intel')?.addEventListener('click', function () {

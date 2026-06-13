@@ -9,6 +9,7 @@ const NAV = [
   ]},
   { section: 'Módulos', items: [
     { hash: '/prospeccao/massa', label: 'Prospecção em Massa', icon: '⬡', highlight: true },
+    { hash: '/prospeccao/operacoes', label: 'Centro de Operações', icon: '⚙' },
     { hash: '/prospeccao', label: 'Prospecção unitária', icon: '◎' },
     { hash: '/crm/leads', label: 'CRM · Leads', icon: '◉' },
     { hash: '/crm/pipelines', label: 'CRM · Pipelines', icon: '▦' },

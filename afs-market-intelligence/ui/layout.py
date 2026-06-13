@@ -298,6 +298,90 @@ def run_pipeline():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@main_bp.route("/api/pipeline/start", methods=["POST"])
+def pipeline_start():
+    """Inicia pipeline completo em background (job assíncrono)."""
+    try:
+        body = request.get_json() or {}
+        from jobs.store import JobStore
+        from jobs.worker import JobWorker
+        conn = _conn()
+        store = JobStore(conn)
+        params = {
+            "perfil": body.get("perfil", "patrimonial"),
+            "pular_ingestao": body.get("pular_ingestao", False),
+        }
+        job_id = store.create("pipeline_completo", params)
+        conn.close()
+        JobWorker.start(_conn, job_id, "pipeline_completo", params)
+        return jsonify({"status": "ok", "job_id": job_id})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/ops/status")
+def ops_status():
+    """Painel agregado para Centro de Operações."""
+    try:
+        conn = _conn()
+        from layers.scraping.queue_worker import ScrapingQueueWorker
+        from layers.enrichment.contato_cascade import init_enrichment_schema
+
+        init_enrichment_schema(conn)
+        prospectos = conn.execute("SELECT COUNT(*) FROM prospectos_rf").fetchone()[0]
+        fila = ScrapingQueueWorker(conn).status_fila()
+        social = conn.execute("SELECT COUNT(*) FROM social_leads").fetchone()[0]
+        contatos = conn.execute("SELECT COUNT(*) FROM contatos").fetchone()[0]
+        from jobs.store import JobStore
+        jobs = JobStore(conn).list_recent(5)
+        rf = {}
+        try:
+            total_lr = conn.execute(
+                "SELECT COUNT(*) FROM prospectos_rf WHERE perfil_uso = 'patrimonial'"
+            ).fetchone()[0]
+            snap = conn.execute(
+                "SELECT versao, created_at FROM rf_snapshots ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            rf = {
+                "prospectos_carregados": total_lr,
+                "snapshot": {"versao": snap[0], "created_at": str(snap[1])} if snap else None,
+            }
+        except Exception:
+            rf = {"prospectos_carregados": prospectos}
+        conn.close()
+        return jsonify({
+            "prospectos": prospectos,
+            "contatos": contatos,
+            "social_leads": social,
+            "fila_enriquecimento": fila.get("fila", {}),
+            "jobs_recentes": jobs,
+            "rf": rf,
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/prospeccao/enqueue-filtros", methods=["POST"])
+def prospeccao_enqueue_filtros():
+    try:
+        body = request.get_json() or {}
+        from layers.categorization.prospeccao_search import parse_filtros_body, enqueue_from_filtros
+        filtros = parse_filtros_body(body)
+        aba = body.get("aba") or "nao_enriquecidas"
+        limite = int(body.get("limite") or 100)
+        processar = bool(body.get("processar"))
+        conn = _conn()
+        result = enqueue_from_filtros(conn, filtros, aba=aba, limite=limite)
+        if processar and result.get("enfileirados"):
+            from layers.scraping.queue_worker import ScrapingQueueWorker
+            batch = ScrapingQueueWorker(conn).processar_lote(limite=min(result["enfileirados"], 50))
+            result["processamento"] = batch
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @main_bp.route("/api/leads")
 def list_leads():
     try:

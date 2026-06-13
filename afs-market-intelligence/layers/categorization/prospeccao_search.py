@@ -413,6 +413,22 @@ def enfileirar_cnpjs(conn, cnpjs: list[str]) -> dict:
     return {"status": "ok", "enfileirados": enqueued}
 
 
+def enqueue_from_filtros(
+    conn,
+    filtros: dict,
+    *,
+    aba: str = "nao_enriquecidas",
+    limite: int = 100,
+) -> dict:
+    """Enfileira CNPJs da busca atual para enriquecimento."""
+    limite = min(max(1, int(limite)), 5000)
+    rows, _ = search_rows(conn, filtros, aba=aba if aba in ("nao_enriquecidas", "enriquecidas", "novas") else None, page=1, page_size=limite)
+    cnpjs = [r["cnpj_basico"] for r in rows if r.get("cnpj_basico")]
+    result = enfileirar_cnpjs(conn, cnpjs)
+    result["candidatos"] = len(cnpjs)
+    return result
+
+
 def load_segmentacoes() -> list[dict]:
     if not SEGMENTACOES_PATH.exists():
         return []

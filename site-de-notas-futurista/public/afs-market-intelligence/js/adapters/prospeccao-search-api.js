@@ -105,3 +105,42 @@ export async function saveSegmentacao(nome, filtros) {
   if (!getHttpApiBase()) return { id: 'local', nome, filtros };
   return httpMarketPost('/segmentacoes/draft', { nome, filtros });
 }
+
+export async function fetchOpsStatus() {
+  if (!getHttpApiBase()) {
+    return { prospectos: 132000, contatos: 0, social_leads: 0, fila_enriquecimento: {}, jobs_recentes: [] };
+  }
+  return httpMarketGet('/ops/status');
+}
+
+export async function fetchJobs(limite = 20) {
+  if (!getHttpApiBase()) return { jobs: [] };
+  return httpMarketGet('/jobs?limite=' + limite);
+}
+
+export async function startPipeline(opts = {}) {
+  if (!getHttpApiBase()) return { status: 'ok', job_id: 'mock' };
+  return httpMarketPost('/pipeline/start', opts);
+}
+
+export async function enqueueFiltros({ filtros, aba, limite, processar }) {
+  if (!getHttpApiBase()) return { status: 'ok', enfileirados: limite || 100 };
+  return httpMarketPost('/prospeccao/enqueue-filtros', { filtros, aba, limite, processar });
+}
+
+export async function pollJob(jobId, onTick) {
+  if (!getHttpApiBase()) return null;
+  return new Promise(function (resolve, reject) {
+    const iv = setInterval(async function () {
+      try {
+        const job = await httpMarketGet('/jobs/' + jobId);
+        onTick?.(job);
+        if (job.status === 'done') { clearInterval(iv); resolve(job); }
+        if (job.status === 'error') { clearInterval(iv); reject(new Error(job.error || job.message || 'Job falhou')); }
+      } catch (e) {
+        clearInterval(iv);
+        reject(e);
+      }
+    }, 3000);
+  });
+}
