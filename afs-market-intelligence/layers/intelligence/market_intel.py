@@ -81,16 +81,41 @@ class CnaeSetores:
 
 
 class GeoIntel:
-    """Agregação geográfica de prospectos Lucro Real."""
+    """Agregação geográfica de prospectos Lucro Real (com filtros ICP)."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, filters: dict | None = None):
         self.conn = conn
+        self.filters = filters or {}
 
-    def _has_prospectos(self) -> bool:
+    def _where(self) -> tuple[str, list]:
+        from layers.categorization.prospect_filters import sql_where
+        return sql_where(self.filters)
+
+    def _table_has_data(self) -> bool:
         try:
             return self.conn.execute("SELECT COUNT(*) FROM prospectos_rf").fetchone()[0] > 0
         except Exception:
             return False
+
+    def _has_prospectos(self) -> bool:
+        if not self._table_has_data():
+            return False
+        try:
+            where, params = self._where()
+            return self.conn.execute(
+                f"SELECT COUNT(*) FROM prospectos_rf WHERE {where}", params
+            ).fetchone()[0] > 0
+        except Exception:
+            return False
+
+    def contar(self) -> int:
+        try:
+            where, params = self._where()
+            return self.conn.execute(
+                f"SELECT COUNT(*) FROM prospectos_rf WHERE {where}", params
+            ).fetchone()[0]
+        except Exception:
+            return 0
 
     def agregado_uf(self) -> list[dict]:
         if not self._has_prospectos():
@@ -99,45 +124,60 @@ class GeoIntel:
                 {"uf": uf, "total": n, "pct": round(100 * n / total, 2)}
                 for uf, n in sorted(UF_ESTIMATED_LR.items(), key=lambda x: -x[1])
             ]
-        rows = self.conn.execute("""
+        where, params = self._where()
+        rows = self.conn.execute(f"""
             SELECT uf, COUNT(*) AS total FROM prospectos_rf
-            WHERE uf IS NOT NULL AND uf != '' GROUP BY uf ORDER BY total DESC
-        """).fetchall()
+            WHERE {where} AND uf IS NOT NULL AND uf != ''
+            GROUP BY uf ORDER BY total DESC
+        """, params).fetchall()
         grand = sum(r[1] for r in rows) or 1
         return [{"uf": r[0], "total": r[1], "pct": round(100 * r[1] / grand, 2)} for r in rows]
 
-    def pontos_nuvem(self, limite: int = 8000, uf: str | None = None) -> list[dict]:
+    def agregado_municipio(self, limite: int = 50) -> list[dict]:
+        where, params = self._where()
+        if not self._has_prospectos():
+            return []
+        rows = self.conn.execute(f"""
+            SELECT uf, municipio_codigo, municipio_nome, COUNT(*) AS total,
+                   AVG(capital_social) AS capital_medio
+            FROM prospectos_rf
+            WHERE {where} AND uf IS NOT NULL
+            GROUP BY uf, municipio_codigo, municipio_nome
+            ORDER BY total DESC LIMIT ?
+        """, params + [limite]).fetchall()
+        return [
+            {
+                "uf": r[0], "municipio_codigo": r[1], "municipio": r[2],
+                "total": r[3], "capital_medio": round(r[4] or 0, 2),
+            }
+            for r in rows
+        ]
+
+    def pontos_nuvem(self, limite: int = 8000) -> list[dict]:
+        from layers.categorization.prospect_filters import municipio_coords
+
         limite = min(limite, 15000)
         points: list[dict] = []
+        where, params = self._where()
 
         if self._has_prospectos():
-            sql = """
-                SELECT uf, municipio_nome, COUNT(*) AS n
-                FROM prospectos_rf WHERE uf IS NOT NULL
-            """
-            params: list = []
-            if uf:
-                sql += " AND uf = ?"
-                params.append(uf)
-            sql += " GROUP BY uf, municipio_nome ORDER BY n DESC LIMIT 200"
-            groups = self.conn.execute(sql, params).fetchall()
-            budget = limite
-            for row_uf, mun, n in groups:
-                if budget <= 0:
-                    break
-                base = UF_COORDS.get(row_uf, (-15.78, -47.93))
-                spread = 0.15 if n < 50 else 0.4 if n < 500 else 0.8
-                sample = min(n, max(1, int(limite * n / max(sum(g[2] for g in groups), 1))))
-                sample = min(sample, budget)
-                for _ in range(sample):
-                    lat, lng = _jitter(base[0], base[1], spread)
-                    points.append({"lat": lat, "lng": lng, "uf": row_uf, "municipio": mun})
-                budget -= sample
+            rows = self.conn.execute(f"""
+                SELECT uf, municipio_codigo, municipio_nome, capital_social, razao_social
+                FROM prospectos_rf WHERE {where}
+                ORDER BY score_prioridade DESC LIMIT ?
+            """, params + [limite]).fetchall()
+            for uf, cod, mun, cap, nome in rows:
+                lat, lng = municipio_coords(uf, cod, mun)
+                lat, lng = _jitter(lat, lng, 0.06)
+                points.append({
+                    "lat": lat, "lng": lng, "uf": uf, "municipio": mun,
+                    "capital_social": cap, "razao_social": nome,
+                })
             return points
 
-        # Estimativa sem DB
+        uf_filter = self.filters.get("uf")
         for row_uf, n in UF_ESTIMATED_LR.items():
-            if uf and row_uf != uf:
+            if uf_filter and row_uf != uf_filter:
                 continue
             base = UF_COORDS[row_uf]
             sample = min(n, max(20, int(limite * n / 230000)))
@@ -148,14 +188,26 @@ class GeoIntel:
                 break
         return points[:limite]
 
-    def mapa_payload(self, limite: int = 8000, uf: str | None = None) -> dict:
+    def mapa_payload(self, limite: int = 8000) -> dict:
+        if self._table_has_data():
+            agg = self.agregado_uf()
+            total = self.contar()
+            return {
+                "total_empresas": total,
+                "fonte": "prospectos_rf",
+                "filtros_aplicados": self.filters,
+                "aggregado_uf": agg,
+                "aggregado_municipio": self.agregado_municipio(30),
+                "pontos": self.pontos_nuvem(limite),
+            }
         agg = self.agregado_uf()
-        total = sum(a["total"] for a in agg)
         return {
-            "total_empresas": total,
-            "fonte": "prospectos_rf" if self._has_prospectos() else "estimativa_lr",
+            "total_empresas": sum(a["total"] for a in agg),
+            "fonte": "estimativa_lr",
+            "filtros_aplicados": self.filters,
             "aggregado_uf": agg,
-            "pontos": self.pontos_nuvem(limite, uf),
+            "aggregado_municipio": [],
+            "pontos": self.pontos_nuvem(limite),
         }
 
 

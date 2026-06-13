@@ -8,6 +8,12 @@ export async function fetchMapaProspectos(params = {}) {
     const q = new URLSearchParams();
     q.set('limite', String(params.limite ?? 8000));
     if (params.uf) q.set('uf', params.uf);
+    if (params.cluster) q.set('cluster', params.cluster);
+    if (params.cnae) q.set('cnae', params.cnae);
+    if (params.porte) q.set('porte', params.porte);
+    if (params.municipio) q.set('municipio', params.municipio);
+    if (params.capitalMin != null && params.capitalMin !== '') q.set('capital_min', String(params.capitalMin));
+    if (params.capitalMax != null && params.capitalMax !== '') q.set('capital_max', String(params.capitalMax));
     try {
       return await httpMarketGet('/prospectos/mapa?' + q.toString());
     } catch (_) {}

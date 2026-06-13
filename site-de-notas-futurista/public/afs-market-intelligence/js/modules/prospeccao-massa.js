@@ -3,8 +3,11 @@
  * ingestão RF, mapa LR, auditorias, patrimonial, CNAE, priorização cold mail.
  */
 import * as store from '../core/store.js';
-import { fetchRfStatus, startRfIngest, pollJob, fetchProspectos, mapProspectoToStore, exportProspectosExcel, pingHttpBackend, backendConfigHint, PROSPECT_EXPORT_COLS } from '../adapters/rf-pipeline-api.js';
+import { fetchRfStatus, startRfIngest, pollJob, fetchProspectos, fetchProspectDefaults, mapProspectoToStore, exportProspectosExcel, pingHttpBackend, backendConfigHint, getHttpApiBase, PROSPECT_EXPORT_COLS } from '../adapters/rf-pipeline-api.js';
 import { exportExcel } from '../components/export.js';
+import {
+  defaultFilters, renderFilterBar, bindFilterBar, formatCapital,
+} from '../components/prospect-filters.js';
 import {
   fetchMapaProspectos, fetchCnaeSetores, fetchAuditorias,
   fetchPatrimonial, fetchCarencia,
@@ -30,7 +33,30 @@ let state = {
   cnaeSecao: '',
   auditUf: '',
   patUf: '',
+  filters: defaultFilters(),
+  filtersInitialized: false,
+  filterCount: null,
 };
+
+async function ensureFilters() {
+  if (state.filtersInitialized) return;
+  try {
+    const d = await fetchProspectDefaults();
+    const icp = d.icp_ativo || {};
+    state.filters = {
+      ...defaultFilters(),
+      capitalMin: icp.capital_min ?? 2000000,
+      capitalMax: icp.capital_max ?? 10000000,
+    };
+  } catch (_) {
+    state.filters = defaultFilters();
+  }
+  state.filtersInitialized = true;
+}
+
+function filterParams(extra) {
+  return { ...state.filters, ...(extra || {}) };
+}
 
 function esc(s) {
   const d = document.createElement('div');
@@ -65,10 +91,19 @@ function saveGroup(name, filters) {
 }
 
 export async function renderProspeccaoMassa({ mount }) {
+  await ensureFilters();
   state.tab = tabFromHash();
   if (state.mapInstance) {
     destroyMap(state.mapInstance);
     state.mapInstance = null;
+  }
+
+  const showFilters = state.tab === 'massa' || state.tab === 'mapa';
+  if (showFilters && getHttpApiBase()) {
+    try {
+      const cnt = await fetchProspectos({ ...filterParams(), limite: 1 });
+      state.filterCount = cnt.total;
+    } catch (_) {}
   }
 
   mount.innerHTML =
@@ -79,8 +114,20 @@ export async function renderProspeccaoMassa({ mount }) {
           return '<a href="#" data-tab="' + t.id + '" class="' + (state.tab === t.id ? 'active' : '') + '">' + t.label + '</a>';
         }).join('') +
       '</nav>' +
+      (showFilters ? '<div id="pm-filters-wrap"></div>' : '') +
       '<div id="pm-tab-body" class="pm-tab-body"></div>' +
     '</div>';
+
+  if (showFilters) {
+    const fw = mount.querySelector('#pm-filters-wrap');
+    fw.innerHTML = renderFilterBar('pm-f', state.filters, { count: state.filterCount });
+    bindFilterBar(
+      mount, 'pm-f',
+      function () { renderProspeccaoMassa({ mount }); },
+      function () { return state.filters; },
+      function (f) { state.filters = f; state.filtersInitialized = true; },
+    );
+  }
 
   mount.querySelectorAll('[data-tab]').forEach(function (a) {
     a.addEventListener('click', function (e) {
@@ -168,15 +215,12 @@ async function renderTabMassa(body, mount) {
       '<h3>Exportar para Excel</h3>' +
       '<p class="hint">Disponível após a ingestão. Até 250 mil linhas por exportação.</p>' +
       '<div class="pm-export-form">' +
-        '<select id="pm-export-uf"><option value="">UF — todas</option>' +
-          ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(function(u){ return '<option>'+u+'</option>'; }).join('') +
-        '</select>' +
-        '<select id="pm-export-cluster"><option value="">Cluster — todos</option><option>agro</option><option>industria</option><option>varejo</option></select>' +
         '<select id="pm-export-limite"><option value="5000">5.000 linhas</option><option value="25000">25.000</option><option value="50000" selected>50.000</option><option value="230000">230.000 (completo)</option></select>' +
         '<button type="button" id="pm-export-xlsx" class="btn primary"' + (!backendOk ? ' disabled' : '') + '>⬇ Exportar Excel (.xlsx)</button>' +
         '<button type="button" id="pm-export-sample" class="btn sm">Exportar amostra (100) no browser</button>' +
         '<button type="button" id="pm-import-crm" class="btn sm">Importar 100 para CRM</button>' +
       '</div>' +
+      '<p class="hint">Export usa os filtros ICP acima (capital, CNAE, porte, região).</p>' +
       '<p id="pm-export-status" class="hint"></p>' +
     '</section>' +
     '<section class="l2-card" style="margin-top:1rem">' +
@@ -257,8 +301,7 @@ async function renderTabMassa(body, mount) {
     try {
       if (statusEl) statusEl.textContent = 'Gerando Excel no servidor…';
       const result = await exportProspectosExcel({
-        uf: body.querySelector('#pm-export-uf')?.value || null,
-        cluster: body.querySelector('#pm-export-cluster')?.value || null,
+        ...filterParams(),
         limite: Number(body.querySelector('#pm-export-limite')?.value || 50000),
       });
       if (statusEl) statusEl.textContent = 'Exportado: ' + result.total_exportado + ' registros → ' + result.filename;
@@ -271,11 +314,7 @@ async function renderTabMassa(body, mount) {
 
   body.querySelector('#pm-export-sample')?.addEventListener('click', async function () {
     try {
-      const data = await fetchProspectos({
-        uf: body.querySelector('#pm-export-uf')?.value || undefined,
-        cluster: body.querySelector('#pm-export-cluster')?.value || undefined,
-        limite: 100,
-      });
+      const data = await fetchProspectos({ ...filterParams(), limite: 100 });
       if (!data.prospectos?.length) {
         window.AFSToast?.warn('Nenhum prospecto — rode a ingestão primeiro');
         return;
@@ -289,7 +328,7 @@ async function renderTabMassa(body, mount) {
 
   body.querySelector('#pm-import-crm')?.addEventListener('click', async function () {
     try {
-      const data = await fetchProspectos({ limite: 100 });
+      const data = await fetchProspectos({ ...filterParams(), limite: 100 });
       if (!data.prospectos?.length) {
         window.AFSToast?.warn('Nenhum prospecto na base');
         return;
@@ -309,18 +348,19 @@ async function renderTabMassa(body, mount) {
   async function loadSample() {
     const wrap = body.querySelector('#pm-sample-table');
     if (!wrap) return;
-    const data = await fetchProspectos({ limite: 15 });
+    const data = await fetchProspectos({ ...filterParams(), limite: 15 });
     if (!data.prospectos?.length) {
       wrap.innerHTML = '<p class="hint">Nenhum prospecto no backend ainda. Inicie a ingestão acima.</p>';
       return;
     }
     wrap.innerHTML =
-      '<table class="data-table compact"><thead><tr><th>CNPJ</th><th>Razão social</th><th>UF</th><th>CNAE</th><th>Score</th></tr></thead><tbody>' +
+      '<table class="data-table compact"><thead><tr><th>CNPJ</th><th>Razão social</th><th>UF</th><th>Capital</th><th>CNAE</th><th>Porte</th><th>Score</th></tr></thead><tbody>' +
       data.prospectos.map(function (p) {
         return '<tr><td>' + esc(p.cnpj_basico) + '</td><td>' + esc(p.razao_social) + '</td><td>' + esc(p.uf) +
-          '</td><td>' + esc(p.cnae) + '</td><td>' + esc(p.score) + '</td></tr>';
+          '</td><td>' + formatCapital(p.capital_social) + '</td><td>' + esc(p.cnae) + '</td><td>' + esc(p.porte) +
+          '</td><td>' + esc(p.score) + '</td></tr>';
       }).join('') +
-      '</tbody></table><p class="hint">Total na base: ' + (data.total || 0).toLocaleString('pt-BR') + '</p>';
+      '</tbody></table><p class="hint">Total com filtros ICP: ' + (data.total || 0).toLocaleString('pt-BR') + '</p>';
   }
 }
 
@@ -340,36 +380,30 @@ async function renderTabMapa(body) {
   body.innerHTML =
     '<section class="l2-card">' +
       '<div class="pm-map-toolbar">' +
-        '<h3>Mapa do Brasil · empresas Lucro Real</h3>' +
+        '<h3>Mapa do Brasil · empresas filtradas</h3>' +
         '<select id="pm-map-view">' +
           '<option value="heatmap" selected>Mapa de calor (temperatura)</option>' +
-          '<option value="points">Nuvem de pontos</option>' +
+          '<option value="points">Pontos por município</option>' +
         '</select>' +
         '<select id="pm-map-metric">' +
-          '<option value="volume_lr">Densidade LR</option>' +
+          '<option value="volume_lr">Densidade</option>' +
           '<option value="share_pct">Participação %</option>' +
-        '</select>' +
-        '<select id="pm-map-uf"><option value="">Brasil inteiro</option>' +
-          ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(function(u){ return '<option>'+u+'</option>'; }).join('') +
         '</select>' +
         '<button type="button" id="pm-map-reload" class="btn sm">Atualizar mapa</button>' +
       '</div>' +
       '<p class="hint" id="pm-map-meta">Carregando…</p>' +
       '<div id="pm-map" class="pm-map pm-map-heat"></div>' +
+      '<div id="pm-map-mun" class="pm-mun-list"></div>' +
       '<div id="pm-map-agg" class="pm-agg-grid"></div>' +
     '</section>';
 
   async function loadMap() {
-    const uf = body.querySelector('#pm-map-uf')?.value || '';
     const view = body.querySelector('#pm-map-view')?.value || 'heatmap';
     const metric = body.querySelector('#pm-map-metric')?.value || 'volume_lr';
-    const data = await fetchMapaProspectos({ limite: 10000, uf: uf || undefined });
-    let agg = data.aggregado_uf || [];
-    if (uf) agg = agg.filter(function (a) { return a.uf === uf; });
-
+    const data = await fetchMapaProspectos({ limite: 10000, ...filterParams() });
     body.querySelector('#pm-map-meta').textContent =
       (data.total_empresas || 0).toLocaleString('pt-BR') + ' empresas · fonte: ' + (data.fonte || '—') +
-      ' · visualização: ' + (view === 'heatmap' ? 'calor tipo temperatura' : 'nuvem');
+      ' · capital R$ ' + (state.filters.capitalMin / 1e6).toFixed(0) + '–' + (state.filters.capitalMax / 1e6).toFixed(0) + ' mi';
 
     if (state.mapInstance) destroyMap(state.mapInstance);
 
@@ -377,24 +411,32 @@ async function renderTabMapa(body) {
       state.mapInstance = await mountBrazilMap(body.querySelector('#pm-map'), {
         mode: 'heatmap',
         preset: metric,
-        aggregado: agg,
-        zoom: uf ? 6 : 4,
+        aggregado: data.aggregado_uf || [],
+        zoom: state.filters.uf ? 6 : 4,
       });
     } else {
       state.mapInstance = await mountBrazilMap(body.querySelector('#pm-map'), {
+        mode: 'points',
         points: data.pontos || [],
         pointStyle: 'empresa',
-        zoom: uf ? 6 : 4,
+        zoom: state.filters.uf ? 6 : 4,
       });
     }
 
+    const mun = data.aggregado_municipio || [];
+    body.querySelector('#pm-map-mun').innerHTML = mun.length
+      ? '<h4>Top municípios</h4><ul class="pm-mun-ul">' + mun.slice(0, 12).map(function (m) {
+          return '<li><strong>' + esc(m.municipio) + '</strong> (' + m.uf + ') — ' + m.total + ' empresas · cap. médio ' + formatCapital(m.capital_medio) + '</li>';
+        }).join('') + '</ul>'
+      : '';
+
+    const agg = data.aggregado_uf || [];
     body.querySelector('#pm-map-agg').innerHTML = agg.slice(0, 12).map(function (a) {
       return '<div class="pm-agg-card"><span>' + a.uf + '</span><strong>' + a.total.toLocaleString('pt-BR') + '</strong><small>' + a.pct + '%</small></div>';
     }).join('');
   }
 
   body.querySelector('#pm-map-reload')?.addEventListener('click', loadMap);
-  body.querySelector('#pm-map-uf')?.addEventListener('change', loadMap);
   body.querySelector('#pm-map-view')?.addEventListener('change', loadMap);
   body.querySelector('#pm-map-metric')?.addEventListener('change', loadMap);
   await loadMap();

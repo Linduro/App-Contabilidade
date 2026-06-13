@@ -1,0 +1,28 @@
+# Filtros padrão ICP — prospecção em massa (ajustável pela UI)
+
+icp_ativo:
+  capital_min: 2000000      # R$ 2 mi
+  capital_max: 10000000     # R$ 10 mi
+  descricao: "Faixa de capital social prioritária AFS"
+
+porte_funcionarios:
+  "01":
+    label: "Microempresa"
+    funcionarios: "0–9"
+  "1":
+    label: "Microempresa"
+    funcionarios: "0–9"
+  "03":
+    label: "EPP"
+    funcionarios: "10–49"
+  "3":
+    label: "EPP"
+    funcionarios: "10–49"
+  "05":
+    label: "Demais (médio/grande)"
+    funcionarios: "50+"
+  "5":
+    label: "Demais (médio/grande)"
+    funcionarios: "50+"
+
+# RF não informa quantidade exata de funcionários — usamos porte como proxy

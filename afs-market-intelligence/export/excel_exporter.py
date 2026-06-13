@@ -45,6 +45,11 @@ class ExcelExporter:
         uf: str | None = None,
         cluster: str | None = None,
         q: str | None = None,
+        cnae: str | None = None,
+        porte: str | None = None,
+        municipio: str | None = None,
+        capital_min: float | None = None,
+        capital_max: float | None = None,
         limite: int = 100_000,
     ) -> dict:
         """Exporta base prospectos_rf (ingestão Lucro Real) para Excel."""
@@ -54,25 +59,25 @@ class ExcelExporter:
         except ImportError:
             return {"status": "error", "message": "openpyxl não instalado"}
 
+        from layers.categorization.prospect_filters import parse_filters, sql_where, load_defaults
+
+        defaults = load_defaults().get("icp_ativo", {})
+        flt = parse_filters({
+            "uf": uf, "cluster": cluster, "q": q, "cnae": cnae, "porte": porte,
+            "municipio": municipio,
+            "capital_min": capital_min if capital_min is not None else defaults.get("capital_min"),
+            "capital_max": capital_max if capital_max is not None else defaults.get("capital_max"),
+        })
+        where, params = sql_where(flt)
         limite = min(max(int(limite), 1), 250_000)
-        sql = """
+        sql = f"""
             SELECT cnpj_basico, cnpj_matriz, razao_social, cluster_estrategico,
                    capital_social, cnae_principal, cnae_principal_descricao,
-                   uf, municipio_nome, email_matriz, telefone_matriz, endereco_matriz,
+                   uf, municipio_nome, porte, email_matriz, telefone_matriz, endereco_matriz,
                    socios_chave, qtd_estabelecimentos, score_prioridade, status_funil
-            FROM prospectos_rf WHERE 1=1
+            FROM prospectos_rf WHERE {where}
+            ORDER BY score_prioridade DESC LIMIT ?
         """
-        params: list = []
-        if uf:
-            sql += " AND uf = ?"
-            params.append(uf)
-        if cluster:
-            sql += " AND cluster_estrategico = ?"
-            params.append(cluster)
-        if q:
-            sql += " AND (razao_social ILIKE ? OR cnpj_basico LIKE ?)"
-            params.extend([f"%{q}%", f"%{q}%"])
-        sql += " ORDER BY score_prioridade DESC LIMIT ?"
         params.append(limite)
 
         try:
@@ -81,7 +86,7 @@ class ExcelExporter:
             return {"status": "error", "message": f"Tabela prospectos_rf indisponível: {e}"}
 
         if not rows:
-            return {"status": "error", "message": "Nenhum prospecto na base — rode a ingestão RF primeiro."}
+            return {"status": "error", "message": "Nenhum prospecto com estes filtros — ajuste capital/CNAE ou rode a ingestão."}
 
         EXPORT_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -93,8 +98,8 @@ class ExcelExporter:
         ws.title = "Prospectos LR"
         headers = [
             "CNPJ", "CNPJ Matriz", "Razão Social", "Cluster", "Capital Social",
-            "CNAE", "Descrição CNAE", "UF", "Município", "E-mail", "Telefone",
-            "Endereço", "Sócios", "Qtd Filiais", "Score", "Status Funil",
+            "CNAE", "Descrição CNAE", "UF", "Município", "Porte (func. proxy)",
+            "E-mail", "Telefone", "Endereço", "Sócios", "Qtd Filiais", "Score", "Status Funil",
         ]
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
@@ -113,11 +118,12 @@ class ExcelExporter:
             ("Plataforma", "AFS Market Intelligence"),
             ("Aba", "Prospectos Lucro Real (RF)"),
             ("Registros exportados", len(rows)),
-            ("Filtro UF", uf or "Todas"),
-            ("Filtro Cluster", cluster or "Todos"),
-            ("Busca", q or ""),
+            ("Capital mín.", flt.get("capital_min")),
+            ("Capital máx.", flt.get("capital_max")),
+            ("CNAE", cnae or ""),
+            ("Porte", porte or ""),
+            ("UF", uf or "Todas"),
             ("Exportado em", datetime.now().isoformat()),
-            ("Origem", "prospectos_rf / DuckDB"),
         ]
         for i, (k, v) in enumerate(meta_rows, 1):
             meta.cell(row=i, column=1, value=k).font = header_font
@@ -130,6 +136,7 @@ class ExcelExporter:
             "filepath": str(filepath),
             "filename": filepath.name,
             "total_exportado": len(rows),
+            "filtros": flt,
         }
 
     def _style_header(self, ws, headers, font, fill):

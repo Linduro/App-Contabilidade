@@ -94,37 +94,56 @@ def rf_ingest():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@main_bp.route("/api/prospectos/defaults")
+def prospectos_defaults():
+    try:
+        from layers.categorization.prospect_filters import load_defaults, parse_filters
+        cfg = load_defaults()
+        conn = _conn()
+        from layers.categorization.prospect_filters import sql_where
+        flt = parse_filters({})
+        where, params = sql_where(flt)
+        total_icp = 0
+        total_all = 0
+        try:
+            total_icp = conn.execute(f"SELECT COUNT(*) FROM prospectos_rf WHERE {where}", params).fetchone()[0]
+            total_all = conn.execute("SELECT COUNT(*) FROM prospectos_rf").fetchone()[0]
+        except Exception:
+            pass
+        conn.close()
+        return jsonify({
+            "icp_ativo": cfg.get("icp_ativo", {}),
+            "porte_funcionarios": cfg.get("porte_funcionarios", {}),
+            "total_prospectos": total_all,
+            "total_com_filtro_padrao": total_icp,
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @main_bp.route("/api/prospectos")
 def list_prospectos():
     try:
-        uf = request.args.get("uf")
-        cluster = request.args.get("cluster")
-        q = request.args.get("q", "").strip()
+        from layers.categorization.prospect_filters import parse_filters, sql_where
+        flt = parse_filters(request.args)
         limite = min(int(request.args.get("limite", 100)), 500)
         offset = int(request.args.get("offset", 0))
+        where, params = sql_where(flt)
         conn = _conn()
-        sql = """SELECT id, cnpj_basico, cnpj_matriz, razao_social, cluster_estrategico,
+        sql = f"""SELECT id, cnpj_basico, cnpj_matriz, razao_social, cluster_estrategico,
                         capital_social, cnae_principal, cnae_principal_descricao, uf, municipio_nome,
                         email_matriz, telefone_matriz, endereco_matriz, socios_chave, emails_encontrados,
-                        qtd_estabelecimentos, score_prioridade, status_funil
-                 FROM prospectos_rf WHERE 1=1"""
-        params = []
-        if uf:
-            sql += " AND uf = ?"; params.append(uf)
-        if cluster:
-            sql += " AND cluster_estrategico = ?"; params.append(cluster)
-        if q:
-            sql += " AND (razao_social ILIKE ? OR cnpj_basico LIKE ?)"
-            params.extend([f"%{q}%", f"%{q}%"])
+                        qtd_estabelecimentos, porte, score_prioridade, status_funil
+                 FROM prospectos_rf WHERE {where}"""
         sql += " ORDER BY score_prioridade DESC LIMIT ? OFFSET ?"
         params.extend([limite, offset])
         rows = conn.execute(sql, params).fetchall()
-        total = conn.execute("SELECT COUNT(*) FROM prospectos_rf").fetchone()[0]
+        total = conn.execute(f"SELECT COUNT(*) FROM prospectos_rf WHERE {where}", params[:-2]).fetchone()[0]
         cols = ["id", "cnpj_basico", "cnpj_matriz", "razao_social", "cluster", "capital_social",
                 "cnae", "cnae_descricao", "uf", "municipio", "email_matriz", "telefone_matriz",
-                "endereco_matriz", "socios_chave", "emails_encontrados", "qtd_filiais", "score", "status"]
+                "endereco_matriz", "socios_chave", "emails_encontrados", "qtd_filiais", "porte", "score", "status"]
         conn.close()
-        return jsonify({"total": total, "prospectos": [dict(zip(cols, r)) for r in rows]})
+        return jsonify({"total": total, "filtros": flt, "prospectos": [dict(zip(cols, r)) for r in rows]})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -132,11 +151,12 @@ def list_prospectos():
 @main_bp.route("/api/prospectos/mapa")
 def prospectos_mapa():
     try:
+        from layers.categorization.prospect_filters import parse_filters
         limite = min(int(request.args.get("limite", 8000)), 15000)
-        uf = request.args.get("uf") or None
+        flt = parse_filters(request.args)
         conn = _conn()
         from layers.intelligence.market_intel import GeoIntel
-        result = GeoIntel(conn).mapa_payload(limite, uf)
+        result = GeoIntel(conn, flt).mapa_payload(limite)
         conn.close()
         return jsonify(result)
     except Exception as e:
@@ -362,6 +382,11 @@ def export_prospectos():
             uf=body.get("uf") or None,
             cluster=body.get("cluster") or None,
             q=(body.get("q") or "").strip() or None,
+            cnae=body.get("cnae") or None,
+            porte=body.get("porte") or None,
+            municipio=body.get("municipio") or None,
+            capital_min=body.get("capital_min"),
+            capital_max=body.get("capital_max"),
             limite=body.get("limite", 100_000),
         )
         conn.close()

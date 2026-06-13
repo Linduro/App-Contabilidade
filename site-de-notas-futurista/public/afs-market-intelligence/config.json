@@ -7,5 +7,9 @@
     "storageBucket": "contabilidade-ebed6.firebasestorage.app",
     "messagingSenderId": "92104290412",
     "appId": "1:92104290412:web:e99492aeb27bd9f1902849"
+  },
+  "prospectDefaults": {
+    "capital_min": 2000000,
+    "capital_max": 10000000
   }
 }

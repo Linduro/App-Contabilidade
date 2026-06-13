@@ -90,6 +90,7 @@ const apiBase =
 let configToWrite = {
   apiBase: apiBase.replace(/\/$/, ""),
   firebase: firebaseDefaults,
+  prospectDefaults: { capital_min: 2000000, capital_max: 10000000 },
 }
 
 const configOutPath = path.join(outDir, "config.json")
@@ -97,13 +98,20 @@ if (fs.existsSync(configOutPath)) {
   try {
     const existing = JSON.parse(fs.readFileSync(configOutPath, "utf8"))
     configToWrite = {
-      ...configToWrite,
       ...existing,
       firebase: existing.firebase || firebaseDefaults,
+      prospectDefaults: existing.prospectDefaults || configToWrite.prospectDefaults,
+      apiBase: apiBase.replace(/\/$/, "") || existing.apiBase || "",
     }
   } catch {
     /* keep defaults */
   }
+}
+
+if (!configToWrite.apiBase && process.env.GITHUB_PAGES === "true") {
+  console.warn(
+    "⚠ AFS_MARKET_API_URL não definida — configure em GitHub Settings > Variables para ingestão RF no Pages",
+  )
 }
 
 fs.writeFileSync(configOutPath, JSON.stringify(configToWrite, null, 2), "utf8")

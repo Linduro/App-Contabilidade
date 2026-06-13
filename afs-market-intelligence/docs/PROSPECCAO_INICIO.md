@@ -47,6 +47,31 @@ curl -X POST http://localhost:5001/api/rf/ingest \
 
 Acompanhe: `GET /api/jobs/{id}`
 
+### 3. Produção (GitHub Pages + Cloud Run) — recomendado
+
+1. GitHub → **Settings → Secrets and variables → Actions → Variables**
+   - `ENABLE_GCP_CLOUD_RUN` = `true`
+   - `AFS_MARKET_API_URL` = URL do Cloud Run (ex: `https://afs-market-intelligence-xxxxx.run.app`)
+2. Push em `main` → deploy backend + portal; `config.json` recebe `apiBase` automaticamente.
+3. App → **Prospecção em Massa** → indicador **Backend Python online**.
+
+Sem `AFS_MARKET_API_URL`, o Pages fica **Backend offline** (CRM Firestore ok; ingestão RF não).
+
+---
+
+## Filtros ICP (capital, CNAE, porte, mapa)
+
+Padrão: **capital R$ 2 mi – R$ 10 mi** (`config/prospect_defaults.yaml`).
+
+| Filtro | Campo RF |
+|--------|----------|
+| Capital min/máx | `capital_social` |
+| CNAE (prefixo) | `cnae_principal` |
+| Porte → funcionários | `porte` (Micro 0–9, EPP 10–49, Demais 50+) |
+| UF / município | `uf`, `municipio_nome` |
+
+Barra de filtros nas abas **Ingestão** e **Mapa**. Export Excel usa os mesmos filtros.
+
 ---
 
 ## Modos de filtro

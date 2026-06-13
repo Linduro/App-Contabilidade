@@ -356,13 +356,22 @@ function addPointCloud(L, layer, points, style) {
   for (let i = 0; i < batch; i++) {
     const p = points[i];
     if (!p.lat || !p.lng) continue;
-    L.circleMarker([p.lat, p.lng], {
-      radius: style === 'empresa' ? 2 : 5,
+    const m = L.circleMarker([p.lat, p.lng], {
+      radius: style === 'empresa' ? 3 : 5,
       color: color,
       fillColor: color,
-      fillOpacity: style === 'empresa' ? 0.35 : 0.75,
+      fillOpacity: style === 'empresa' ? 0.55 : 0.75,
       weight: 0,
-    }).addTo(layer);
+    });
+    if (p.razao_social || p.municipio) {
+      const cap = p.capital_social ? 'R$ ' + Number(p.capital_social).toLocaleString('pt-BR') : '';
+      m.bindPopup(
+        '<strong>' + (p.razao_social || p.municipio || '') + '</strong><br>' +
+        (p.municipio ? p.municipio + ' · ' + (p.uf || '') + '<br>' : '') +
+        cap,
+      );
+    }
+    m.addTo(layer);
   }
 }
 

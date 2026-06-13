@@ -50,9 +50,22 @@ export async function fetchProspectos(params = {}) {
   if (params.uf) q.set('uf', params.uf);
   if (params.cluster) q.set('cluster', params.cluster);
   if (params.q) q.set('q', params.q);
+  if (params.cnae) q.set('cnae', params.cnae);
+  if (params.porte) q.set('porte', params.porte);
+  if (params.municipio) q.set('municipio', params.municipio);
+  if (params.capitalMin != null && params.capitalMin !== '') q.set('capital_min', String(params.capitalMin));
+  if (params.capitalMax != null && params.capitalMax !== '') q.set('capital_max', String(params.capitalMax));
   q.set('limite', String(params.limite ?? 100));
   q.set('offset', String(params.offset ?? 0));
   return httpMarketGet('/prospectos?' + q.toString());
+}
+
+export async function fetchProspectDefaults() {
+  try {
+    return await httpMarketGet('/prospectos/defaults');
+  } catch (_) {
+    return { icp_ativo: { capital_min: 2000000, capital_max: 10000000 } };
+  }
 }
 
 export async function exportProspectosExcel(opts = {}) {
@@ -61,6 +74,11 @@ export async function exportProspectosExcel(opts = {}) {
     cluster: opts.cluster || null,
     limite: opts.limite ?? 50000,
     q: opts.q || null,
+    cnae: opts.cnae || null,
+    porte: opts.porte || null,
+    municipio: opts.municipio || null,
+    capital_min: opts.capitalMin,
+    capital_max: opts.capitalMax,
   });
   if (result.status !== 'ok') throw new Error(result.message || 'Falha na exportação');
   const url = downloadUrl(result.filename);
@@ -109,6 +127,7 @@ export const PROSPECT_EXPORT_COLS = [
   { key: 'cnae', label: 'CNAE' },
   { key: 'cnae_descricao', label: 'Descrição CNAE' },
   { key: 'cluster', label: 'Cluster' },
+  { key: 'porte', label: 'Porte' },
   { key: 'capital_social', label: 'Capital Social' },
   { key: 'uf', label: 'UF' },
   { key: 'municipio', label: 'Município' },

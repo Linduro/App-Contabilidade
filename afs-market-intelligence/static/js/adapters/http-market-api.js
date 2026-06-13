@@ -20,11 +20,16 @@ export function getHttpApiBase() {
 export function backendConfigHint() {
   const base = getHttpApiBase();
   if (base) return null;
+  if (location.hostname.includes('github.io')) {
+    return (
+      'Produção (GitHub Pages): configure a variável AFS_MARKET_API_URL no repositório GitHub ' +
+      '(Settings → Secrets and variables → Actions → Variables) com a URL do Cloud Run, ' +
+      'ex: https://afs-market-intelligence-xxxxx.run.app. Depois faça redeploy do portal. ' +
+      'Também ative ENABLE_GCP_CLOUD_RUN=true para publicar o backend.'
+    );
+  }
   return (
-    'Backend Python não configurado. Opções: (1) Local: na pasta afs-market-intelligence rode ' +
-    'pip install -r requirements.txt && python app.py — porta 5001. ' +
-    '(2) Portal dev: npm run dev em site-de-notas-futurista (proxy /afs-market-api). ' +
-    '(3) Produção: configure apiBase em public/afs-market-intelligence/config.json com a URL do Cloud Run.'
+    'Backend Python não configurado. Local: cd afs-market-intelligence && pip install -r requirements.txt && python app.py'
   );
 }
 

@@ -8,7 +8,7 @@
     <title>AFS Market Intelligence</title>
     <link rel="stylesheet" href="./css/style.css?v=3">
     <link rel="stylesheet" href="./css/layout-v2.css?v=3">
-    <script>window.__AFS_BASE_PATH__="";window.__AFS_BUILD__="2026-06-13173415";</script>
+    <script>window.__AFS_BASE_PATH__="";window.__AFS_BUILD__="2026-06-13174937";</script>
 </head>
 <body>
 
@@ -61,6 +61,7 @@
                 if (cfg.firebase) window.__AFS_FB_CONFIG__ = cfg.firebase;
                 else if (cfg.apiKey) window.__AFS_FB_CONFIG__ = cfg;
                 if (cfg.apiBase) window.__AFS_MARKET_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+                if (cfg.prospectDefaults) window.__AFS_PROSPECT_DEFAULTS__ = cfg.prospectDefaults;
                 break;
             } catch (_) {}
         }
