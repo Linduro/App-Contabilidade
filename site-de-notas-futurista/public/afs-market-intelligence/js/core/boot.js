@@ -33,7 +33,7 @@ const TITLES = {
 const ROUTE_LOADERS = {
   '/apps': () => importMod('../modules/home.js').then((m) => m.renderHome),
   '/prospeccao': () => importMod('../modules/prospeccao.js').then((m) => m.renderProspeccao),
-  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
+  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa-page.js').then((m) => m.renderProspeccaoMassa),
   '/prospeccao/operacoes': () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderProspeccaoOperacoes),
   '/prospeccao/dead-zone': () => importMod('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
   '/prospeccao/transicao': () => importMod('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
@@ -85,7 +85,7 @@ function registerAllRoutes() {
   });
 
   registerPrefix('/prospeccao/', lazy(
-    () => importMod('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
+    () => importMod('../modules/prospeccao-massa-page.js').then((m) => m.renderProspeccaoMassa),
   ));
 
   registerPrefix('/comunicacao/', lazy(
