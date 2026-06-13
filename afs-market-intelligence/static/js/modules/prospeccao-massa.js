@@ -9,7 +9,7 @@ import {
   prospeccaoCount, prospeccaoSearch, fetchCnaes, fetchCnaeSetores, fetchMunicipios,
   fetchNaturezas, enriquecerCnpjs, enriquecerCnpjUnitario, fetchContatos,
   runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads,
-  saveSegmentacao, fetchSegmentacoes, pingHttpBackend, executarProspeccao, pollJob,
+  saveSegmentacao, fetchSegmentacoes, pingHttpBackend, executarProspeccao,
 } from '../adapters/prospeccao-search-api.js';
 import {
   fetchRfStatus, startRfIngest, pollJob, exportProspectosExcel,
@@ -73,14 +73,15 @@ let state = {
   searched: false,
   selected: new Set(),
   openGroups: new Set(['localizacao', 'capital']),
-  backendOnline: false,
+  localMode: true,
 };
 
 function defaultFiltros() {
   const cfg = window.__AFS_PROSPECT_DEFAULTS__ || {};
+  const local = window.__AFS_USE_RF_BACKEND__ !== true;
   return {
-    capital_min: cfg.capital_min ?? 2000000,
-    capital_max: cfg.capital_max ?? 10000000,
+    capital_min: local ? null : (cfg.capital_min ?? 2000000),
+    capital_max: local ? null : (cfg.capital_max ?? 10000000),
     ufs: [],
     clusters: [],
     cnaes: [],
@@ -572,11 +573,6 @@ async function runProspeccao(root) {
   if (btn) btn.disabled = true;
 
   try {
-    if (!state.backendOnline) {
-      window.AFSToast?.error('Backend offline. Inicie python app.py');
-      return;
-    }
-
     showRunOverlay('Preparando', 'Contando empresas com os filtros atuais…', 2);
     const counts = await prospeccaoCount(filtrosForApi(state.filtros));
     state.counts = counts;
@@ -590,34 +586,15 @@ async function runProspeccao(root) {
 
     const limite = Math.min(Math.max(alvo, 1), 100);
     const aba = counts.nao_enriquecidas > 0 ? 'nao_enriquecidas' : 'todas';
-    showRunOverlay(
-      'Executando prospecção',
-      limite.toLocaleString('pt-BR') + ' empresa(s) — busca + enriquecimento + CRM…',
-      5,
-    );
 
-    const res = await executarProspeccao({
+    const result = await executarProspeccao({
       filtros: filtrosForApi(state.filtros),
       aba: aba,
       limite: limite,
+      onProgress: function (msg, pct) {
+        showRunOverlay('Executando prospecção', msg, pct);
+      },
     });
-
-    if (res.code === 'sem_base_rf' || (res.status === 'error' && res.message)) {
-      hideRunOverlay(0);
-      window.AFSToast?.error(res.message || 'Base RF vazia');
-      if (confirm('A base RF está vazia. Abrir Centro de Operações para ingestão?')) {
-        location.hash = '#/prospeccao/operacoes';
-      }
-      return;
-    }
-
-    let result = res;
-    if (res.job_id) {
-      result = await pollJob(res.job_id, function (j) {
-        showRunOverlay('Executando prospecção', j.message || j.status, j.progress || 0);
-      });
-      result = result?.result || result;
-    }
 
     const proc = result?.processados ?? 0;
     const ok = result?.enriquecidos_ok ?? 0;
@@ -656,13 +633,10 @@ function openHelpDrawer() {
     width: '520px',
     bodyHtml:
       '<div class="ps-help">' +
-        '<h4>1. Primeira vez — carregar a base</h4>' +
-        '<p>Clique em <strong>⚙ Operações</strong> → aba <strong>RF</strong> → <strong>Iniciar ingestão</strong>. ' +
-        'Ou use o botão laranja <strong>⚡ Executar prospecção</strong> — ele avisa se a base ainda estiver vazia.</p>' +
-        '<h4>2. Modo rápido (recomendado)</h4>' +
+        '<h4>1. Modo rápido (recomendado)</h4>' +
         '<p>Ajuste os filtros à esquerda e clique <strong>⚡ Executar prospecção</strong>. ' +
-        'Em um clique o sistema: busca empresas → enriquece e-mails/telefones → importa para o CRM.</p>' +
-        '<h4>3. Filtrar manualmente</h4>' +
+        'Tudo roda no navegador — sem backend, sem ingestão. Busca → enriquece contatos → importa no CRM.</p>' +
+        '<h4>2. Filtrar manualmente</h4>' +
         '<p>Use os filtros à esquerda: UF, município, <strong>segmento</strong> (cluster), ' +
         '<strong>divisão CNAE</strong> (2 dígitos), código CNAE completo, porte, capital social, etc. ' +
         'A busca atualiza sozinha após ~400 ms.</p>' +
@@ -683,8 +657,7 @@ function openHelpDrawer() {
         '<h4>Atalhos úteis</h4>' +
         '<p>Cards na tela inicial (ICP R$ 2–10 mi, Transição de Regime…) aplicam filtros prontos. ' +
         'Presets de capital e códigos CNAE frequentes aceleram a segmentação.</p>' +
-        '<p class="hint">Backend local: <code>python app.py</code> em afs-market-intelligence → ' +
-        '<code>http://127.0.0.1:5001/#/prospeccao/massa</code></p>' +
+        '<p class="hint">Base demo com ~120 empresas Lucro Real simuladas. Dados e enriquecimento ficam salvos no seu navegador.</p>' +
       '</div>',
   });
 }
@@ -764,6 +737,9 @@ function bindEvents(root) {
     bindEvents(root);
     loadNaturezas(root);
     loadCnaeDivisoes(root);
+    bindAutocomplete(root);
+  });
+
   let natT = null;
   root.querySelector('#ps-nat-q')?.addEventListener('input', function () {
     clearTimeout(natT);
@@ -776,7 +752,6 @@ function bindEvents(root) {
   });
 
   bindAutocomplete(root);
-});
 
   root.querySelector('#ps-apply')?.addEventListener('click', function () {
     state.filtros = filtrosFromDom(root);
@@ -1005,8 +980,31 @@ function openIntelDrawer(root) {
 
 async function renderAdminPanel(el) {
   if (!el) return;
+  if (state.localMode) {
+    const c = await prospeccaoCount(state.filtros);
+    el.innerHTML =
+      '<p class="hint">Modo <strong>navegador</strong> — base demo com ' + (c.todas || 0) + ' empresas. ' +
+      'Enriquecimento e pesquisas salvas ficam no localStorage.</p>' +
+      '<h4>Exportar seleção (Excel)</h4>' +
+      '<button type="button" class="btn sm primary" id="adm-export-local">Exportar filtros atuais</button>' +
+      '<h4 style="margin-top:1rem">Grupos salvos</h4>' +
+      '<input type="text" id="adm-grp-name" placeholder="Nome do grupo">' +
+      '<button type="button" class="btn sm" id="adm-grp-save">Salvar grupo (filtros atuais)</button>';
+    el.querySelector('#adm-export-local')?.addEventListener('click', async function () {
+      const search = await prospeccaoSearch({ filtros: state.filtros, aba: 'todas', page: 1, page_size: 500 });
+      exportExcel(search.rows || [], PROSPECT_EXPORT_COLS, 'prospeccao-local.xlsx');
+      window.AFSToast?.success('Exportado');
+    });
+    el.querySelector('#adm-grp-save')?.addEventListener('click', function () {
+      const name = el.querySelector('#adm-grp-name')?.value.trim();
+      if (!name) return;
+      store.create('scrapingGroups', { nome: name, filtros: state.filtros, status: 'rascunho' });
+      window.AFSToast?.success('Grupo salvo');
+    });
+    return;
+  }
+
   const ping = await pingHttpBackend();
-  state.backendOnline = ping.online;
   const st = ping.data || (await fetchRfStatus()) || {};
   const loaded = st.prospectos_carregados ?? 0;
 
@@ -1124,16 +1122,14 @@ async function renderAdminPanel(el) {
 
 export async function renderProspeccaoMassa({ mount }) {
   mountEl = mount;
+  state.localMode = window.__AFS_USE_RF_BACKEND__ !== true;
   try {
     const d = await fetchProspectDefaults();
-    if (d?.icp_ativo) {
+    if (d?.icp_ativo && !state.localMode) {
       state.filtros.capital_min = d.icp_ativo.capital_min ?? state.filtros.capital_min;
       state.filtros.capital_max = d.icp_ativo.capital_max ?? state.filtros.capital_max;
     }
   } catch (_) {}
-
-  const ping = await pingHttpBackend();
-  state.backendOnline = ping.online;
 
   renderPage(mount);
   bindEvents(mount);

@@ -4,10 +4,10 @@
 import {
   fetchOpsStatus, fetchJobs, startPipeline, enqueueFiltros,
   runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads, fetchSocialConfig,
-  enriquecerCnpjs, pingHttpBackend, pollJob,
+  enriquecerCnpjs, pingHttpBackend,
 } from '../adapters/prospeccao-search-api.js';
 import {
-  startRfIngest, exportProspectosExcel, fetchRfStatus, backendConfigHint,
+  startRfIngest, exportProspectosExcel, fetchRfStatus, backendConfigHint, pollJob,
 } from '../adapters/rf-pipeline-api.js';
 import * as store from '../core/store.js';
 
