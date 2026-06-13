@@ -1,5 +1,6 @@
 {
   "apiBase": "",
+  "_apiBase_help": "URL do backend Python (Cloud Run). Ex: https://afs-market-intelligence-xxxxx.run.app — deixe vazio para usar proxy local /afs-market-api no npm run dev",
   "firebase": {
     "apiKey": "SUA_API_KEY",
     "authDomain": "seu-projeto.firebaseapp.com",

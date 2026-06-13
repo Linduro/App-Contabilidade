@@ -40,6 +40,98 @@ class ExcelExporter:
         logger.info("[export] Arquivo gerado: %s", filepath)
         return {"status": "ok", "filepath": str(filepath), "filename": filepath.name}
 
+    def exportar_prospectos_rf(
+        self,
+        uf: str | None = None,
+        cluster: str | None = None,
+        q: str | None = None,
+        limite: int = 100_000,
+    ) -> dict:
+        """Exporta base prospectos_rf (ingestão Lucro Real) para Excel."""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+        except ImportError:
+            return {"status": "error", "message": "openpyxl não instalado"}
+
+        limite = min(max(int(limite), 1), 250_000)
+        sql = """
+            SELECT cnpj_basico, cnpj_matriz, razao_social, cluster_estrategico,
+                   capital_social, cnae_principal, cnae_principal_descricao,
+                   uf, municipio_nome, email_matriz, telefone_matriz, endereco_matriz,
+                   socios_chave, qtd_estabelecimentos, score_prioridade, status_funil
+            FROM prospectos_rf WHERE 1=1
+        """
+        params: list = []
+        if uf:
+            sql += " AND uf = ?"
+            params.append(uf)
+        if cluster:
+            sql += " AND cluster_estrategico = ?"
+            params.append(cluster)
+        if q:
+            sql += " AND (razao_social ILIKE ? OR cnpj_basico LIKE ?)"
+            params.extend([f"%{q}%", f"%{q}%"])
+        sql += " ORDER BY score_prioridade DESC LIMIT ?"
+        params.append(limite)
+
+        try:
+            rows = self.conn.execute(sql, params).fetchall()
+        except Exception as e:
+            return {"status": "error", "message": f"Tabela prospectos_rf indisponível: {e}"}
+
+        if not rows:
+            return {"status": "error", "message": "Nenhum prospecto na base — rode a ingestão RF primeiro."}
+
+        EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        suffix = f"_{uf}" if uf else ""
+        filepath = EXPORT_DIR / f"afs_prospectos_lr{suffix}_{ts}.xlsx"
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Prospectos LR"
+        headers = [
+            "CNPJ", "CNPJ Matriz", "Razão Social", "Cluster", "Capital Social",
+            "CNAE", "Descrição CNAE", "UF", "Município", "E-mail", "Telefone",
+            "Endereço", "Sócios", "Qtd Filiais", "Score", "Status Funil",
+        ]
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="EA580C", end_color="EA580C", fill_type="solid")
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center")
+
+        for i, row in enumerate(rows, 2):
+            for j, val in enumerate(row, 1):
+                ws.cell(row=i, column=j, value=val)
+
+        meta = wb.create_sheet("Metadados")
+        meta_rows = [
+            ("Plataforma", "AFS Market Intelligence"),
+            ("Aba", "Prospectos Lucro Real (RF)"),
+            ("Registros exportados", len(rows)),
+            ("Filtro UF", uf or "Todas"),
+            ("Filtro Cluster", cluster or "Todos"),
+            ("Busca", q or ""),
+            ("Exportado em", datetime.now().isoformat()),
+            ("Origem", "prospectos_rf / DuckDB"),
+        ]
+        for i, (k, v) in enumerate(meta_rows, 1):
+            meta.cell(row=i, column=1, value=k).font = header_font
+            meta.cell(row=i, column=2, value=v)
+
+        wb.save(filepath)
+        logger.info("[export] Prospectos LR: %s (%d linhas)", filepath, len(rows))
+        return {
+            "status": "ok",
+            "filepath": str(filepath),
+            "filename": filepath.name,
+            "total_exportado": len(rows),
+        }
+
     def _style_header(self, ws, headers, font, fill):
         for col, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=h)

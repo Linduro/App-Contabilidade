@@ -1,22 +1,26 @@
 /**
- * API do pipeline RF em massa (Cloud Run / local).
- * Complementa BrasilAPI (consulta unitária) com ingestão dos ~230k Lucro Real.
+ * API do pipeline RF em massa (Cloud Run / local Python).
  */
+import {
+  getHttpApiBase, httpMarketGet, httpMarketPost, pingHttpBackend,
+  backendConfigHint, downloadUrl,
+} from './http-market-api.js';
 
-function api() {
-  return window.AFSMarketAPI || null;
-}
+export { pingHttpBackend, getHttpApiBase, backendConfigHint, downloadUrl };
 
 export async function fetchRfStatus() {
-  const A = api();
-  if (!A) return null;
-  return A.get('/rf/status');
+  try {
+    return await httpMarketGet('/rf/status');
+  } catch (_) {
+    return null;
+  }
 }
 
 export async function startRfIngest(opts = {}) {
-  const A = api();
-  if (!A) throw new Error('API offline — inicie o backend Python (porta 5001) ou configure Cloud Run');
-  return A.post('/rf/ingest', {
+  if (!getHttpApiBase()) {
+    throw new Error(backendConfigHint() || 'API offline — inicie o backend Python (porta 5001) ou configure Cloud Run');
+  }
+  return httpMarketPost('/rf/ingest', {
     skip_download: opts.skipDownload ?? false,
     modo: opts.modo ?? 'completo',
     versao: opts.versao || null,
@@ -24,12 +28,11 @@ export async function startRfIngest(opts = {}) {
 }
 
 export async function pollJob(jobId, onTick) {
-  const A = api();
-  if (!A) return null;
-  return new Promise((resolve, reject) => {
-    const iv = setInterval(async () => {
+  if (!getHttpApiBase()) return null;
+  return new Promise(function (resolve, reject) {
+    const iv = setInterval(async function () {
       try {
-        const job = await A.get('/jobs/' + jobId);
+        const job = await httpMarketGet('/jobs/' + jobId);
         onTick?.(job);
         if (job.status === 'done') { clearInterval(iv); resolve(job); }
         if (job.status === 'error') { clearInterval(iv); reject(new Error(job.error || job.message || 'Job falhou')); }
@@ -42,15 +45,32 @@ export async function pollJob(jobId, onTick) {
 }
 
 export async function fetchProspectos(params = {}) {
-  const A = api();
-  if (!A) return { total: 0, prospectos: [] };
+  if (!getHttpApiBase()) return { total: 0, prospectos: [] };
   const q = new URLSearchParams();
   if (params.uf) q.set('uf', params.uf);
   if (params.cluster) q.set('cluster', params.cluster);
   if (params.q) q.set('q', params.q);
   q.set('limite', String(params.limite ?? 100));
   q.set('offset', String(params.offset ?? 0));
-  return A.get('/prospectos?' + q.toString());
+  return httpMarketGet('/prospectos?' + q.toString());
+}
+
+export async function exportProspectosExcel(opts = {}) {
+  const result = await httpMarketPost('/export/prospectos', {
+    uf: opts.uf || null,
+    cluster: opts.cluster || null,
+    limite: opts.limite ?? 50000,
+    q: opts.q || null,
+  });
+  if (result.status !== 'ok') throw new Error(result.message || 'Falha na exportação');
+  const url = downloadUrl(result.filename);
+  if (url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = result.filename;
+    a.click();
+  }
+  return result;
 }
 
 export function mapProspectoToStore(p) {
@@ -81,3 +101,21 @@ export function mapProspectoToStore(p) {
     responsavel_id: 'u_owner',
   };
 }
+
+export const PROSPECT_EXPORT_COLS = [
+  { key: 'cnpj_basico', label: 'CNPJ' },
+  { key: 'cnpj_matriz', label: 'CNPJ Matriz' },
+  { key: 'razao_social', label: 'Razão Social' },
+  { key: 'cnae', label: 'CNAE' },
+  { key: 'cnae_descricao', label: 'Descrição CNAE' },
+  { key: 'cluster', label: 'Cluster' },
+  { key: 'capital_social', label: 'Capital Social' },
+  { key: 'uf', label: 'UF' },
+  { key: 'municipio', label: 'Município' },
+  { key: 'email_matriz', label: 'E-mail' },
+  { key: 'telefone_matriz', label: 'Telefone' },
+  { key: 'endereco_matriz', label: 'Endereço' },
+  { key: 'socios_chave', label: 'Sócios' },
+  { key: 'qtd_filiais', label: 'Filiais' },
+  { key: 'score', label: 'Score' },
+];

@@ -3,7 +3,8 @@
  * ingestão RF, mapa LR, auditorias, patrimonial, CNAE, priorização cold mail.
  */
 import * as store from '../core/store.js';
-import { fetchRfStatus, startRfIngest, pollJob, fetchProspectos, mapProspectoToStore } from '../adapters/rf-pipeline-api.js';
+import { fetchRfStatus, startRfIngest, pollJob, fetchProspectos, mapProspectoToStore, exportProspectosExcel, pingHttpBackend, backendConfigHint, PROSPECT_EXPORT_COLS } from '../adapters/rf-pipeline-api.js';
+import { exportExcel } from '../components/export.js';
 import {
   fetchMapaProspectos, fetchCnaeSetores, fetchAuditorias,
   fetchPatrimonial, fetchCarencia,
@@ -121,12 +122,21 @@ function heroHtml() {
 }
 
 async function renderTabMassa(body, mount) {
-  state.rfStatus = await fetchRfStatus();
+  const ping = await pingHttpBackend();
+  state.rfStatus = ping.data || (await fetchRfStatus());
   const u = state.rfStatus?.universo || {};
   const loaded = state.rfStatus?.prospectos_carregados ?? 0;
   const snap = state.rfStatus?.snapshot;
+  const backendOk = ping.online;
+  const backendHint = backendConfigHint();
 
   body.innerHTML =
+    '<div class="pm-backend-status ' + (backendOk ? 'online' : 'offline') + '">' +
+      '<span class="pm-backend-dot"></span>' +
+      (backendOk
+        ? '<strong>Backend Python online</strong> — ingestão e exportação disponíveis'
+        : '<strong>Backend offline</strong> — ' + esc(backendHint || '')) +
+    '</div>' +
     '<div class="pm-grid-2">' +
       '<section class="l2-card pm-ingest-card">' +
         '<h3>Ingestão Receita Federal</h3>' +
@@ -137,22 +147,38 @@ async function renderTabMassa(body, mount) {
           '<dt>Snapshot RF</dt><dd>' + (snap ? esc(snap.versao) + ' · ' + esc(snap.data) : 'Nenhum — rode a ingestão') + '</dd>' +
         '</dl>' +
         '<div class="pm-actions">' +
-          '<button type="button" id="pm-rf-start" class="btn primary"' + (state.rfBusy ? ' disabled' : '') + '>Iniciar ingestão completa RF</button>' +
+          '<button type="button" id="pm-rf-start" class="btn primary"' + (state.rfBusy || !backendOk ? ' disabled' : '') + '>Iniciar ingestão completa RF</button>' +
           '<button type="button" id="pm-rf-refresh" class="btn sm">Atualizar status</button>' +
           '<label class="pm-check"><input type="checkbox" id="pm-rf-skip-dl"> Pular download (usar arquivos locais)</label>' +
         '</div>' +
-        '<pre id="pm-rf-log" class="pm-log hint">Aguardando ação…</pre>' +
+        '<pre id="pm-rf-log" class="pm-log hint">' + (backendOk ? 'Aguardando ação…' : esc(backendHint || '')) + '</pre>' +
       '</section>' +
       '<section class="l2-card">' +
-        '<h3>Informações importantes</h3>' +
+        '<h3>Onde ficam os dados?</h3>' +
         '<ul class="pm-info-list">' +
-          '<li><strong>Perfil ICP:</strong> Lucro Real, capital relevante, Agro / Indústria / Varejo (clusters AFS)</li>' +
-          '<li><strong>Campos prioritários:</strong> CNPJ, endereço matriz/filiais, sócios, e-mails, CNAE, capital</li>' +
-          '<li><strong>Backend:</strong> Cloud Run ou <code>python app.py</code> na porta 5001</li>' +
-          '<li><strong>Próximo passo:</strong> grupos selecionados entram na fila de raspagem (sócios, sites, e-mails)</li>' +
+          '<li><strong>Após ingestão:</strong> tabela <code>prospectos_rf</code> no DuckDB do servidor (<code>data/afs_market.duckdb</code> local ou volume Cloud Run)</li>' +
+          '<li><strong>Detalhe por CNPJ:</strong> <code>estabelecimentos_rf</code> (matriz + filiais) e <code>socios_rf</code></li>' +
+          '<li><strong>Consulta unitária (BrasilAPI):</strong> vai para <code>localStorage</code> / CRM → aba Prospecção unitária</li>' +
+          '<li><strong>Importar para CRM:</strong> use o botão abaixo para trazer uma amostra como leads locais</li>' +
+          '<li><strong>Export Excel:</strong> gera arquivo em <code>data/exports/</code> no servidor e baixa no navegador</li>' +
         '</ul>' +
       '</section>' +
     '</div>' +
+    '<section class="l2-card pm-export-card" style="margin-top:1rem">' +
+      '<h3>Exportar para Excel</h3>' +
+      '<p class="hint">Disponível após a ingestão. Até 250 mil linhas por exportação.</p>' +
+      '<div class="pm-export-form">' +
+        '<select id="pm-export-uf"><option value="">UF — todas</option>' +
+          ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map(function(u){ return '<option>'+u+'</option>'; }).join('') +
+        '</select>' +
+        '<select id="pm-export-cluster"><option value="">Cluster — todos</option><option>agro</option><option>industria</option><option>varejo</option></select>' +
+        '<select id="pm-export-limite"><option value="5000">5.000 linhas</option><option value="25000">25.000</option><option value="50000" selected>50.000</option><option value="230000">230.000 (completo)</option></select>' +
+        '<button type="button" id="pm-export-xlsx" class="btn primary"' + (!backendOk ? ' disabled' : '') + '>⬇ Exportar Excel (.xlsx)</button>' +
+        '<button type="button" id="pm-export-sample" class="btn sm">Exportar amostra (100) no browser</button>' +
+        '<button type="button" id="pm-import-crm" class="btn sm">Importar 100 para CRM</button>' +
+      '</div>' +
+      '<p id="pm-export-status" class="hint"></p>' +
+    '</section>' +
     '<section class="l2-card" style="margin-top:1rem">' +
       '<h3>Grupos para investigação (raspagem futura)</h3>' +
       '<p class="hint">Salve filtros de empresas para enriquecimento em lote quando a fila de scraping estiver ativa.</p>' +
@@ -224,6 +250,58 @@ async function renderTabMassa(body, mount) {
     body.querySelector('#pm-group-name').value = '';
     renderGroupsList(body.querySelector('#pm-groups-list'));
     window.AFSToast?.success('Grupo salvo para raspagem futura');
+  });
+
+  body.querySelector('#pm-export-xlsx')?.addEventListener('click', async function () {
+    const statusEl = body.querySelector('#pm-export-status');
+    try {
+      if (statusEl) statusEl.textContent = 'Gerando Excel no servidor…';
+      const result = await exportProspectosExcel({
+        uf: body.querySelector('#pm-export-uf')?.value || null,
+        cluster: body.querySelector('#pm-export-cluster')?.value || null,
+        limite: Number(body.querySelector('#pm-export-limite')?.value || 50000),
+      });
+      if (statusEl) statusEl.textContent = 'Exportado: ' + result.total_exportado + ' registros → ' + result.filename;
+      window.AFSToast?.success('Excel exportado (' + result.total_exportado + ' linhas)');
+    } catch (e) {
+      if (statusEl) statusEl.textContent = '';
+      window.AFSToast?.error(e.message || 'Falha na exportação');
+    }
+  });
+
+  body.querySelector('#pm-export-sample')?.addEventListener('click', async function () {
+    try {
+      const data = await fetchProspectos({
+        uf: body.querySelector('#pm-export-uf')?.value || undefined,
+        cluster: body.querySelector('#pm-export-cluster')?.value || undefined,
+        limite: 100,
+      });
+      if (!data.prospectos?.length) {
+        window.AFSToast?.warn('Nenhum prospecto — rode a ingestão primeiro');
+        return;
+      }
+      exportExcel(data.prospectos, PROSPECT_EXPORT_COLS, 'Prospectos LR');
+      window.AFSToast?.success('Amostra Excel baixada (100 linhas)');
+    } catch (e) {
+      window.AFSToast?.error(e.message || 'Erro');
+    }
+  });
+
+  body.querySelector('#pm-import-crm')?.addEventListener('click', async function () {
+    try {
+      const data = await fetchProspectos({ limite: 100 });
+      if (!data.prospectos?.length) {
+        window.AFSToast?.warn('Nenhum prospecto na base');
+        return;
+      }
+      const rows = data.prospectos.map(mapProspectoToStore);
+      store.bulkUpsert('leads', rows.map(function (r) {
+        return { ...r, id: store.uid('lead') };
+      }));
+      window.AFSToast?.success(rows.length + ' leads importados para CRM (localStorage)');
+    } catch (e) {
+      window.AFSToast?.error(e.message || 'Erro');
+    }
   });
 
   await loadSample();

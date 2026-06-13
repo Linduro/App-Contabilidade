@@ -352,6 +352,24 @@ def feedback():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@main_bp.route("/api/export/prospectos", methods=["POST"])
+def export_prospectos():
+    try:
+        body = request.get_json() or {}
+        conn = _conn()
+        from export.excel_exporter import ExcelExporter
+        result = ExcelExporter(conn).exportar_prospectos_rf(
+            uf=body.get("uf") or None,
+            cluster=body.get("cluster") or None,
+            q=(body.get("q") or "").strip() or None,
+            limite=body.get("limite", 100_000),
+        )
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @main_bp.route("/api/export", methods=["POST"])
 def export_excel():
     try:
