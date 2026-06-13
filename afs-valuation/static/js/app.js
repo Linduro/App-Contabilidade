@@ -197,13 +197,35 @@ function formatConservationLabel(value) {
     if (value === null || value === undefined || value === '') return '-';
     const labels = {
         5: '5 — Novo na caixa',
-        4: '4 — Novo fora da caixa',
-        3: '3 — Bom estado relativo',
-        2: '2 — Mau estado',
-        1: '1 — Péssimo / sucata'
+        4: '4 — Seminovo / open box',
+        3: '3 — Conservação esperada para a idade',
+        2: '2 — Abaixo do esperado / precisa reparo',
+        1: '1 — Sucata / abandonado'
     };
     const num = parseInt(value, 10);
     return labels[num] || String(value);
+}
+
+function formatEvaluationLinksHtml(evOrData) {
+    const d = evOrData || {};
+    const urls = (d.links_array && d.links_array.length)
+        ? d.links_array
+        : (d.links ? String(d.links).split(',') : (d.valuation?.links_comparativos || []));
+    const valid = urls.map(u => String(u).trim()).filter(u => /^https?:\/\//i.test(u));
+    if (!valid.length) return 'Nenhum link encontrado.';
+    return valid.map(l => `<a href="${l}" target="_blank" rel="noopener noreferrer" style="color: var(--afs-orange-400);">${l}</a>`).join('<br>');
+}
+
+function renderModalReviewPhoto(ev) {
+    const container = document.getElementById('modalPhotoContainer');
+    if (!container) return;
+    const photos = photosFromEvaluation(ev);
+    if (!photos.length) {
+        container.innerHTML = '<div class="modal-photo-empty"><i class="fa-solid fa-camera"></i><span>Foto Indisponível</span></div>';
+        return;
+    }
+    const src = photos[0].url;
+    container.innerHTML = `<img src="${src}" referrerpolicy="no-referrer" class="modal-review-photo" alt="Foto do Bem" onerror="this.parentElement.innerHTML='<div class=\\'modal-photo-empty\\'><i class=\\'fa-solid fa-image-slash\\'></i><span>Erro ao carregar</span></div>'"/>`;
 }
 
 function updateSideConservationAge(data) {
@@ -215,7 +237,7 @@ function updateSideConservationAge(data) {
 
     const cons = data.conservation_state ?? data.conservation;
     const age = data.apparent_age ?? data.age;
-    const tag = data.tag_verificada ?? data.tag;
+    const tag = data.tag_verificada ?? data.tag_verified ?? data.tag;
 
     consEl.textContent = formatConservationLabel(cons);
     ageEl.textContent = (age !== null && age !== undefined && age !== '') ? `${age} anos` : '-';
@@ -259,12 +281,10 @@ function updateSideValuation(data) {
     }
     if (val.links_comparativos && val.links_comparativos.length) {
         const linksEl = document.getElementById('sideLinks');
-        if (linksEl) {
-            linksEl.innerHTML = val.links_comparativos
-                .filter(Boolean)
-                .map(l => `<a href="${l}" target="_blank" rel="noopener" style="color: var(--afs-orange-400);">${l}</a>`)
-                .join('<br>');
-        }
+        if (linksEl) linksEl.innerHTML = formatEvaluationLinksHtml({ links_array: val.links_comparativos });
+    } else if (data.links || data.links_array) {
+        const linksEl = document.getElementById('sideLinks');
+        if (linksEl) linksEl.innerHTML = formatEvaluationLinksHtml(data);
     }
 }
 
@@ -1531,6 +1551,10 @@ async function openReviewModal(evalId, row, control) {
     document.getElementById('modalValueFipe').textContent = '-';
     document.getElementById('modalLinks').innerHTML = 'Carregando...';
     document.getElementById('modalReasoning').textContent = 'Carregando...';
+    const modalPhoto = document.getElementById('modalPhotoContainer');
+    if (modalPhoto) {
+        modalPhoto.innerHTML = '<div class="modal-photo-empty"><i class="fa-solid fa-camera"></i><span>Carregando...</span></div>';
+    }
     
     // Hide correction block
     cancelCorrection();
@@ -1556,25 +1580,12 @@ async function openReviewModal(evalId, row, control) {
             document.getElementById('modalReasoning').innerHTML = (ev.reasoning || '').replace(/\n/g, '<br>');
             
             if (ev.links) {
-                const linksHtml = ev.links.split(',').map(l => `<a href="${l.trim()}" target="_blank" style="color: var(--afs-orange-400);">${l.trim()}</a>`).join('<br>');
-                document.getElementById('modalLinks').innerHTML = linksHtml;
+                document.getElementById('modalLinks').innerHTML = formatEvaluationLinksHtml(ev);
             } else {
                 document.getElementById('modalLinks').textContent = 'Nenhum link encontrado.';
             }
-            
-            // Renderizar foto, se houver
-            const photoLabel = document.getElementById('modalPhotoLabel');
-            const photoContainer = photoLabel?.parentElement?.parentElement;
-            const photoCandidates = [
-                ev.photo_url, ev.photo_spec, ev.photo_tag
-            ].map(u => typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(u) : u)
-             .filter(u => isValidPhotoUrl(u));
-            if (photoContainer && photoCandidates.length) {
-                const src = photoCandidates[0];
-                photoContainer.innerHTML = `<img src="${src}" referrerpolicy="no-referrer" style="max-width:100%; max-height:200px; border-radius:8px;" alt="Foto do Bem" onerror="this.outerHTML='<div style=\\'text-align:center; color:var(--status-error);\\'><i class=\\'fa-solid fa-image-slash fa-2x\\'></i><br>Erro ao carregar imagem</div>'"/>`;
-            } else if (photoContainer) {
-                photoContainer.innerHTML = `<div style="text-align: center;"><i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i><span>Foto Indisponível</span></div>`;
-            }
+
+            renderModalReviewPhoto(ev);
         } else {
             document.getElementById('modalReasoning').textContent = 'Erro ao carregar dados: ' + data.message;
         }
@@ -1776,16 +1787,17 @@ async function openGalleryModal() {
             tbody.innerHTML = '';
             data.evaluations.forEach((ev, idx) => {
                 const rowEl = document.createElement('tr');
+                const ctrlEsc = (ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'");
+                const actionBtns = `
+                    <button class="btn btn-secondary btn-sm" onclick="openReviewModal(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${ctrlEsc}')">Revisar</button>
+                    <button class="btn btn-secondary btn-sm" onclick="openGalleryReEvaluate(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${ctrlEsc}')" style="margin-left:4px;background:var(--status-info);color:#fff;border:none;">Re-avaliar</button>`;
                 rowEl.innerHTML = `
+                    <td>${actionBtns}</td>
                     <td>#${ev.id}</td>
                     <td>${new Date(ev.created_at).toLocaleDateString('pt-BR')}</td>
                     <td title="${ev.asset_description}">${ev.asset_description.substring(0, 30)}...</td>
                     <td>${ev.methodology || '-'}</td>
                     <td>${fmtNum(ev.value_used)}</td>
-                    <td>
-                        <button class="btn btn-secondary btn-sm" onclick="openReviewModal(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${(ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'")}')">Revisar</button>
-                        <button class="btn btn-secondary btn-sm" onclick="openGalleryReEvaluate(${ev.id}, ${ev.row_index != null ? ev.row_index : 'null'}, '${(ev.control != null ? String(ev.control) : '').replace(/'/g, "\\'")}')" style="margin-left:4px;background:var(--status-info);color:#fff;border:none;">Re-avaliar</button>
-                    </td>
                 `;
                 
                 rowEl.style.cursor = 'pointer';
@@ -1840,9 +1852,8 @@ function loadGallerySidePanelDetails(ev) {
     document.getElementById('galleryMethodology').textContent = ev.methodology || 'Não informada';
     document.getElementById('galleryReasoning').innerHTML = (ev.reasoning || '').replace(/\n/g, '<br>');
     
-    if (ev.links) {
-        const linksHtml = ev.links.split(',').map(l => `<a href="${l.trim()}" target="_blank" style="color: var(--afs-orange-400);">${l.trim()}</a>`).join('<br>');
-        document.getElementById('galleryLinks').innerHTML = linksHtml;
+    if (ev.links || ev.links_array) {
+        document.getElementById('galleryLinks').innerHTML = formatEvaluationLinksHtml(ev);
     } else {
         document.getElementById('galleryLinks').textContent = '-';
     }
@@ -2048,6 +2059,7 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
             updateSideConservationAge({
                 conservation_state: ev.conservation_state,
                 apparent_age: ev.apparent_age,
+                tag_verified: ev.tag_verified,
                 raciocinio_visual: ev.reasoning
             });
 
@@ -2059,9 +2071,8 @@ async function loadSidePanelDetails(evalId, row, control, photoUrl, photoSpec, p
             currentSidePhotoIndex = 0;
             updateSidePhotoUI();
             
-            if (ev.links) {
-                const linksHtml = ev.links.split(',').map(l => `<a href="${l.trim()}" target="_blank" style="color: var(--afs-orange-400);">${l.trim()}</a>`).join('<br>');
-                document.getElementById('sideLinks').innerHTML = linksHtml;
+            if (ev.links || ev.links_array) {
+                document.getElementById('sideLinks').innerHTML = formatEvaluationLinksHtml(ev);
             } else {
                 document.getElementById('sideLinks').textContent = '-';
             }

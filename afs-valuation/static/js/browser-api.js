@@ -364,6 +364,25 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok' };
     }
 
+    if (path === '/api/learning-rules' && method === 'GET') {
+        const rules = s.learning_rules_text || (typeof AFS_DEFAULT_LEARNING_RULES !== 'undefined' ? AFS_DEFAULT_LEARNING_RULES : '');
+        return { status: 'ok', rules };
+    }
+
+    if (path === '/api/learning-rules' && method === 'POST') {
+        s.learning_rules_text = body?.rules || '';
+        afsSaveState(s);
+        return { status: 'ok' };
+    }
+
+    if (path === '/api/learnings' && method === 'GET') {
+        const rulesText = s.learning_rules_text || (typeof AFS_DEFAULT_LEARNING_RULES !== 'undefined' ? AFS_DEFAULT_LEARNING_RULES : '');
+        const formatted = typeof afsFormatLearningsList === 'function'
+            ? afsFormatLearningsList(s.feedback || [], s.auto_aprendizados || [], rulesText)
+            : '';
+        return { status: 'ok', formatted };
+    }
+
     if (path === '/api/download-excel' && method === 'GET') {
         try {
             browserExportSpreadsheet();
@@ -432,16 +451,14 @@ function afsApplyEvaluationToRow(row, ev, mappings) {
     set('methodology', ev.methodology);
     set('age_output', ev.apparent_age);
     set('conservation_output', ev.conservation_state);
+    set('tag_output', ev.tag_verified);
+    const linkParts = (ev.links_array && ev.links_array.length)
+        ? ev.links_array
+        : String(ev.links || '').split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
     const l1 = letter('link1');
-    if (l1 && ev.links) {
-        const parts = String(ev.links).split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
-        if (parts[0]) row[l1] = parts[0];
-    }
+    if (l1 && linkParts[0]) row[l1] = linkParts[0];
     const l2 = letter('link2');
-    if (l2 && ev.links) {
-        const parts = String(ev.links).split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
-        if (parts[1]) row[l2] = parts[1];
-    }
+    if (l2 && linkParts[1]) row[l2] = linkParts[1];
     const descOut = letter('desc_output');
     if (descOut) {
         const txt = [ev.asset_description, ev.reasoning].filter(Boolean).join('\n\n');

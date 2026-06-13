@@ -267,7 +267,7 @@
                     </div>
                 </div>
 
-                <div class="grid-2" style="margin-bottom: 20px;">
+                <div class="grid-2 eval-controls-row" style="margin-bottom: 20px;">
                     <div class="form-group">
                         <label class="form-label">Modelo de IA</label>
                         <select class="form-select" id="aiModelSelect">
@@ -281,7 +281,7 @@
                         </select>
                     </div>
 
-                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                    <div class="eval-play-actions">
                         <button class="btn btn-primary" id="btnPlay" onclick="startEvaluation()">
                             <span class="spinner"></span>
                             <span class="btn-text">▶ Iniciar / Play</span>
@@ -403,7 +403,7 @@
                     <div id="sideConservationNote" class="info-frame-note"></div>
                 </div>
                 <div class="info-frame info-frame-age">
-                    <div class="info-frame-label">Revisão Vida Útil (IA)</div>
+                    <div class="info-frame-label">Estimativa de idade</div>
                     <div id="sideAge" class="info-frame-body info-frame-value">-</div>
                     <div id="sideTag" class="info-frame-note"></div>
                 </div>
@@ -509,10 +509,10 @@
             <!-- Left side: Photo and basic info -->
             <div style="flex: 1; min-width: 300px; padding: 24px; border-right: 1px solid var(--border-color); background: rgba(0,0,0,0.1);">
                 <div class="form-label" style="margin-top: 0;">Foto do Bem (Vision)</div>
-                <div style="width: 100%; height: 200px; background: var(--bg-color); border: 2px dashed var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: var(--text-muted);">
-                    <div style="text-align: center;">
-                        <i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                        <span id="modalPhotoLabel">Foto Indisponível</span>
+                <div id="modalPhotoContainer" class="modal-photo-container">
+                    <div class="modal-photo-empty">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Foto Indisponível</span>
                     </div>
                 </div>
                 
@@ -521,14 +521,14 @@
                     Carregando...
                 </div>
 
-                <div class="grid-2">
+                <div class="grid-2 review-meta-grid">
                     <div>
                         <div class="form-label" style="font-size: 0.8rem;">Controle Asset Solutions (Principal)</div>
-                        <div id="modalControl" style="font-weight: 600;">-</div>
+                        <div id="modalControl" class="review-meta-value">-</div>
                     </div>
                     <div>
                         <div class="form-label" style="font-size: 0.8rem;">Linha Processada</div>
-                        <div id="modalRow" style="font-weight: 600;">-</div>
+                        <div id="modalRow" class="review-meta-value">-</div>
                     </div>
                 </div>
             </div>
@@ -627,12 +627,12 @@
                     <table class="data-table" id="galleryTable">
                         <thead>
                             <tr>
+                                <th>Ação</th>
                                 <th>ID</th>
                                 <th>Data</th>
                                 <th>Descrição</th>
                                 <th>Metodologia</th>
                                 <th>Valor Usado</th>
-                                <th>Ação</th>
                             </tr>
                         </thead>
                         <tbody id="galleryTableBody">
@@ -653,8 +653,8 @@
                 </div>
                 
                 <!-- Photo Gallery Carousel for Gallery -->
-                <div class="side-gallery" style="background: var(--bg-input); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); overflow: hidden;">
-                    <div class="side-photo-container" style="position: relative; width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2);">
+                <div class="side-gallery gallery-detail-photo">
+                    <div class="side-photo-container gallery-photo-frame">
                         <img id="galleryPhotoImg" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;" alt="Foto do Ativo">
                         <div id="galleryPhotoEmpty" style="text-align: center; color: var(--text-muted);">
                             <i class="fa-solid fa-camera" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>

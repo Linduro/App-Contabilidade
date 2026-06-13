@@ -5,6 +5,17 @@
 const AFS_VISION_PROMPT = `Você é o núcleo visual de um sistema estilo Google Lens (Multimodal Transformer + busca visual CLIP/MUM).
 Analise TODAS as imagens como um único objeto patrimonial. Cruze forma, cor, material, texto legível, plaqueta, tag e contexto.
 Identifique o bem com precisão de busca visual: objeto principal, categoria de mercado, ativo padronizado, marca/modelo, similares.
+
+IMPORTANTE: idade_aparente_anos e estado_conservacao devem ser estimados APENAS pela foto.
+NÃO use dados de planilha, cadastro ou contexto externo — somente o que é visível nas imagens.
+
+ESCALA estado_conservacao (inteiro 1-5):
+5 = produto novo na caixa
+4 = seminovo / open box / poucos meses de uso (saiu da caixa, descaracterização de novo)
+3 = conservação esperada para a idade do bem vs. pares (ex: torno 40 anos funcional e preservado = 3)
+2 = abaixo do esperado para a idade OU avarias visíveis que exigem reparo
+1 = sucata, totalmente quebrado ou abandonado
+
 Retorne APENAS JSON válido:
 {
   "ativo_identificado": "nome curto padronizado (ex: cadeira, impressora, veículo)",
@@ -13,24 +24,37 @@ Retorne APENAS JSON válido:
   "descricao_visual": "descrição densa do que aparece (forma, material, cor, detalhes, textos lidos)",
   "objetos_similares": ["2-5 produtos/categorias visualmente similares no mercado brasileiro"],
   "confianca_identificacao": número de 0.0 a 1.0,
-  "tag_encontrada": "número da tag/plaqueta lido ou null",
-  "idade_aparente_anos": inteiro ou null,
-  "estado_conservacao": inteiro 1-5 ou null,
+  "tag_encontrada": "número da tag/plaqueta lido na foto ou null",
+  "idade_aparente_anos": inteiro estimado visualmente ou null,
+  "estado_conservacao": inteiro 1-5 conforme escala acima ou null,
   "raciocinio_visual": "passo a passo do raciocínio multimodal por imagem"
 }`;
 
-const AFS_VALUATION_PROMPT = `Você é avaliador de ativos imobilizados. Retorne APENAS JSON:
+const AFS_VALUATION_PROMPT = `Você é avaliador de ativos imobilizados no Brasil. Retorne APENAS JSON:
 {
   "categoria": "categoria ampla (ex: mobiliário, TI, veículos)",
   "ativo": "nome curto padronizado em minúsculas (ex: cadeira, mesa)",
   "descricao_identificacao": "descrição melhorada",
   "metodologia": "metodologia usada",
+  "tipo_anuncio_encontrado": "novo_e_usado | apenas_usado | apenas_novo | sem_anuncio",
   "valor_novo": number ou null,
   "valor_usado": number ou null,
   "valor_fipe": number ou null,
   "links_comparativos": ["urls"],
   "raciocinio_detalhado": "passo a passo"
-}`;
+}
+
+REGRAS DE PREÇO:
+- Se encontrou anúncio de item NOVO e usado: preencha valor_novo e valor_usado.
+- Se encontrou APENAS item usado (ex: trator 2023 usado): valor_novo=null, valor_usado=preço do usado, tipo_anuncio_encontrado=apenas_usado.
+- Se só encontrou novo: valor_usado pode ser estimado por depreciação ou null.
+
+REGRAS DE LINKS (CRÍTICO):
+- links_comparativos: SOMENTE URLs http/https REAIS que um humano pode abrir hoje.
+- Use sites brasileiros conhecidos: mercadolivre.com.br, olx.com.br, shopee.com.br, amazon.com.br, webmotors.com.br, mgl.com.br, etc.
+- NÃO invente URLs, IDs fictícios ou domínios genéricos (example.com).
+- Se não tem link direto confiável, use URL de busca do site com query relevante (ex: https://www.mercadolivre.com.br/busca?q=...)
+- Prefira 1-3 links úteis, não liste links quebrados.`;
 
 async function urlToInlinePart(url) {
     const normalized = (typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(url) : url);
@@ -144,7 +168,9 @@ function afsCloneEvaluationForRow(sourceEv, rowIdx, controlVal, photos, newId, d
         value_fipe: sourceEv.value_fipe,
         apparent_age: sourceEv.apparent_age,
         conservation_state: sourceEv.conservation_state,
+        tag_verified: sourceEv.tag_verified,
         links: sourceEv.links,
+        links_array: sourceEv.links_array || (sourceEv.links ? String(sourceEv.links).split(',').map(x => x.trim()).filter(Boolean) : []),
         reasoning: sourceEv.reasoning
             ? `[Reutilizado do controle ${sourceEv.control ?? sourceEv.row_index}]\n${sourceEv.reasoning}`
             : `[Reutilizado do controle ${sourceEv.control ?? sourceEv.row_index}]`,
@@ -157,6 +183,37 @@ function afsCloneEvaluationForRow(sourceEv, rowIdx, controlVal, photos, newId, d
         confianca_identificacao: sourceEv.confianca_identificacao,
         created_at: new Date().toISOString()
     };
+}
+
+function afsSanitizeComparativeLinks(raw) {
+    const list = Array.isArray(raw) ? raw : (typeof raw === 'string' ? raw.split(',') : []);
+    const out = [];
+    const badPattern = /example\.com|localhost|placeholder|ficticio|fake|test\.com/i;
+    for (let u of list) {
+        let s = String(u || '').trim();
+        if (!s) continue;
+        const md = s.match(/\[.*?\]\((https?:\/\/[^\s)]+)\)/i);
+        if (md) s = md[1];
+        if (!/^https?:\/\//i.test(s)) continue;
+        if (badPattern.test(s)) continue;
+        try {
+            const parsed = new URL(s);
+            if (!parsed.hostname.includes('.')) continue;
+        } catch {
+            continue;
+        }
+        if (!out.includes(s)) out.push(s);
+    }
+    return out;
+}
+
+function afsNormalizeMarketPrices(marketData) {
+    if (!marketData) return marketData;
+    const tipo = String(marketData.tipo_anuncio_encontrado || '').toLowerCase().replace(/\s+/g, '_');
+    if (tipo.includes('apenas_usado') || tipo === 'usado') {
+        marketData.valor_novo = null;
+    }
+    return marketData;
 }
 
 function afsCollectImageUrls(row, mappings, spreadsheet) {
@@ -253,16 +310,26 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
 
     if (options.runMarket || options.runCategoria || options.runAtivo) {
         emit('Avaliação de mercado: buscando comparáveis e valores...', 58);
-        const ctx = buildVisionContext(visionData) + (feedbackCtx || '');
+        let rulesCtx = '';
+        const rulesText = s.learning_rules_text || (typeof AFS_DEFAULT_LEARNING_RULES !== 'undefined' ? AFS_DEFAULT_LEARNING_RULES : '');
+        if (typeof afsRulesToPromptText === 'function') rulesCtx = afsRulesToPromptText(rulesText);
+        (s.auto_aprendizados || []).slice(-5).forEach(a => {
+            rulesCtx += `\n- Aprendizado recente: ${a.feedback_usuario || ''} (valor: ${a.valor_correto ?? '-'})`;
+        });
+        const ctx = buildVisionContext(visionData) + rulesCtx + (feedbackCtx || '');
         const prompt = `${AFS_VALUATION_PROMPT}\n\nBEM:\n${descricao}${ctx}`;
         emit('Consultando Gemini para precificação e raciocínio...', 72);
         const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', [{ text: prompt }], true);
         totalTokens += res.tokens || 0;
         marketData = parseGeminiJson(res.text);
+        marketData = afsNormalizeMarketPrices(marketData);
         emit('Mercado concluído — consolidando valores e metodologia...', 88);
     }
 
     emit('Finalizando avaliação do item...', 96);
+
+    const linksArr = afsSanitizeComparativeLinks(marketData.links_comparativos);
+    marketData.links_comparativos = linksArr;
 
     const evaluation = {
         row_index: rowIdx,
@@ -280,7 +347,9 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         value_fipe: marketData.valor_fipe ?? null,
         apparent_age: visionData.idade_aparente_anos ?? null,
         conservation_state: visionData.estado_conservacao ?? null,
-        links: (marketData.links_comparativos || []).join(','),
+        tag_verified: visionData.tag_encontrada ?? null,
+        links: linksArr.join(','),
+        links_array: linksArr,
         reasoning: marketData.raciocinio_detalhado || visionData.raciocinio_visual || '',
         photo_url: fotoUrl || 'Sem foto',
         photo_spec: fotoSpec || 'Sem foto especificação',
@@ -427,6 +496,7 @@ async function browserRunEvaluation(options, onProgress) {
                 categoria: evaluation.category_normalized,
                 apparent_age: evaluation.apparent_age,
                 conservation_state: evaluation.conservation_state,
+                tag_verificada: evaluation.tag_verified,
                 valuation: { ativo: evaluation.asset_normalized, categoria: evaluation.category_normalized },
                 stepLabel: `Item ${itemNum}/${totalPending}: concluído (reutilizado) ✓`,
                 overallPercent: Math.round((completedCount / totalPending) * 100),
@@ -486,9 +556,11 @@ async function browserRunEvaluation(options, onProgress) {
                 categoria: result.evaluation.category_normalized,
                 apparent_age: result.evaluation.apparent_age,
                 conservation_state: result.evaluation.conservation_state,
-                tag_verificada: result.visionData.tag_encontrada,
+                tag_verificada: result.evaluation.tag_verified,
+                links: result.evaluation.links,
+                links_array: result.evaluation.links_array,
                 raciocinio_visual: result.visionData.raciocinio_visual,
-                valuation: result.marketData,
+                valuation: { ...result.marketData, links_comparativos: result.evaluation.links_array },
                 stepLabel: `Item ${itemNum}/${totalPending}: avaliação concluída ✓`,
                 overallPercent: Math.round((completedCount / totalPending) * 100),
                 itemPercent: 100
