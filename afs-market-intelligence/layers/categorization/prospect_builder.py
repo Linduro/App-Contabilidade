@@ -123,6 +123,7 @@ class ProspectBuilder:
 
         self.on_progress("Consolidando e-mails e sócios nos prospectos…", 85)
         self._consolidar_contatos(conn, qual_chave)
+        self._atualizar_simples_abertura(conn)
 
         self.on_progress("Sincronizando leads_icp…", 92)
         self._sync_leads_icp(conn)
@@ -231,6 +232,33 @@ class ProspectBuilder:
                 WHERE e.cnpj_basico = prospectos_rf.cnpj_basico AND e.matriz_filial = '1'
             )
         """)
+
+    def _atualizar_simples_abertura(self, conn):
+        from layers.enrichment.contato_cascade import init_enrichment_schema
+        init_enrichment_schema(conn)
+        try:
+            conn.execute("""
+                UPDATE prospectos_rf SET
+                    opcao_simples = s.opcao_simples,
+                    opcao_mei = s.opcao_mei
+                FROM rf_simples s
+                WHERE s.cnpj_basico = prospectos_rf.cnpj_basico
+            """)
+        except Exception as e:
+            logger.debug("[prospect] simples: %s", e)
+        try:
+            conn.execute("""
+                UPDATE prospectos_rf SET data_abertura = sub.dt
+                FROM (
+                    SELECT cnpj_basico, MIN(data_inicio) AS dt
+                    FROM estabelecimentos_rf
+                    WHERE matriz_filial = '1' AND data_inicio IS NOT NULL
+                    GROUP BY cnpj_basico
+                ) sub
+                WHERE sub.cnpj_basico = prospectos_rf.cnpj_basico
+            """)
+        except Exception as e:
+            logger.debug("[prospect] abertura: %s", e)
 
     def _sync_leads_icp(self, conn):
         conn.execute("""

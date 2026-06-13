@@ -26,9 +26,10 @@ def get_connection():
 def init_db():
     schema_path = ROOT / "db" / "schema.sql"
     prospect_path = ROOT / "db" / "schema_prospect.sql"
+    enrichment_path = ROOT / "db" / "schema_enrichment.sql"
     conn = get_connection()
     try:
-        for path in (schema_path, prospect_path):
+        for path in (schema_path, prospect_path, enrichment_path):
             if not path.exists():
                 continue
             sql = path.read_text(encoding="utf-8")

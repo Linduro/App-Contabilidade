@@ -501,13 +501,87 @@ def prospeccao_enriquecer():
     try:
         body = request.get_json() or {}
         cnpjs = body.get("cnpjs") or []
+        processar = body.get("processar", False)
         conn = _conn()
         from layers.categorization.prospeccao_search import enfileirar_cnpjs
         result = enfileirar_cnpjs(conn, cnpjs)
+        if processar and cnpjs:
+            from layers.scraping.queue_worker import ScrapingQueueWorker
+            worker = ScrapingQueueWorker(conn)
+            batch = worker.processar_lote(limite=min(len(cnpjs), 20))
+            result["processamento"] = batch
         conn.close()
         return jsonify(result)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/enriquecer/<cnpj>", methods=["POST"])
+def enriquecer_cnpj_unitario(cnpj):
+    """Dispara cascata A→E de contatos para um CNPJ."""
+    try:
+        conn = _conn()
+        from layers.enrichment.contato_cascade import enriquecer_contato
+        result = enriquecer_contato(conn, cnpj)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        logger.error("[enriquecer] %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/contatos/<cnpj_basico>")
+def list_contatos_cnpj(cnpj_basico):
+    try:
+        conn = _conn()
+        from layers.enrichment.contato_cascade import list_contatos
+        items = list_contatos(conn, cnpj_basico)
+        conn.close()
+        return jsonify(items)
+    except Exception as e:
+        return jsonify([])
+
+
+@main_bp.route("/api/opt-out/<cnpj_basico>", methods=["POST"])
+def opt_out_cnpj(cnpj_basico):
+    try:
+        body = request.get_json() or {}
+        conn = _conn()
+        from layers.enrichment.contato_cascade import registrar_opt_out
+        from layers.enrichment.normalize_contacts import normalize_cnpj_basico
+        result = registrar_opt_out(conn, normalize_cnpj_basico(cnpj_basico), body.get("motivo", "solicitacao_titular"))
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/scraping/run", methods=["POST"])
+def scraping_run():
+    try:
+        body = request.get_json() or {}
+        limite = int(body.get("limite") or 10)
+        conn = _conn()
+        from layers.scraping.queue_worker import ScrapingQueueWorker
+        worker = ScrapingQueueWorker(conn)
+        result = worker.processar_lote(limite=limite)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/scraping/queue")
+def scraping_queue_status():
+    try:
+        conn = _conn()
+        from layers.scraping.queue_worker import ScrapingQueueWorker
+        worker = ScrapingQueueWorker(conn)
+        result = worker.status_fila()
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"fila": {}})
 
 
 @main_bp.route("/api/segmentacoes", methods=["GET"])

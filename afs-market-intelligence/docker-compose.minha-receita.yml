@@ -1,0 +1,21 @@
+# docker-compose.minha-receita.yml — opcional, ver docs/MINHA_RECEITA.md
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: receita
+      POSTGRES_DB: minhareceita
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  minha-receita:
+    image: cuducos/minha-receita:latest
+    ports:
+      - "8100:8000"
+    environment:
+      DATABASE_URL: postgres://postgres:receita@postgres:5432/minhareceita
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

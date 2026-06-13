@@ -8,15 +8,16 @@ Motor de inteligência de mercado B2B da **Asset Flow Solutions (AFS)** — extr
 
 - Minerar dados públicos da Receita Federal (Lucro Real, ~230k ICP)
 - Categorizar por cluster (Agro, Indústria, Varejo)
-- Enriquecer decisores (CFO, Controller, Gerente Contábil) via scraping + LinkedIn
-- Validar e-mails (MX + SMTP ping) com roteamento **Dead Zone**
+- Enriquecer contatos institucionais via cascata gratuita (RF → APIs → site → MX → OSM)
+- Validar e-mails (MX, sem SMTP massivo) com roteamento **Dead Zone**
 - Monitorar transição Presumido → Lucro Real
-- Canal B2B2B com bancas de auditoria média
-- Feedback loop comercial para recalibração de scoring
-- Export Excel para abordagem 100% manual
+- Export Excel para abordagem manual
+- Opt-out LGPD por CNPJ
 
 ## Documentação
 
+- [Pipeline de Dados (camadas 1–5)](docs/PIPELINE_DADOS.md)
+- [Minha Receita self-hosted (opcional)](docs/MINHA_RECEITA.md)
 - [Plano Conceitual Completo](docs/PLANO_CONCEITUAL.md)
 
 ## Estrutura
@@ -24,22 +25,20 @@ Motor de inteligência de mercado B2B da **Asset Flow Solutions (AFS)** — extr
 ```
 afs-market-intelligence/
 ├── app.py                 # Entrada Flask
-├── config/                # ICP, clusters, perfis adaptáveis
-├── data/                  # Bancas de auditoria, dados locais
-├── db/                    # DuckDB/SQLite schema
-├── layers/                # Camadas lógicas do pipeline
-│   ├── ingestion/         # RF download + carga
-│   ├── categorization/    # ICP + clusters
-│   ├── enrichment/        # Scraping + LinkedIn
-│   ├── validation/        # Anti-bounce
-│   ├── dead_zone/         # Rotas alternativas
-│   ├── feedback/          # Recalibração
-│   ├── regime_monitor/    # Transição de regime
-│   └── partnerships/      # B2B2B auditoria
+├── config/                # ICP, clusters, layout RF
+├── data/                  # DuckDB, exports, segmentações
+├── db/                    # schema.sql, schema_prospect.sql, schema_enrichment.sql
+├── layers/
+│   ├── ingestion/         # RF download + carga (Camada 1)
+│   ├── categorization/    # ICP, prospectos_rf, busca Leads2b
+│   ├── enrichment/        # APIs, contato_cascade, site, geo (Camadas 2–4)
+│   ├── validation/        # MX / anti-bounce
+│   ├── scraping/          # Fila de enriquecimento
+│   └── dead_zone/         # Rotas alternativas
 ├── orchestrator/          # Pipeline unificado
-├── export/                # Excel consolidado
+├── export/                # Excel
 ├── ui/                    # Rotas API + templates
-└── static/                # Dashboard web
+└── static/                # SPA hash routing
 ```
 
 ## Instalação

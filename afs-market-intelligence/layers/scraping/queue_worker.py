@@ -65,28 +65,31 @@ class ScrapingQueueWorker:
         return {"fila": {r[0]: r[1] for r in rows}}
 
     def processar_lote(self, limite: int = 10) -> dict:
-        from layers.enrichment.enrichment_engine import EnrichmentEngine
+        from layers.enrichment.contato_cascade import enriquecer_contato
 
         pendentes = self.conn.execute("""
-            SELECT id, lead_id, razao_social FROM scraping_queue
+            SELECT id, cnpj_basico, razao_social FROM scraping_queue
             WHERE status = 'pending' ORDER BY prioridade DESC LIMIT ?
         """, [limite]).fetchall()
 
-        engine = EnrichmentEngine(self.conn)
         ok, err = 0, 0
 
-        for qid, lead_id, razao in pendentes:
+        for qid, cnpj_basico, razao in pendentes:
             self.conn.execute("UPDATE scraping_queue SET status = 'processing' WHERE id = ?", [qid])
             try:
                 time.sleep(random.uniform(DELAY_MIN, DELAY_MAX))
-                decisores = engine.enriquecer_lead(lead_id, razao)
+                if not cnpj_basico:
+                    raise ValueError("cnpj_basico ausente na fila")
+                result = enriquecer_contato(self.conn, cnpj_basico)
                 self.conn.execute(
                     "UPDATE scraping_queue SET status = 'done', processed_at = CURRENT_TIMESTAMP WHERE id = ?",
                     [qid],
                 )
                 ok += 1
-                self.on_progress(f"Enriquecido: {razao[:40]}… ({len(decisores)} decisores)", int(ok / max(len(pendentes), 1) * 100))
+                n = result.get("total", 0)
+                self.on_progress(f"Enriquecido: {razao[:40]}… ({n} contatos)", int(ok / max(len(pendentes), 1) * 100))
             except Exception as e:
+                logger.warning("[queue] erro %s: %s", cnpj_basico, e)
                 self.conn.execute(
                     "UPDATE scraping_queue SET status = 'error', tentativas = tentativas + 1, ultimo_erro = ? WHERE id = ?",
                     [str(e), qid],
