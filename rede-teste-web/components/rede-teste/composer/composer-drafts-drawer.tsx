@@ -26,7 +26,7 @@ export function ComposerDraftsDrawer({ onContinue }: Props) {
   );
   const remove = trpc.redeTeste.deleteDraft.useMutation({
     onSuccess: () => {
-      void utils.juridiques.listDrafts.invalidate();
+      void utils.redeTeste.listDrafts.invalidate();
       toast.success("Rascunho excluído");
     },
     onError: (e) => toast.error(e.message),

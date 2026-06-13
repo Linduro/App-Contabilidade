@@ -51,6 +51,12 @@ services:
         value: contabilidade-ebed6
       - key: NODE_ENV
         value: production
+      - key: GIPHY_API_KEY
+        sync: false
+      - key: TENOR_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
 
 databases:
   - name: rede-teste-db

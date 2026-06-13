@@ -99,9 +99,9 @@ export function SharePublicationDmDialog({
         sharedPublicationId: publicationId,
       });
       toast.success(`Enviado para ${selected.displayName}`);
-      void utils.juridiques.listConversations.invalidate();
-      void utils.juridiques.listMessages.invalidate({ conversationId });
-      void utils.juridiques.unreadDmCount.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
+      void utils.redeTeste.listMessages.invalidate({ conversationId });
+      void utils.redeTeste.unreadDmCount.invalidate();
       onOpenChange(false);
       reset();
       chat.openExpanded({

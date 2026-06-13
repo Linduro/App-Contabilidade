@@ -36,13 +36,13 @@ export function useRedeTesteEvents() {
     const es = new EventSource(url);
 
     es.addEventListener("notifications", () => {
-      void utils.juridiques.unreadNotificationCount.invalidate();
-      void utils.juridiques.notifications.invalidate();
+      void utils.redeTeste.unreadNotificationCount.invalidate();
+      void utils.redeTeste.notifications.invalidate();
     });
 
     es.addEventListener("messages", () => {
-      void utils.juridiques.listConversations.invalidate();
-      void utils.juridiques.unreadDmCount.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
+      void utils.redeTeste.unreadDmCount.invalidate();
     });
 
     es.addEventListener("publication", (ev) => {

@@ -33,8 +33,8 @@ export function CommunitySettingsPanel({
     onSuccess: () => {
       toast.success("Comunidade atualizada");
       setEditing(false);
-      void utils.juridiques.listCommunities.invalidate();
-      void utils.juridiques.communityFeed.invalidate();
+      void utils.redeTeste.listCommunities.invalidate();
+      void utils.redeTeste.communityFeed.invalidate();
       onUpdated?.();
     },
     onError: (e) => toast.error(e.message),
@@ -43,7 +43,7 @@ export function CommunitySettingsPanel({
   const leave = trpc.redeTeste.leaveCommunity.useMutation({
     onSuccess: () => {
       toast.success("Você saiu da comunidade");
-      void utils.juridiques.listCommunities.invalidate();
+      void utils.redeTeste.listCommunities.invalidate();
       onUpdated?.();
     },
     onError: (e) => toast.error(e.message),

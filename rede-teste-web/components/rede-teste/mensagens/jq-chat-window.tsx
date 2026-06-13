@@ -95,8 +95,8 @@ export function JqChatExpandedWindow({ session, unreadCount }: Props) {
     onSuccess: () => {
       setDraft("");
       if (!conversationId) return;
-      void utils.juridiques.listMessages.invalidate({ conversationId });
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listMessages.invalidate({ conversationId });
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(formatTrpcErrorMessage(e)),
   });

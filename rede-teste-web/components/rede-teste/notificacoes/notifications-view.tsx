@@ -33,15 +33,15 @@ export function NotificationsView() {
 
   const markAll = trpc.redeTeste.markNotificationsRead.useMutation({
     onSuccess: () => {
-      void utils.juridiques.notifications.invalidate();
-      void utils.juridiques.unreadNotificationCount.invalidate();
+      void utils.redeTeste.notifications.invalidate();
+      void utils.redeTeste.unreadNotificationCount.invalidate();
     },
   });
 
   const markOne = trpc.redeTeste.markNotificationRead.useMutation({
     onSuccess: () => {
-      void utils.juridiques.notifications.invalidate();
-      void utils.juridiques.unreadNotificationCount.invalidate();
+      void utils.redeTeste.notifications.invalidate();
+      void utils.redeTeste.unreadNotificationCount.invalidate();
     },
   });
 

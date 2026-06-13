@@ -62,7 +62,7 @@ export function PublicationMoreMenu({
   const block = trpc.redeTeste.blockUser.useMutation({
     onSuccess: () => {
       toast.success("Usuário bloqueado");
-      void utils.juridiques.feed.invalidate();
+      void utils.redeTeste.feed.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -72,8 +72,8 @@ export function PublicationMoreMenu({
       toast.success("Publicação atualizada");
       setEditOpen(false);
       onUpdated?.(data.content);
-      void utils.juridiques.feed.invalidate();
-      void utils.juridiques.getPublication.invalidate({ id: publicationId });
+      void utils.redeTeste.feed.invalidate();
+      void utils.redeTeste.getPublication.invalidate({ id: publicationId });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -83,7 +83,7 @@ export function PublicationMoreMenu({
       toast.success("Publicação excluída");
       setDeleteOpen(false);
       onDeleted?.();
-      void utils.juridiques.feed.invalidate();
+      void utils.redeTeste.feed.invalidate();
       router.push("/rede-teste");
     },
     onError: (e) => toast.error(e.message),

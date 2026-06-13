@@ -32,8 +32,8 @@ export function ProfileHeader() {
   const follow = trpc.redeTeste.toggleFollow.useMutation({
     onSuccess: () => {
       clearJqReferralHandle();
-      void utils.juridiques.profileByHandle.invalidate({ handle: p.handle });
-      void utils.juridiques.suggestions.invalidate();
+      void utils.redeTeste.profileByHandle.invalidate({ handle: p.handle });
+      void utils.redeTeste.suggestions.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });

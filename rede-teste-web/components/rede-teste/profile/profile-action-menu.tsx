@@ -25,7 +25,7 @@ export function ProfileActionMenu() {
   const block = trpc.redeTeste.blockUser.useMutation({
     onSuccess: () => {
       toast.success("Usuário bloqueado");
-      void utils.juridiques.profileByHandle.invalidate({ handle: p.handle });
+      void utils.redeTeste.profileByHandle.invalidate({ handle: p.handle });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -33,7 +33,7 @@ export function ProfileActionMenu() {
   const mute = trpc.redeTeste.muteUser.useMutation({
     onSuccess: () => {
       toast.success("Notificações silenciadas");
-      void utils.juridiques.profileByHandle.invalidate({ handle: p.handle });
+      void utils.redeTeste.profileByHandle.invalidate({ handle: p.handle });
     },
     onError: (e) => toast.error(e.message),
   });
@@ -41,7 +41,7 @@ export function ProfileActionMenu() {
   const unmute = trpc.redeTeste.unmuteUser.useMutation({
     onSuccess: () => {
       toast.success("Notificações reativadas");
-      void utils.juridiques.profileByHandle.invalidate({ handle: p.handle });
+      void utils.redeTeste.profileByHandle.invalidate({ handle: p.handle });
     },
     onError: (e) => toast.error(e.message),
   });

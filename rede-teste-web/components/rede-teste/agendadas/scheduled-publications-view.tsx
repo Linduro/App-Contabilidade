@@ -21,7 +21,7 @@ export function ScheduledPublicationsView({
   const cancel = trpc.redeTeste.cancelScheduledPublication.useMutation({
     onSuccess: () => {
       toast.success("Agendamento cancelado");
-      void utils.juridiques.listScheduledPublications.invalidate();
+      void utils.redeTeste.listScheduledPublications.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });

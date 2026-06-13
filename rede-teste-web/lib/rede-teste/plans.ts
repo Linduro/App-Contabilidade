@@ -1,13 +1,18 @@
 import type { TenantPlan } from "@prisma/client";
 
-/** Plano Junior (agendamento): Solo e acima. */
+/** Plano Junior (agendamento): Trial+ para Rede Teste demo. */
 export function hasJqJuniorPlan(plan: TenantPlan): boolean {
-  return plan === "SOLO" || plan === "EQUIPE" || plan === "ESCRITORIO";
+  return (
+    plan === "TRIAL" ||
+    plan === "SOLO" ||
+    plan === "EQUIPE" ||
+    plan === "ESCRITORIO"
+  );
 }
 
-/** Plano Pleno (threads): Equipe e Escritório. */
+/** Plano Pleno (threads): Trial+ para Rede Teste demo. */
 export function hasJqPlenoPlan(plan: TenantPlan): boolean {
-  return plan === "EQUIPE" || plan === "ESCRITORIO";
+  return plan === "TRIAL" || plan === "EQUIPE" || plan === "ESCRITORIO";
 }
 
 export type JqComposerFeatures = {

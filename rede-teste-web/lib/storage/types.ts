@@ -11,18 +11,3 @@ export interface StorageProvider {
     expiresSec?: number,
   ): Promise<string>;
 }
-
-export async function getStorageProvider(): Promise<StorageProvider> {
-  return {
-    async putObject(key, _body, contentType) {
-      return {
-        publicPath: `/uploads/${key.replace(/\\/g, "/")}`,
-        contentType,
-      };
-    },
-  };
-}
-
-export function getStorageClient() {
-  return null;
-}

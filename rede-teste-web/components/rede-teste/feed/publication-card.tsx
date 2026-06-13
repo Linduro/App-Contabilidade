@@ -127,7 +127,7 @@ export function PublicationCard({
     },
     onError: (e) => {
       toast.error(e.message);
-      void utils.juridiques.feed.invalidate();
+      void utils.redeTeste.feed.invalidate();
     },
   });
 
@@ -140,11 +140,11 @@ export function PublicationCard({
       });
     },
     onSuccess: () => {
-      void utils.juridiques.listBookmarks.invalidate();
+      void utils.redeTeste.listBookmarks.invalidate();
     },
     onError: (e) => {
       toast.error(e.message);
-      void utils.juridiques.feed.invalidate();
+      void utils.redeTeste.feed.invalidate();
     },
   });
 
@@ -157,10 +157,10 @@ export function PublicationCard({
       });
     },
     onSuccess: () => {
-      void utils.juridiques.userPublications.invalidate();
+      void utils.redeTeste.userPublications.invalidate();
       toast.success(item.viewer.reposted ? "Republicação removida" : "Republicado");
     },
-    onError: () => void utils.juridiques.feed.invalidate(),
+    onError: () => void utils.redeTeste.feed.invalidate(),
   });
 
   const long = content.length > 280;
@@ -426,8 +426,8 @@ export function PublicationCard({
                 onPublished={() => {
                   setReplyOpen(false);
                   onUpdate({ repliesCount: item.repliesCount + 1 });
-                  void utils.juridiques.replies.invalidate({ parentId: item.id });
-                  void utils.juridiques.feed.invalidate();
+                  void utils.redeTeste.replies.invalidate({ parentId: item.id });
+                  void utils.redeTeste.feed.invalidate();
                 }}
               />
               <Link

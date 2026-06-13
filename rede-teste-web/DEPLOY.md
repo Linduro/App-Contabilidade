@@ -18,6 +18,9 @@ Sem GCP, sem secrets no GitHub.
 | `SUPABASE_SECRET_KEY` | Supabase → API Keys → secret key (`sb_secret_...`) |
 | `BETTER_AUTH_SECRET` | Mesmo segredo do AdvForte/Juridiquês |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → API Keys → publishable (`sb_publishable_...`) — opcional para uploads server-side |
+| `GIPHY_API_KEY` | [developers.giphy.com](https://developers.giphy.com) — busca de GIF no composer |
+| `TENOR_API_KEY` | Fallback se não houver GIPHY |
+| `CRON_SECRET` | Segredo para `GET /api/cron/publish-scheduled` (posts agendados) |
 
 **Projeto Supabase:** `diuudxdcemegubuajvql`  
 **URL:** `https://diuudxdcemegubuajvql.supabase.co`  

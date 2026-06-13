@@ -55,8 +55,8 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
   const update = trpc.redeTeste.updateProfile.useMutation({
     onSuccess: () => {
       toast.success("Perfil atualizado");
-      void utils.juridiques.profileByHandle.invalidate({ handle: profile.handle });
-      void utils.juridiques.me.invalidate();
+      void utils.redeTeste.profileByHandle.invalidate({ handle: profile.handle });
+      void utils.redeTeste.me.invalidate();
       onOpenChange(false);
     },
     onError: (e) => toast.error(e.message),
@@ -133,8 +133,8 @@ export function EditProfileModal({ open, onOpenChange }: Props) {
       if (!res.ok) throw new Error(json.error ?? "Falha no upload");
       if (json.avatarUrl) {
         setAvatarPreview(json.avatarUrl);
-        void utils.juridiques.me.invalidate();
-        void utils.juridiques.profileByHandle.invalidate({ handle: profile.handle });
+        void utils.redeTeste.me.invalidate();
+        void utils.redeTeste.profileByHandle.invalidate({ handle: profile.handle });
         toast.success("Foto atualizada");
       }
     } catch (e) {

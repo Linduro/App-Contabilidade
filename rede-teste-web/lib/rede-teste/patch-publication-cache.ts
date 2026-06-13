@@ -13,7 +13,7 @@ type InfinitePage = { items: PubItem[] };
 type InfiniteData = { pages: InfinitePage[] };
 
 type RedeTesteUtils = {
-  juridiques: {
+  redeTeste: {
     getPublication: {
       setData: (
         input: { id: string },
@@ -50,18 +50,17 @@ function patchItems(items: PubItem[], patch: PublicationMetricsPatch): PubItem[]
   );
 }
 
-/** Atualiza contadores da publicação em feeds infinitos e detalhe (SSE). */
 export function patchPublicationMetricsInCaches(
   utils: RedeTesteUtils,
   data: PublicationMetricsPatch,
 ) {
-  void utils.juridiques.getPublication.setData({ id: data.publicationId }, (old) =>
+  void utils.redeTeste.getPublication.setData({ id: data.publicationId }, (old) =>
     old ? { ...old, ...data } : old,
   );
 
   const patchInfinite = (
     input: { tab: string; limit: number },
-    setter: RedeTesteUtils["juridiques"]["feed"]["setInfiniteData"],
+    setter: RedeTesteUtils["redeTeste"]["feed"]["setInfiniteData"],
   ) => {
     setter(input, (old) => {
       if (!old) return old;
@@ -75,13 +74,10 @@ export function patchPublicationMetricsInCaches(
     });
   };
 
-  patchInfinite({ tab: "for-you", limit: 20 }, utils.juridiques.feed.setInfiniteData);
-  patchInfinite(
-    { tab: "following", limit: 20 },
-    utils.juridiques.feed.setInfiniteData,
-  );
+  patchInfinite({ tab: "for-you", limit: 20 }, utils.redeTeste.feed.setInfiniteData);
+  patchInfinite({ tab: "following", limit: 20 }, utils.redeTeste.feed.setInfiniteData);
 
-  utils.juridiques.listBookmarks.setInfiniteData({ limit: 20 }, (old) => {
+  utils.redeTeste.listBookmarks.setInfiniteData({ limit: 20 }, (old) => {
     if (!old) return old;
     return {
       ...old,

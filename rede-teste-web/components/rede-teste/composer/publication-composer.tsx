@@ -243,17 +243,17 @@ export function PublicationComposer({
     onSuccess: (data, variables) => {
       resetComposer();
       if (userId) clearActiveDraft(userId);
-      void utils.juridiques.feed.invalidate();
-      void utils.juridiques.me.invalidate();
-      void utils.juridiques.listScheduledPublications.invalidate();
-      void utils.juridiques.listDrafts.invalidate();
+      void utils.redeTeste.feed.invalidate();
+      void utils.redeTeste.me.invalidate();
+      void utils.redeTeste.listScheduledPublications.invalidate();
+      void utils.redeTeste.listDrafts.invalidate();
       if (variables.parentId) {
-        void utils.juridiques.getPublication.invalidate({ id: variables.parentId });
-        void utils.juridiques.replies.invalidate({ parentId: variables.parentId });
+        void utils.redeTeste.getPublication.invalidate({ id: variables.parentId });
+        void utils.redeTeste.replies.invalidate({ parentId: variables.parentId });
       }
-      void utils.juridiques.userPublications.invalidate();
+      void utils.redeTeste.userPublications.invalidate();
       if (variables.communityId) {
-        void utils.juridiques.communityFeed.invalidate();
+        void utils.redeTeste.communityFeed.invalidate();
       }
       if (variables.scheduledAt) {
         toast.success(`Publicação agendada para ${formatScheduledLabel(variables.scheduledAt)}`);

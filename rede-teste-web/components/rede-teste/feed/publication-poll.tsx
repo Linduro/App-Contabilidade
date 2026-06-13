@@ -52,9 +52,9 @@ export function PublicationPoll({ publicationId, poll, viewerOptionId, onVote }:
       setLocalPoll(next);
       setLocalVote(vars.optionId);
       onVote?.(vars.optionId, next);
-      void utils.juridiques.feed.invalidate();
-      void utils.juridiques.communityFeed.invalidate();
-      void utils.juridiques.userPublications.invalidate();
+      void utils.redeTeste.feed.invalidate();
+      void utils.redeTeste.communityFeed.invalidate();
+      void utils.redeTeste.userPublications.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });

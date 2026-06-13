@@ -29,7 +29,7 @@ export function RedeTesteConfigForm() {
   const update = trpc.redeTeste.updateProfile.useMutation({
     onSuccess: () => {
       toast.success("Perfil atualizado");
-      void utils.juridiques.me.invalidate();
+      void utils.redeTeste.me.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });

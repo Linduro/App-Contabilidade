@@ -27,7 +27,7 @@ export function RedeTesteModerationPanel() {
           ? "Publicação removida"
           : "Denúncias arquivadas",
       );
-      void utils.juridiques.moderationSummary.invalidate();
+      void utils.redeTeste.moderationSummary.invalidate();
       void refetch();
     },
     onError: (e) => toast.error(e.message),

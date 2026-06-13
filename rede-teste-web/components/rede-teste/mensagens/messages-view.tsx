@@ -57,8 +57,8 @@ export function MessagesView() {
   const send = trpc.redeTeste.sendMessage.useMutation({
     onSuccess: () => {
       setDraft("");
-      void utils.juridiques.listMessages.invalidate({ conversationId: activeId! });
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listMessages.invalidate({ conversationId: activeId! });
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -67,7 +67,7 @@ export function MessagesView() {
     onSuccess: () => {
       toast.success("Conversa arquivada");
       setActiveId(null);
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -76,7 +76,7 @@ export function MessagesView() {
     onSuccess: () => {
       toast.success("Conversa restaurada na caixa de entrada");
       setFolder("inbox");
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -85,7 +85,7 @@ export function MessagesView() {
     onSuccess: () => {
       toast.success("Conversa excluída");
       setActiveId(null);
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -96,7 +96,7 @@ export function MessagesView() {
       setSelectedIds([]);
       setSelectMode(false);
       setActiveId(null);
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -107,7 +107,7 @@ export function MessagesView() {
       setSelectedIds([]);
       setSelectMode(false);
       setActiveId(null);
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -121,8 +121,8 @@ export function MessagesView() {
   const follow = trpc.redeTeste.toggleFollow.useMutation({
     onSuccess: (data) => {
       toast.success(data.following ? "Agora você segue este perfil" : "Deixou de seguir");
-      void utils.juridiques.listConversations.invalidate();
-      void utils.juridiques.profileByHandle.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
+      void utils.redeTeste.profileByHandle.invalidate();
     },
     onError: (e) => toast.error(e.message),
   });

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, tenantProcedure, publicProcedure, requirePermission } from "../trpc";
 import { ensureRedeTesteProfile } from "@/lib/rede-teste/ensure-profile";
+import { ensureCourtsCatalog } from "@/lib/rede-teste/ensure-courts";
 import { jqCursorSchema, jqCursorWhere, jqFeedCursorSchema } from "@/lib/rede-teste/cursor";
 import { fetchRankedFeedPublications } from "@/lib/rede-teste/jurisrank/ranked-feed";
 import { getJurisConnectRecommendations } from "@/lib/rede-teste/jurisconnect/get-recommendations";
@@ -120,6 +121,7 @@ export const redeTesteRouter = router({
   searchCourts: tenantProcedure
     .input(z.object({ q: z.string().max(80).default(""), limit: z.number().int().min(1).max(30).default(15) }))
     .query(async ({ ctx, input }) => {
+      await ensureCourtsCatalog(ctx.prisma);
       const q = input.q.trim();
       const courts = await ctx.prisma.court.findMany({
         where: {

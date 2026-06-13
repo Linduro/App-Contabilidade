@@ -31,9 +31,9 @@ export function JqFollowButton({
   const toggle = trpc.redeTeste.toggleFollow.useMutation({
     onSuccess: (data) => {
       toast.success(data.following ? "Agora você segue este perfil" : "Deixou de seguir");
-      void utils.juridiques.suggestions.invalidate();
-      void utils.juridiques.discoverPeople.invalidate();
-      void utils.juridiques.listConversations.invalidate();
+      void utils.redeTeste.suggestions.invalidate();
+      void utils.redeTeste.discoverPeople.invalidate();
+      void utils.redeTeste.listConversations.invalidate();
       onSuccess?.(data.following);
     },
     onError: (e) => toast.error(e.message),

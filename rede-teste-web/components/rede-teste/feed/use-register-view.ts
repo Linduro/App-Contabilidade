@@ -33,7 +33,7 @@ export function useRegisterPublicationView(
         {
           onSuccess: (res) => {
             if (res.counted) {
-              void utils.juridiques.getPublication.setData({ id: publicationId }, (old) =>
+              void utils.redeTeste.getPublication.setData({ id: publicationId }, (old) =>
                 old ? { ...old, viewsCount: res.viewsCount } : old,
               );
             }
