@@ -1,8 +1,6 @@
-/** Executado antes dos módulos — remove demo e força prospecção local vazia. */
+/** Executado antes dos módulos — remove apenas dados demo fictícios. */
 (function () {
-  window.__AFS_BUILD__ = 'purge-fict-v9-nuclear';
-  window.__AFS_USE_RF_BACKEND__ = false;
-  window.__AFS_LOCAL_PROSPECT_EMPTY__ = true;
+  window.__AFS_BUILD__ = window.__AFS_BUILD__ || 'purge-fict-v10';
 
   ['afs_prospect_enrichment', 'afs_prospect_segmentacoes', 'afs_prospect_catalog'].forEach(function (k) {
     try { localStorage.removeItem(k); } catch (_) {}

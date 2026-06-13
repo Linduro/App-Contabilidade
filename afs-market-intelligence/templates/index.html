@@ -60,7 +60,10 @@
                 const cfg = await r.json();
                 if (cfg.firebase) window.__AFS_FB_CONFIG__ = cfg.firebase;
                 else if (cfg.apiKey) window.__AFS_FB_CONFIG__ = cfg;
-                if (cfg.apiBase) window.__AFS_MARKET_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+                if (cfg.apiBase) {
+                    window.__AFS_MARKET_API_BASE__ = String(cfg.apiBase).replace(/\/$/, '');
+                    window.__AFS_USE_RF_BACKEND__ = true;
+                }
                 if (cfg.prospectDefaults) window.__AFS_PROSPECT_DEFAULTS__ = cfg.prospectDefaults;
                 break;
             } catch (_) {}

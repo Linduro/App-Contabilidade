@@ -82,6 +82,7 @@ let state = {
   selected: new Set(),
   openGroups: new Set(['localizacao', 'capital']),
   localMode: true,
+  backendOnline: false,
 };
 
 function defaultFiltros() {
@@ -166,6 +167,29 @@ function filtrosFromDom(root) {
   return f;
 }
 
+function backendSetupSteps() {
+  const hint = backendConfigHint();
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    return '1) Terminal: cd afs-market-intelligence && python app.py\n' +
+      '2) Abra http://localhost:5001\n' +
+      '3) Base de dados → Iniciar ingestão RF\n' +
+      '4) Volte aqui e clique Executar prospecção';
+  }
+  return hint || 'Configure o backend Python (Cloud Run) com a base da Receita Federal.';
+}
+
+async function syncBackendMode() {
+  const hasApi = Boolean(getHttpApiBase()) && window.__AFS_USE_RF_BACKEND__ !== false;
+  if (!hasApi) {
+    state.localMode = true;
+    state.backendOnline = false;
+    return;
+  }
+  const ping = await pingHttpBackend();
+  state.backendOnline = ping.online;
+  state.localMode = !ping.online;
+}
+
 function filtrosForApi(f) {
   const out = { ...f };
   if (f.excluir_importados_crm) {
@@ -191,9 +215,7 @@ async function refreshResults(root) {
   renderResultsArea(root);
   purgeAllProspectDemoStorage();
 
-  const localOnly = window.__AFS_LOCAL_PROSPECT_EMPTY__ === true
-    || window.__AFS_USE_RF_BACKEND__ !== true
-    || !getHttpApiBase();
+  const localOnly = state.localMode || !getHttpApiBase();
 
   if (localOnly) {
     state.counts = { todas: 0, nao_enriquecidas: 0, enriquecidas: 0, novas: 0 };
@@ -395,14 +417,32 @@ function renderResultsArea(root) {
     el.innerHTML =
       '<div class="ps-hero-empty">' +
         '<div class="ps-hero-icon">🔍</div>' +
-        '<h2>Comece sua busca usando os filtros ao lado</h2>' +
-        '<p>Combine CNAE, localização, capital e porte. A base está vazia até você importar empresas reais.</p>' +
+        '<h2>Prospecção em Massa — base Receita Federal</h2>' +
+        '<p>Use os filtros e <strong>Executar prospecção</strong> para buscar empresas Lucro Real reais, enriquecer contatos e importar no CRM.</p>' +
         '<div class="ps-presets">' +
           presetCard('ICP padrão R$ 2–10mi', { capital_min: 2000000, capital_max: 10000000 }) +
           presetCard('Transição de Regime', { capital_min: 360000, capital_max: 4800000, situacao_cadastral: 'ativa' }) +
           presetCard('Novas empresas SP', { ufs: ['SP'], novas_dias: 90 }) +
           presetCard('Dead Zone LR', { capital_min: 360000, capital_max: 4800000, situacao_cadastral: 'ativa', portes: ['03'] }) +
         '</div>' +
+      '</div>';
+    return;
+  }
+
+  if (state.localMode && !state.rows.length && !state.loading) {
+    el.innerHTML =
+      '<div class="ps-hero-empty">' +
+        '<div class="ps-hero-icon">⚙️</div>' +
+        '<h2>Backend RF necessário para buscar empresas</h2>' +
+        '<p>Removemos os dados fictícios de demonstração. Para <strong>encontrar empresas reais</strong> ' +
+        '(~230 mil Lucro Real), conecte o servidor Python com a base da Receita Federal:</p>' +
+        '<ol style="text-align:left;max-width:36rem;margin:1rem auto;line-height:1.6">' +
+          '<li><code>cd afs-market-intelligence</code> → <code>python app.py</code></li>' +
+          '<li>Abra o app em <strong>http://localhost:5001</strong> (ou configure <code>apiBase</code> no config.json)</li>' +
+          '<li>Menu <strong>Base de dados</strong> → <strong>Iniciar ingestão RF</strong> (primeira vez, demora)</li>' +
+          '<li>Ajuste filtros → <strong>Executar prospecção</strong></li>' +
+        '</ol>' +
+        '<p class="hint">' + esc(backendSetupSteps()).replace(/\n/g, '<br>') + '</p>' +
       '</div>';
     return;
   }
@@ -618,7 +658,7 @@ async function runProspeccao(root) {
     const alvo = counts.nao_enriquecidas > 0 ? counts.nao_enriquecidas : counts.todas;
     if (!alvo) {
       hideRunOverlay(0);
-      window.AFSToast?.error('Nenhuma empresa na base. Conecte o backend RF ou importe empresas reais.');
+      window.AFSToast?.error('Backend RF offline ou base vazia. Inicie python app.py → Base de dados → Ingestão RF.');
       return;
     }
 
@@ -671,10 +711,13 @@ function openHelpDrawer() {
     width: '520px',
     bodyHtml:
       '<div class="ps-help">' +
-        '<h4>1. Modo rápido (recomendado)</h4>' +
-        '<p>Ajuste os filtros à esquerda e clique <strong>⚡ Executar prospecção</strong>. ' +
-        'Tudo roda no navegador — sem backend, sem ingestão. Busca → enriquece contatos → importa no CRM.</p>' +
-        '<h4>2. Filtrar manualmente</h4>' +
+        '<h4>1. Fluxo principal</h4>' +
+        '<p><strong>Executar prospecção</strong> busca empresas reais na base da Receita Federal (Lucro Real), ' +
+        'enriquece contatos (e-mail/telefone) e importa no CRM — você não precisa ter as empresas antes.</p>' +
+        '<h4>2. Pré-requisito (primeira vez)</h4>' +
+        '<p>Servidor Python (<code>python app.py</code>) + <strong>Base de dados → Ingestão RF</strong>. ' +
+        'Sem isso a base fica vazia (removemos os dados fictícios de demo).</p>' +
+        '<h4>3. Filtrar manualmente</h4>' +
         '<p>Use os filtros à esquerda: UF, município, <strong>segmento</strong> (cluster), ' +
         '<strong>divisão CNAE</strong> (2 dígitos), código CNAE completo, porte, capital social, etc. ' +
         'A busca atualiza sozinha após ~400 ms.</p>' +
@@ -695,7 +738,7 @@ function openHelpDrawer() {
         '<h4>Atalhos úteis</h4>' +
         '<p>Cards na tela inicial (ICP R$ 2–10 mi, Transição de Regime…) aplicam filtros prontos. ' +
         'Presets de capital e códigos CNAE frequentes aceleram a segmentação.</p>' +
-        '<p class="hint">Nenhuma empresa na base ainda. Importe via CRM ou conecte o backend RF para carregar dados reais.</p>' +
+        '<p class="hint">Documentação: afs-market-intelligence/docs/PROSPECCAO_INICIO.md</p>' +
       '</div>',
   });
 }
@@ -1021,8 +1064,7 @@ async function renderAdminPanel(el) {
   if (state.localMode) {
     const c = await prospeccaoCount(state.filtros);
     el.innerHTML =
-      '<p class="hint">Modo <strong>navegador</strong> — sem dados fictícios. ' +
-      'Importe empresas reais pela prospecção (backend RF) ou manualmente no CRM.</p>' +
+      '<p class="hint">Backend RF offline. ' + esc(backendSetupSteps()) + '</p>' +
       '<h4>Exportar seleção (Excel)</h4>' +
       '<button type="button" class="btn sm primary" id="adm-export-local">Exportar filtros atuais</button>' +
       '<h4 style="margin-top:1rem">Grupos salvos</h4>' +
@@ -1162,7 +1204,7 @@ export async function renderProspeccaoMassa({ mount }) {
   mountEl = mount;
   purgeAllProspectDemoStorage();
   try {
-    state.localMode = window.__AFS_USE_RF_BACKEND__ !== true;
+    await syncBackendMode();
     try {
       const d = await fetchProspectDefaults();
       if (d?.icp_ativo && !state.localMode) {

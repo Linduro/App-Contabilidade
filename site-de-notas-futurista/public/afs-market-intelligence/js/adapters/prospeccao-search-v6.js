@@ -10,11 +10,13 @@ const EMPTY_COUNT = { todas: 0, nao_enriquecidas: 0, enriquecidas: 0, novas: 0 }
 const EMPTY_SEARCH = { total: 0, page: 1, page_size: 25, rows: [] };
 
 function useBackend() {
-  return window.__AFS_USE_RF_BACKEND__ === true && Boolean(getHttpApiBase());
+  if (window.__AFS_USE_RF_BACKEND__ === false) return false;
+  return Boolean(getHttpApiBase());
 }
 
+/** Sem backend RF = sem busca (removemos o catálogo demo fictício). */
 function localBlocked() {
-  return window.__AFS_LOCAL_PROSPECT_EMPTY__ === true || window.__AFS_USE_RF_BACKEND__ !== true;
+  return !useBackend();
 }
 
 function stripDemo(result) {
@@ -153,7 +155,7 @@ export async function executarProspeccao(opts) {
     purgeAllProspectDemoStorage();
     return {
       status: 'ok',
-      message: 'Base vazia — conecte o backend RF para dados reais.',
+      message: 'Backend RF offline. Inicie python app.py e rode a ingestão RF em Base de dados.',
       processados: 0, enriquecidos_ok: 0, contatos_coletados: 0, empresas: [],
       counts: EMPTY_COUNT,
     };
