@@ -244,9 +244,10 @@ def _persist_contatos(conn, cnpj_basico: str, items: list[dict]) -> None:
     for it in items:
         try:
             conn.execute(
-                """INSERT OR IGNORE INTO contatos
+                """INSERT INTO contatos
                    (cnpj_basico, tipo, valor, fonte, confianca, entregavel, origem_url, snapshot_rf)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (cnpj_basico, tipo, valor, fonte) DO NOTHING""",
                 [
                     cnpj_basico, it["tipo"], it["valor"], it["fonte"],
                     it.get("confianca", "media"), it.get("entregavel"),

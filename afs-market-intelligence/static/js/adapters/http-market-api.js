@@ -12,7 +12,12 @@ export function getHttpApiBase() {
   const siteBase = (window.__AFS_BASE_PATH__ || '').replace(/\/$/, '');
   const host = location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    return siteBase + '/afs-market-api';
+    // Flask direto (app.py porta 5001) expõe /api
+    if (location.port === '5001') {
+      return '/api';
+    }
+    // Next.js dev: proxy em next.config → /afs-market-api
+    return (siteBase ? siteBase : '') + '/afs-market-api';
   }
   return null;
 }

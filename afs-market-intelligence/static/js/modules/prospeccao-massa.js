@@ -7,7 +7,9 @@ import { openDrawer } from '../components/drawer.js';
 import { formatCapital } from '../components/prospect-filters.js';
 import {
   prospeccaoCount, prospeccaoSearch, fetchCnaes, fetchMunicipios,
-  fetchNaturezas, enriquecerCnpjs, saveSegmentacao, fetchSegmentacoes, pingHttpBackend,
+  fetchNaturezas, enriquecerCnpjs, enriquecerCnpjUnitario, fetchContatos,
+  runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads,
+  saveSegmentacao, fetchSegmentacoes, pingHttpBackend,
 } from '../adapters/prospeccao-search-api.js';
 import {
   fetchRfStatus, startRfIngest, pollJob, exportProspectosExcel,
@@ -362,7 +364,7 @@ function renderResultsArea(root) {
             '<div><strong>' + esc(r.razao_social || name) + '</strong>' +
             (r.nome_fantasia ? '<br><small class="hint">' + esc(r.nome_fantasia) + '</small>' : '') +
           '</div></div></td>' +
-          '<td><button type="button" class="btn sm primary ps-enr-one" data-cnpj="' + esc(r.cnpj_basico) + '">' +
+          '<td><button type="button" class="btn sm primary ps-enr-one" data-cnpj="' + esc(r.cnpj_basico) + '" data-enr="' + (r.enriquecida ? '1' : '0') + '">' +
             (r.enriquecida ? 'Ver contatos' : 'Enriquecer') + '</button></td>' +
           '<td><code>' + formatCnpj(r.cnpj_basico) + '</code></td>' +
           '<td><span class="pm-tag">' + esc(r.tipo || 'Matriz') + '</span></td>' +
@@ -578,9 +580,19 @@ function bindEvents(root) {
   root.addEventListener('click', function (e) {
     const enr = e.target.closest('.ps-enr-one');
     if (enr) {
-      void enriquecerCnpjs([enr.getAttribute('data-cnpj')]).then(function (r) {
-        window.AFSToast?.success(r.enfileirados + ' enfileirado(s) para enriquecimento');
-      });
+      const cnpj = enr.getAttribute('data-cnpj');
+      if (enr.getAttribute('data-enr') === '1') {
+        void openContatosDrawer(cnpj);
+      } else {
+        enr.disabled = true;
+        void enriquecerCnpjs([cnpj], true).then(function (r) {
+          const proc = r.processamento?.processados ?? r.enfileirados ?? 0;
+          window.AFSToast?.success(proc + ' enriquecido(s) — cascata RF→API→site');
+          void refreshResults(root);
+        }).catch(function (err) {
+          window.AFSToast?.error(err.message);
+        }).finally(function () { enr.disabled = false; });
+      }
       return;
     }
     if (e.target.id === 'ps-prev' && state.page > 1) {
@@ -622,10 +634,20 @@ function bindEvents(root) {
   root.querySelector('#ps-batch-enr')?.addEventListener('click', async function () {
     const cnpjs = [...state.selected];
     if (!cnpjs.length) return;
-    const r = await enriquecerCnpjs(cnpjs);
-    window.AFSToast?.success(r.enfileirados + ' enfileirados');
-    state.selected.clear();
-    updateBatchButtons(root);
+    const btn = root.querySelector('#ps-batch-enr');
+    btn.disabled = true;
+    try {
+      const r = await enriquecerCnpjs(cnpjs, true);
+      const proc = r.processamento?.processados ?? r.enfileirados ?? 0;
+      window.AFSToast?.success(proc + ' enriquecidos');
+      state.selected.clear();
+      updateBatchButtons(root);
+      await refreshResults(root);
+    } catch (e) {
+      window.AFSToast?.error(e.message);
+    } finally {
+      btn.disabled = state.selected.size === 0;
+    }
   });
 
   root.querySelector('#ps-batch-crm')?.addEventListener('click', async function () {
@@ -655,6 +677,34 @@ function openAdminDrawer(root) {
     width: '640px',
   });
   setTimeout(function () { renderAdminPanel(document.getElementById('ps-admin-body')); }, 50);
+}
+
+async function openContatosDrawer(cnpjBasico) {
+  openDrawer({
+    title: 'Contatos — CNPJ ' + formatCnpj(cnpjBasico),
+    bodyHtml: '<div id="ps-contatos-body"><p class="hint">Carregando contatos…</p></div>',
+    width: '520px',
+  });
+  const el = document.getElementById('ps-contatos-body');
+  try {
+    const list = await fetchContatos(cnpjBasico);
+    if (!list.length) {
+      el.innerHTML = '<p class="hint">Nenhum contato coletado. Clique em Enriquecer para rodar a cascata.</p>' +
+        '<button type="button" class="btn sm primary" id="ps-cont-enr">Enriquecer agora</button>';
+      el.querySelector('#ps-cont-enr')?.addEventListener('click', async function () {
+        await enriquecerCnpjUnitario(cnpjBasico);
+        window.AFSToast?.success('Enriquecimento concluído');
+        void openContatosDrawer(cnpjBasico);
+      });
+      return;
+    }
+    el.innerHTML = '<table class="ps-table"><thead><tr><th>Tipo</th><th>Valor</th><th>Fonte</th><th>Conf.</th></tr></thead><tbody>' +
+      list.map(function (c) {
+        return '<tr><td>' + esc(c.tipo) + '</td><td>' + esc(c.valor) + '</td><td>' + esc(c.fonte) + '</td><td>' + esc(c.confianca || '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch (e) {
+    el.innerHTML = '<p class="hint">Erro: ' + esc(e.message) + '</p>';
+  }
 }
 
 function openIntelDrawer(root) {
@@ -697,7 +747,20 @@ async function renderAdminPanel(el) {
     '</div>' +
     '<h4 style="margin-top:1rem">Grupos para raspagem</h4>' +
     '<input type="text" id="adm-grp-name" placeholder="Nome do grupo">' +
-    '<button type="button" class="btn sm" id="adm-grp-save">Salvar grupo (filtros atuais)</button>';
+    '<button type="button" class="btn sm" id="adm-grp-save">Salvar grupo (filtros atuais)</button>' +
+    '<hr style="border-color:var(--border-subtle);margin:1rem 0">' +
+    '<h4>Fila de enriquecimento (contatos)</h4>' +
+    '<div class="pm-actions">' +
+      '<button type="button" class="btn sm primary" id="adm-queue-run"' + (!ping.online ? ' disabled' : '') + '>Processar fila (10)</button>' +
+      '<span id="adm-queue-st" class="hint">—</span>' +
+    '</div>' +
+    '<hr style="border-color:var(--border-subtle);margin:1rem 0">' +
+    '<h4>Prospecção social (LinkedIn + Instagram)</h4>' +
+    '<p class="hint">Uma URL/usuário por linha. Requer credenciais em prospect-automation/.env no servidor.</p>' +
+    '<label class="ps-field"><span>LinkedIn URLs</span><textarea id="adm-li-urls" rows="2" placeholder="https://linkedin.com/in/..."></textarea></label>' +
+    '<label class="ps-field"><span>Instagram users</span><textarea id="adm-ig-users" rows="2" placeholder="usuario1"></textarea></label>' +
+    '<button type="button" class="btn sm" id="adm-social-run"' + (!ping.online ? ' disabled' : '') + '>Iniciar scrape social</button>' +
+    '<pre id="adm-social-log" class="pm-log hint">—</pre>';
 
   el.querySelector('#adm-rf-start')?.addEventListener('click', async function () {
     const log = el.querySelector('#adm-log');
@@ -725,6 +788,55 @@ async function renderAdminPanel(el) {
     if (!name) return;
     store.create('scrapingGroups', { nome: name, filtros: state.filtros, status: 'rascunho' });
     window.AFSToast?.success('Grupo salvo');
+  });
+
+  async function refreshQueueStatus() {
+    const stEl = el.querySelector('#adm-queue-st');
+    if (!stEl) return;
+    try {
+      const st = await fetchScrapingQueueStatus();
+      const parts = Object.entries(st.fila || {}).map(function (kv) { return kv[0] + ': ' + kv[1]; });
+      stEl.textContent = parts.length ? parts.join(' · ') : 'Fila vazia';
+    } catch (_) {
+      stEl.textContent = '—';
+    }
+  }
+  void refreshQueueStatus();
+
+  el.querySelector('#adm-queue-run')?.addEventListener('click', async function () {
+    try {
+      const r = await runScrapingQueue(10);
+      window.AFSToast?.success((r.processados || 0) + ' processados, ' + (r.erros || 0) + ' erros');
+      void refreshQueueStatus();
+    } catch (e) {
+      window.AFSToast?.error(e.message);
+    }
+  });
+
+  el.querySelector('#adm-social-run')?.addEventListener('click', async function () {
+    const log = el.querySelector('#adm-social-log');
+    const li = (el.querySelector('#adm-li-urls')?.value || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    const ig = (el.querySelector('#adm-ig-users')?.value || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!li.length && !ig.length) {
+      window.AFSToast?.error('Informe URLs ou usuários');
+      return;
+    }
+    try {
+      log.textContent = 'Enfileirando…';
+      const res = await socialScrape({ linkedin_urls: li, instagram_users: ig });
+      if (res.job_id) {
+        log.textContent = 'Job #' + res.job_id + ' — aguardando…';
+        await pollJob(res.job_id, function (j) {
+          log.textContent = j.status + ' · ' + (j.message || '') + (j.result ? ' · ' + JSON.stringify(j.result) : '');
+        });
+        window.AFSToast?.success('Scrape social concluído');
+      } else {
+        log.textContent = JSON.stringify(res);
+      }
+    } catch (e) {
+      log.textContent = e.message;
+      window.AFSToast?.error(e.message);
+    }
   });
 }
 

@@ -12,7 +12,12 @@ export function getHttpApiBase() {
   const siteBase = (window.__AFS_BASE_PATH__ || '').replace(/\/$/, '');
   const host = location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    return siteBase + '/afs-market-api';
+    // Flask direto (app.py porta 5001) expõe /api
+    if (location.port === '5001') {
+      return '/api';
+    }
+    // Next.js dev: proxy em next.config → /afs-market-api
+    return (siteBase ? siteBase : '') + '/afs-market-api';
   }
   return null;
 }
@@ -22,10 +27,9 @@ export function backendConfigHint() {
   if (base) return null;
   if (location.hostname.includes('github.io')) {
     return (
-      'Produção (GitHub Pages): configure a variável AFS_MARKET_API_URL no repositório GitHub ' +
-      '(Settings → Secrets and variables → Actions → Variables) com a URL do Cloud Run, ' +
-      'ex: https://afs-market-intelligence-xxxxx.run.app. Depois faça redeploy do portal. ' +
-      'Também ative ENABLE_GCP_CLOUD_RUN=true para publicar o backend.'
+      'Backend Python offline. Ative ENABLE_GCP_CLOUD_RUN=true em GitHub Settings → Variables ' +
+      '(repositório Linduro/App-Contabilidade) e rode o workflow "Deploy AFS Market Intelligence (Cloud Run)". ' +
+      'Ou execute: .\\scripts\\setup-afs-market-github.ps1 após gh auth login.'
     );
   }
   return (

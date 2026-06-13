@@ -8,3 +8,6 @@ dnspython>=2.6
 requests>=2.31
 beautifulsoup4>=4.12
 lxml>=5.0
+
+# Opcional — prospecção social (prospect-automation/)
+# pip install -r prospect-automation/requirements.txt && playwright install chromium

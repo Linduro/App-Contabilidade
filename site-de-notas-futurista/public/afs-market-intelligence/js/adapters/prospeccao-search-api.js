@@ -54,9 +54,46 @@ export async function fetchNaturezas() {
   return httpMarketGet('/naturezas-juridicas');
 }
 
-export async function enriquecerCnpjs(cnpjs) {
-  if (!getHttpApiBase()) return { status: 'ok', enfileirados: cnpjs.length };
-  return httpMarketPost('/prospeccao/enriquecer', { cnpjs });
+/** Enfileira CNPJs e opcionalmente processa cascata de contatos (processar=true). */
+export async function enriquecerCnpjs(cnpjs, processar = true) {
+  if (!getHttpApiBase()) {
+    return { status: 'ok', enfileirados: cnpjs.length, processamento: { processados: cnpjs.length, erros: 0 } };
+  }
+  return httpMarketPost('/prospeccao/enriquecer', { cnpjs, processar });
+}
+
+/** Cascata imediata A→E para um CNPJ. */
+export async function enriquecerCnpjUnitario(cnpj) {
+  if (!getHttpApiBase()) {
+    return { status: 'ok', total: 1, contatos: [{ tipo: 'email', valor: 'contato@exemplo.com.br', fonte: 'mock' }] };
+  }
+  const cnpj14 = String(cnpj).replace(/\D/g, '').padStart(14, '0');
+  return httpMarketPost('/enriquecer/' + cnpj14, {});
+}
+
+export async function fetchContatos(cnpjBasico) {
+  if (!getHttpApiBase()) return [];
+  return httpMarketGet('/contatos/' + encodeURIComponent(cnpjBasico));
+}
+
+export async function runScrapingQueue(limite = 10) {
+  if (!getHttpApiBase()) return { status: 'ok', processados: 0, erros: 0 };
+  return httpMarketPost('/scraping/run', { limite });
+}
+
+export async function fetchScrapingQueueStatus() {
+  if (!getHttpApiBase()) return { fila: {} };
+  return httpMarketGet('/scraping/queue');
+}
+
+export async function socialScrape({ linkedin_urls, instagram_users, headless = true }) {
+  if (!getHttpApiBase()) return { status: 'queued', job_id: 'mock' };
+  return httpMarketPost('/social/scrape', { linkedin_urls, instagram_users, headless });
+}
+
+export async function fetchSocialLeads(limit = 50) {
+  if (!getHttpApiBase()) return [];
+  return httpMarketGet('/social/leads?limit=' + limit);
 }
 
 export async function fetchSegmentacoes() {
