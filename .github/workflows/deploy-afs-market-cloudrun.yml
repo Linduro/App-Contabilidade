@@ -72,7 +72,8 @@ jobs:
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
         working-directory: afs-market-intelligence
         run: |
-          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+          set -e
+          if ! gcloud run deploy "${{ env.SERVICE_NAME }}" \
             --source . \
             --region "${{ env.GCP_REGION }}" \
             --platform managed \
@@ -82,7 +83,16 @@ jobs:
             --cpu 2 \
             --timeout 3600 \
             --max-instances 3 \
-            --quiet
+            --quiet; then
+            echo "::error::Deploy Cloud Run falhou. Conceda à service account do FIREBASE_SERVICE_ACCOUNT:"
+            echo "  • Cloud Run Admin"
+            echo "  • Cloud Build Editor"
+            echo "  • Service Account User"
+            echo "  • Storage Admin (ou Storage Object Admin)"
+            echo "  • Artifact Registry Writer"
+            echo "Console: https://console.cloud.google.com/iam-admin/iam?project=${{ env.GCP_PROJECT }}"
+            exit 1
+          fi
 
       - name: Resolve service URL
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
