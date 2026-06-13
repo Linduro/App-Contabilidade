@@ -480,19 +480,5 @@ function bindFilters(mount) {
 }
 
 export async function renderProspeccao({ mount }) {
-  const allRows = allProspectRows();
-  mount.innerHTML =
-    '<div class="crm-toolbar"><div><h2 style="margin:0">Prospecção</h2>' +
-    '<p class="hint">Consulta unitária (BrasilAPI) · Para a base completa (~230k LR) use a página dedicada</p></div>' +
-    '<a class="btn primary" href="#/prospeccao/massa">⬡ Prospecção em Massa</a></div>' +
-    '<div class="pm-banner l2-card"><strong>Base RF em massa?</strong> ' +
-    'A ingestão dos ~230 mil Lucro Real está em <a href="#/prospeccao/massa">Prospecção em Massa</a> ' +
-    '(menu lateral → primeiro item em Módulos).</div>' +
-    renderRfPanel() +
-    renderAccordion(mount, allRows) +
-    '<div id="prosp-results"></div>';
-
-  bindRfPanel(mount);
-  bindFilters(mount);
-  paintTable(mount);
+  location.replace('#/prospeccao/busca');
 }

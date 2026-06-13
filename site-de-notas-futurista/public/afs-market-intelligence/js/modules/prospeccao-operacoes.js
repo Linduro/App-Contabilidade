@@ -1,17 +1,18 @@
 /**
- * Centro de Operações — roda todo o pipeline pela interface (sem CLI).
+ * Busca de Leads — hub unificado: busca RF + consulta CNPJ + pipeline operacional.
  */
+import { parseHash } from '../core/router.js';
 import {
   fetchOpsStatus, fetchJobs, startPipeline, enqueueFiltros,
   runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads, fetchSocialConfig,
   enriquecerCnpjs, pingHttpBackend,
 } from '../adapters/prospeccao-search-v6.js';
 import {
-  startRfIngest, exportProspectosExcel, fetchRfStatus, backendConfigHint, pollJob,
+  startRfIngest, exportProspectosExcel, pollJob, backendConfigHint,
 } from '../adapters/rf-pipeline-api.js';
-import * as store from '../core/store.js';
 
-let activeTab = 'visao';
+const VALID_TABS = ['busca', 'visao', 'rf', 'enriquecer', 'social', 'jobs'];
+let activeTab = 'busca';
 let logEl = null;
 let pageMount = null;
 
@@ -32,22 +33,46 @@ function tabBtn(id, label) {
   return '<button type="button" class="ops-tab' + (activeTab === id ? ' active' : '') + '" data-ops-tab="' + id + '">' + label + '</button>';
 }
 
-export async function renderProspeccaoOperacoes({ mount }) {
+function readInitialTab(path) {
+  const q = new URLSearchParams((location.hash.split('?')[1] || ''));
+  const fromQuery = q.get('tab');
+  if (fromQuery && VALID_TABS.includes(fromQuery)) return fromQuery;
+  if (path === '/prospeccao/operacoes') return 'visao';
+  return 'busca';
+}
+
+function setTab(id, mount) {
+  if (!VALID_TABS.includes(id)) return;
+  activeTab = id;
+  try { sessionStorage.setItem('afs_busca_tab', id); } catch (_) {}
+  const target = '#/prospeccao/busca?tab=' + id;
+  if (location.hash.split('?')[0] !== '#/prospeccao/busca') {
+    location.hash = target;
+  } else if (location.hash !== target) {
+    history.replaceState(null, '', target);
+  }
+  void renderTab(mount || pageMount);
+}
+
+export async function renderBuscaLeads({ mount }) {
   pageMount = mount;
+  const { path } = parseHash();
+  activeTab = readInitialTab(path);
+
   const ping = await pingHttpBackend();
   mount.innerHTML =
-    '<div class="ops-page">' +
+    '<div class="ops-page' + (activeTab === 'busca' ? ' ops-tab-busca' : '') + '">' +
       '<div class="ops-head">' +
-        '<div><h2 style="margin:0">Centro de Operações</h2>' +
-        '<p class="hint">Ingestão RF, enriquecimento, social e export — tudo pela interface.</p></div>' +
+        '<div><h2 style="margin:0">Busca de Leads</h2>' +
+        '<p class="hint">Filtros RF, consulta por CNPJ, ingestão, enriquecimento e social — tudo em um lugar.</p></div>' +
         '<div class="ops-head-actions">' +
           '<span class="pm-backend-status ' + (ping.online ? 'online' : 'offline') + '">' +
             (ping.online ? '● Backend online' : '● Offline') +
           '</span>' +
-          '<a href="#/prospeccao/massa" class="btn sm">← Busca</a>' +
         '</div>' +
       '</div>' +
       '<nav class="ops-tabs">' +
+        tabBtn('busca', 'Busca') +
         tabBtn('visao', 'Visão geral') +
         tabBtn('rf', 'Receita Federal') +
         tabBtn('enriquecer', 'Enriquecimento') +
@@ -61,8 +86,7 @@ export async function renderProspeccaoOperacoes({ mount }) {
   logEl = mount.querySelector('#ops-log');
   mount.querySelectorAll('[data-ops-tab]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      activeTab = btn.getAttribute('data-ops-tab');
-      void renderTab(mount);
+      setTab(btn.getAttribute('data-ops-tab'), mount);
     });
   });
 
@@ -73,11 +97,31 @@ export async function renderProspeccaoOperacoes({ mount }) {
   await renderTab(mount);
 }
 
+/** @deprecated alias — use renderBuscaLeads */
+export const renderProspeccaoOperacoes = renderBuscaLeads;
+
 async function renderTab(mount) {
+  mount.querySelector('.ops-page')?.classList.toggle('ops-tab-busca', activeTab === 'busca');
+  mount.querySelector('.ops-log-wrap')?.classList.toggle('hidden', activeTab === 'busca');
+
   mount.querySelectorAll('.ops-tab').forEach(function (b) {
     b.classList.toggle('active', b.getAttribute('data-ops-tab') === activeTab);
   });
+
   const body = mount.querySelector('#ops-body');
+  if (activeTab === 'busca') {
+    body.innerHTML = '<div id="busca-leads-mount" class="busca-leads-embed"></div>';
+    const sub = body.querySelector('#busca-leads-mount');
+    const v = window.__AFS_BUILD__ || Date.now();
+    const mod = await import('./prospeccao-massa-live.js?b=' + encodeURIComponent(v));
+    await mod.renderProspeccaoMassa({
+      mount: sub,
+      embedded: true,
+      onSwitchTab: function (tabId) { setTab(tabId, mount); },
+    });
+    return;
+  }
+
   if (activeTab === 'visao') await renderVisao(body);
   else if (activeTab === 'rf') renderRf(body);
   else if (activeTab === 'enriquecer') renderEnriquecer(body);
@@ -101,12 +145,15 @@ async function renderVisao(el) {
     '<div class="ops-actions-grid">' +
       '<button type="button" class="btn primary" id="ops-pipeline-full">Pipeline completo (RF + ICP + fila)</button>' +
       '<button type="button" class="btn sm" id="ops-refresh">Atualizar painel</button>' +
-      '<a href="#/prospeccao/massa" class="btn sm">Ir para busca</a>' +
+      '<button type="button" class="btn sm" data-goto-tab="busca">Ir para busca</button>' +
     '</div>' +
     (st.rf?.snapshot ? '<p class="hint">Último snapshot RF: <strong>' + esc(st.rf.snapshot.versao || '—') + '</strong></p>' : '');
 
   el.querySelector('#ops-refresh')?.addEventListener('click', function () {
     if (pageMount) void renderTab(pageMount);
+  });
+  el.querySelector('[data-goto-tab="busca"]')?.addEventListener('click', function () {
+    if (pageMount) setTab('busca', pageMount);
   });
   el.querySelector('#ops-pipeline-full')?.addEventListener('click', async function () {
     appendLog('Iniciando pipeline completo…');
@@ -173,7 +220,7 @@ function renderEnriquecer(el) {
   el.innerHTML =
     '<section class="l2-card">' +
       '<h3>Enriquecer em lote (filtro ICP)</h3>' +
-      '<p class="hint">Usa filtros da última busca em Prospecção em Massa (se disponível).</p>' +
+      '<p class="hint">Usa filtros da última busca na aba Busca (se disponível).</p>' +
       '<div class="ops-row">' +
         '<label class="ps-field"><span>Quantidade</span>' +
           '<select id="ops-enr-lim"><option value="50">50</option><option value="100" selected>100</option><option value="500">500</option><option value="1000">1.000</option></select></label>' +

@@ -569,7 +569,18 @@
   .ps-sidebar { width: 100%; min-width: 100%; max-height: 45vh; }
 }
 
-/* Centro de Operações */
+/* Busca de Leads (embed + hub) */
+.ops-page.ops-tab-busca { max-width: none; padding: 0; }
+.busca-leads-embed { min-height: 60vh; }
+.busca-leads-embed .ps-page.ps-embedded {
+  min-height: 60vh;
+  height: auto;
+  border: none;
+  border-radius: 0;
+}
+.busca-leads-embed .ps-embedded .ps-sidebar { max-height: 70vh; }
+
+/* Centro de Operações / Busca de Leads hub */
 .ops-page { max-width: 960px; margin: 0 auto; padding: 0 0 2rem; }
 .ops-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
 .ops-head-actions { display: flex; align-items: center; gap: 0.75rem; }

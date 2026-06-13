@@ -8,9 +8,7 @@ const NAV = [
     { hash: '/tarefas', label: 'Atividades', icon: '☑' },
   ]},
   { section: 'Módulos', items: [
-    { hash: '/prospeccao/massa', label: 'Prospecção em Massa', icon: '⬡', highlight: true },
-    { hash: '/prospeccao/operacoes', label: 'Centro de Operações', icon: '⚙' },
-    { hash: '/prospeccao', label: 'Prospecção unitária', icon: '◎' },
+    { hash: '/prospeccao/busca', label: 'Busca de Leads', icon: '⬡', highlight: true },
     { hash: '/crm/leads', label: 'CRM · Leads', icon: '◉' },
     { hash: '/crm/pipelines', label: 'CRM · Pipelines', icon: '▦' },
     { hash: '/marketing/segmentacoes', label: 'Marketing', icon: '◈' },
@@ -25,6 +23,14 @@ const NAV = [
     { hash: '/legacy', label: 'UI legada (temp.)', icon: '⏪' },
   ]},
 ];
+
+function navActive(currentPath, itemHash) {
+  if (itemHash === '/prospeccao/busca') {
+    return currentPath === '/prospeccao' || currentPath === '/prospeccao/busca' ||
+      currentPath === '/prospeccao/massa' || currentPath === '/prospeccao/operacoes';
+  }
+  return currentPath === itemHash || currentPath.startsWith(itemHash + '/');
+}
 
 export function renderSidebar(el, currentPath) {
   const overdue = store.count('activities', (a) => a.status === 'atrasada');
@@ -42,7 +48,7 @@ export function renderSidebar(el, currentPath) {
     NAV.map(function (sec) {
       return '<div class="l2-nav-section"><div class="l2-nav-title">' + sec.section + '</div>' +
         sec.items.map(function (item) {
-          const active = currentPath === item.hash || currentPath.startsWith(item.hash + '/');
+          const active = navActive(currentPath, item.hash);
           let badge = '';
           if (item.hash === '/tarefas' && overdue > 0) badge = '<span class="l2-badge">' + overdue + '</span>';
           if (item.hash === '/comunicacao/inbox') {

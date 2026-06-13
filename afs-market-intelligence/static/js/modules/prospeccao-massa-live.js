@@ -1,8 +1,9 @@
 /**
- * Prospecção em Massa — busca reativa estilo Leads2b.
- * Administração RF (ingestão/export) fica no drawer "Base de dados".
+ * Busca de Leads — filtros RF, execução em lote e consulta unitária por CNPJ.
+ * Ingestão/export RF também nas abas do hub ou drawer "Base de dados".
  */
 import * as store from '../core/store.js';
+import { renderUnitPanelHtml, bindUnitPanel } from './prospeccao-unit-panel.js';
 import { isFictitiousCompany, purgeAllProspectDemoStorage } from '../core/purge-fictitious.js';
 import { openDrawer } from '../components/drawer.js';
 import { formatCapital } from '../components/prospect-filters.js';
@@ -68,6 +69,8 @@ const CAPITAL_PRESETS = [
 ];
 
 let mountEl = null;
+let embeddedMode = false;
+let onSwitchTab = null;
 let debounceTimer = null;
 let state = {
   filtros: defaultFiltros(),
@@ -359,6 +362,7 @@ function renderSidebar() {
       accordionGroup('natureza', '⚖', 'Natureza jurídica',
         '<input type="search" id="ps-nat-q" placeholder="Filtrar natureza…" autocomplete="off">' +
         '<div id="ps-nat" class="ps-check-list ps-nat-list"><p class="hint">Carregando…</p></div>') +
+      accordionGroup('unit', '🔎', 'Consulta por CNPJ', renderUnitPanelHtml()) +
       '<button type="button" class="btn primary ps-save-search" id="ps-save-search">Salvar pesquisa</button>' +
       '<button type="button" class="btn sm ps-apply" id="ps-apply">Aplicar filtros</button>' +
     '</aside>'
@@ -373,6 +377,9 @@ function toggleRow(name, current, options) {
 }
 
 function renderMain() {
+  const opsBtn = embeddedMode
+    ? '<button type="button" class="btn sm" id="ps-btn-ops">⚙ Pipeline</button>'
+    : '<button type="button" class="btn sm" id="ps-btn-ops">⚙ Pipeline</button>';
   return (
     '<main class="ps-main">' +
       '<div class="ps-topbar">' +
@@ -380,7 +387,7 @@ function renderMain() {
         '<div class="ps-topbar-actions">' +
           '<button type="button" class="btn primary ps-run-btn" id="ps-btn-run" title="Buscar, enriquecer contatos e importar para CRM">⚡ Executar prospecção</button>' +
           '<button type="button" class="btn sm" id="ps-btn-help" title="Como usar">❓ Como usar</button>' +
-          '<button type="button" class="btn sm" id="ps-btn-ops">⚙ Operações</button>' +
+          opsBtn +
           '<button type="button" class="btn sm" id="ps-btn-admin">Base de dados</button>' +
           '<button type="button" class="btn sm" id="ps-btn-intel">📊 Mapas</button>' +
         '</div>' +
@@ -417,7 +424,7 @@ function renderResultsArea(root) {
     el.innerHTML =
       '<div class="ps-hero-empty">' +
         '<div class="ps-hero-icon">🔍</div>' +
-        '<h2>Prospecção em Massa — base Receita Federal</h2>' +
+        '<h2>Busca de Leads — base Receita Federal</h2>' +
         '<p>Use os filtros e <strong>Executar prospecção</strong> para buscar empresas Lucro Real reais, enriquecer contatos e importar no CRM.</p>' +
         '<div class="ps-presets">' +
           presetCard('ICP padrão R$ 2–10mi', { capital_min: 2000000, capital_max: 10000000 }) +
@@ -517,7 +524,7 @@ function presetCard(title, patch) {
 
 function renderPage(root) {
   root.innerHTML =
-    '<div class="ps-page prospeccao-page">' +
+    '<div class="ps-page prospeccao-page' + (embeddedMode ? ' ps-embedded' : '') + '">' +
       renderSidebar() +
       renderMain() +
     '</div>';
@@ -707,7 +714,7 @@ async function runProspeccao(root) {
 
 function openHelpDrawer() {
   openDrawer({
-    title: 'Como usar a Prospecção em Massa',
+    title: 'Como usar a Busca de Leads',
     width: '520px',
     bodyHtml:
       '<div class="ps-help">' +
@@ -888,12 +895,16 @@ function bindEvents(root) {
 
   root.querySelector('#ps-btn-ops')?.addEventListener('click', function () {
     try { sessionStorage.setItem('afs_last_filtros', JSON.stringify(state.filtros)); } catch (_) {}
-    location.hash = '#/prospeccao/operacoes';
+    if (embeddedMode && onSwitchTab) onSwitchTab('visao');
+    else location.hash = '#/prospeccao/busca?tab=visao';
   });
 
   root.querySelector('#ps-btn-intel')?.addEventListener('click', function () {
-    location.hash = '#/prospeccao/massa?view=intel';
     openIntelDrawer(root);
+  });
+
+  bindUnitPanel(root, function () {
+    void refreshResults(root);
   });
 
   root.addEventListener('change', function (e) {
@@ -1050,7 +1061,7 @@ function openIntelDrawer(root) {
     title: 'Mapas & Inteligência',
     bodyHtml:
       '<nav class="l2-subnav pm-tabs" style="margin-bottom:1rem">' +
-        '<a href="#/prospeccao/massa?view=mapa">Mapa LR</a>' +
+        '<a href="#/prospeccao/busca">Mapa LR</a>' +
         '<a href="#/prospeccao/dead-zone">Dead Zone</a>' +
         '<a href="#/prospeccao/transicao">Transição Regime</a>' +
       '</nav>' +
@@ -1200,8 +1211,10 @@ async function renderAdminPanel(el) {
   });
 }
 
-export async function renderProspeccaoMassa({ mount }) {
+export async function renderProspeccaoMassa({ mount, embedded = false, onSwitchTab: switchTabFn = null }) {
   mountEl = mount;
+  embeddedMode = embedded;
+  onSwitchTab = switchTabFn;
   purgeAllProspectDemoStorage();
   try {
     await syncBackendMode();
@@ -1224,7 +1237,7 @@ export async function renderProspeccaoMassa({ mount }) {
     console.error('[prospeccao-massa]', err);
     mount.innerHTML =
       '<div class="route-error" style="padding:2rem;text-align:center">' +
-        '<h3>Prospecção em Massa — erro ao iniciar</h3>' +
+        '<h3>Busca de Leads — erro ao iniciar</h3>' +
         '<p class="hint">' + String(err.message || err).replace(/</g, '&lt;') + '</p>' +
         '<button type="button" class="btn primary" onclick="location.reload()">Recarregar</button>' +
       '</div>';

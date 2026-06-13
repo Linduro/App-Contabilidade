@@ -16,9 +16,10 @@ function importMod(relPath) {
 
 const TITLES = {
   '/apps': 'Home',
-  '/prospeccao': 'Prospecção',
-  '/prospeccao/massa': 'Prospecção em Massa',
-  '/prospeccao/operacoes': 'Centro de Operações',
+  '/prospeccao': 'Busca de Leads',
+  '/prospeccao/busca': 'Busca de Leads',
+  '/prospeccao/massa': 'Busca de Leads',
+  '/prospeccao/operacoes': 'Busca de Leads',
   '/prospeccao/dead-zone': 'Dead Zone',
   '/prospeccao/transicao': 'Transição de Regime',
   '/crm/pipelines': 'Pipelines',
@@ -31,11 +32,14 @@ const TITLES = {
   '/legacy': 'UI Legada',
 };
 
+const buscaLeadsLoader = () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderBuscaLeads);
+
 const ROUTE_LOADERS = {
   '/apps': () => importMod('../modules/home.js').then((m) => m.renderHome),
-  '/prospeccao': () => importMod('../modules/prospeccao.js').then((m) => m.renderProspeccao),
-  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa-live.js').then((m) => m.renderProspeccaoMassa),
-  '/prospeccao/operacoes': () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderProspeccaoOperacoes),
+  '/prospeccao': buscaLeadsLoader,
+  '/prospeccao/busca': buscaLeadsLoader,
+  '/prospeccao/massa': buscaLeadsLoader,
+  '/prospeccao/operacoes': buscaLeadsLoader,
   '/prospeccao/dead-zone': () => importMod('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
   '/prospeccao/transicao': () => importMod('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
   '/crm/pipelines': () => importMod('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
@@ -69,7 +73,8 @@ function lazy(loaderFn) {
 
 function titleFor(path) {
   if (TITLES[path]) return TITLES[path];
-  if (path.startsWith('/prospeccao/massa')) return 'Prospecção em Massa';
+  if (path.startsWith('/prospeccao/busca') || path.startsWith('/prospeccao/massa') || path.startsWith('/prospeccao/operacoes')) return 'Busca de Leads';
+  if (path.startsWith('/prospeccao')) return 'Busca de Leads';
   if (path.startsWith('/marketing')) return 'Marketing';
   if (path.startsWith('/comunicacao')) return 'Comunicação';
   if (path.startsWith('/automacao')) return 'Automação';
@@ -84,10 +89,6 @@ function registerAllRoutes() {
   Object.entries(ROUTE_LOADERS).forEach(([path, loader]) => {
     register(path, lazy(loader));
   });
-
-  registerPrefix('/prospeccao/', lazy(
-    () => importMod('../modules/prospeccao-massa-live.js').then((m) => m.renderProspeccaoMassa),
-  ));
 
   registerPrefix('/comunicacao/', lazy(
     () => importMod('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
