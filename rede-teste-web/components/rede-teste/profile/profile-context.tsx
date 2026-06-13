@@ -3,7 +3,7 @@
 import { createContext, useContext } from "react";
 import type { RouterOutputs } from "@/lib/trpc-client";
 
-export type JqProfileData = RouterOutputs["juridiques"]["profileByHandle"];
+export type JqProfileData = RouterOutputs["redeTeste"]["profileByHandle"];
 
 const ProfileContext = createContext<JqProfileData | null>(null);
 

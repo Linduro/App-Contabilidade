@@ -6,7 +6,7 @@ export const metadata = { title: "Moderação — Rede Teste" };
 
 export default async function RedeTesteModeracaoPage() {
   const caller = await getTRPCCaller();
-  const me = await caller.juridiques.me();
+  const me = await caller.redeTeste.me();
   if (!me.isOwner) {
     redirect("/rede-teste");
   }

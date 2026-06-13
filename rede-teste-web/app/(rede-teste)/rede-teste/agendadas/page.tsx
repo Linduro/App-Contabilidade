@@ -9,7 +9,7 @@ export default async function AgendadasPage() {
   if (!session?.user) redirect("/login?next=/rede-teste/agendadas");
 
   const caller = await getTRPCCaller();
-  const scheduled = await caller.juridiques.listScheduledPublications();
+  const scheduled = await caller.redeTeste.listScheduledPublications();
 
   return <ScheduledPublicationsView initial={scheduled} />;
 }
