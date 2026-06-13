@@ -1,4 +1,5 @@
 import * as store from '../core/store.js';
+import { isFictitiousCompany } from '../core/purge-fictitious.js';
 import { openDrawer, closeDrawer } from '../components/drawer.js';
 import { openModal, closeModal, bindModalCloses } from '../components/modal.js';
 import { toCSV, downloadFile, copyText, exportExcel, LEAD_EXPORT_COLS } from '../components/export.js';
@@ -48,6 +49,7 @@ function tagLabels(tags) {
 function applyFilters(leads) {
   const f = state.filters;
   return leads.filter((l) => {
+    if (isFictitiousCompany(l)) return false;
     if (f.q) {
       const q = f.q.toLowerCase();
       if (!(String(l.razao_social || '').toLowerCase().includes(q) || String(l.cnpj_basico || '').includes(q))) return false;

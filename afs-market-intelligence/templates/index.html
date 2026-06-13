@@ -6,9 +6,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <title>AFS Market Intelligence</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-v2.css') }}?v=3">
-    <script>window.__AFS_USE_RF_BACKEND__=false;window.__AFS_BUILD__="fix-polljob-v4";</script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout-v2.css') }}?v=9">
+    <script src="{{ url_for('static', filename='js/prospect-guard.js') }}?v=9"></script>
 </head>
 <body>
 
@@ -67,11 +67,16 @@
         }
         const buildTag = window.__AFS_BUILD__ || Date.now();
         if (new URLSearchParams(location.search).has('afs_reset')) {
-            try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+            try {
+                localStorage.removeItem('afs_market_v2');
+                localStorage.removeItem('afs_prospect_enrichment');
+                localStorage.removeItem('afs_prospect_segmentacoes');
+                localStorage.removeItem('afs_prospect_catalog');
+            } catch (_) {}
         }
-        const { startAuthGate } = await import('{{ url_for('static', filename='js/auth-gate.js') }}?b=' + buildTag);
+        const { startAuthGate } = await import('{{ url_for('static', filename='js/auth-gate.js') }}?b=' + buildTag + '&t=' + Date.now());
         startAuthGate(async function () {
-            const { bootApp } = await import('{{ url_for('static', filename='js/core/boot.js') }}?b=' + buildTag);
+            const { bootApp } = await import('{{ url_for('static', filename='js/core/boot-v9.js') }}?b=' + buildTag + '&t=' + Date.now());
             await bootApp();
         });
     } catch (err) {

@@ -54,8 +54,8 @@ class ICPFilter:
         try:
             rows = conn.execute(sql).fetchall()
         except Exception:
-            logger.warning("[categorization] Tabelas RF vazias — retornando demo")
-            return self._inserir_demo(conn)
+            logger.warning("[categorization] Tabelas RF vazias — nenhum lead retornado")
+            return {"status": "ok", "leads_filtrados": 0, "message": "Ingestão RF necessária"}
 
         inseridos = 0
         for row in rows:
@@ -73,19 +73,3 @@ class ICPFilter:
         conn.commit()
         return {"status": "ok", "leads_filtrados": inseridos}
 
-    def _inserir_demo(self, conn) -> dict:
-        """Dados demo quando RF ainda não foi ingerida."""
-        demos = [
-            ("12345678", "Agro Brasil SA", "agro", 5000000, 8),
-            ("23456789", "Indústria Nacional Ltda", "industria", 12000000, 15),
-            ("34567890", "Rede Varejo Plus SA", "varejo", 8000000, 42),
-        ]
-        for cnpj, razao, cluster, cap, fil in demos:
-            conn.execute(
-                """INSERT OR IGNORE INTO leads_icp
-                   (cnpj_basico, razao_social, cluster_estrategico, capital_social, qtd_filiais, perfil_uso, score_prioridade)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                [cnpj, razao, cluster, cap, fil, self.perfil, cap / 1e6],
-            )
-        conn.commit()
-        return {"status": "ok", "leads_filtrados": len(demos), "demo": True}

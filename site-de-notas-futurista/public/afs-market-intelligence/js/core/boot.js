@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import { register, registerPrefix, start, isLegacyRoute, parseHash } from './router.js';
 import { seedIfEmpty } from './seed-data.js';
+import { purgeFictitiousData } from './purge-fictitious.js';
 import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
@@ -33,7 +34,7 @@ const TITLES = {
 const ROUTE_LOADERS = {
   '/apps': () => importMod('../modules/home.js').then((m) => m.renderHome),
   '/prospeccao': () => importMod('../modules/prospeccao.js').then((m) => m.renderProspeccao),
-  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa-page.js').then((m) => m.renderProspeccaoMassa),
+  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa-live.js').then((m) => m.renderProspeccaoMassa),
   '/prospeccao/operacoes': () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderProspeccaoOperacoes),
   '/prospeccao/dead-zone': () => importMod('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
   '/prospeccao/transicao': () => importMod('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
@@ -85,7 +86,7 @@ function registerAllRoutes() {
   });
 
   registerPrefix('/prospeccao/', lazy(
-    () => importMod('../modules/prospeccao-massa-page.js').then((m) => m.renderProspeccaoMassa),
+    () => importMod('../modules/prospeccao-massa-live.js').then((m) => m.renderProspeccaoMassa),
   ));
 
   registerPrefix('/comunicacao/', lazy(
@@ -114,7 +115,9 @@ function refreshChrome(path) {
 
 export async function bootApp() {
   if (!location.hash || location.hash === '#') location.hash = '#/apps';
+  purgeFictitiousData();
   seedIfEmpty();
+  purgeFictitiousData();
   const imp = await importFirestoreOnceIfNeeded();
   if (imp.imported && window.AFSToast) {
     window.AFSToast.success('Importados ' + imp.leads + ' leads do Firestore');

@@ -44,7 +44,12 @@ function showRecoveryActions() {
   if (btn && !btn.dataset.bound) {
     btn.dataset.bound = '1';
     btn.addEventListener('click', function () {
-      try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+      try {
+        localStorage.removeItem('afs_market_v2');
+        localStorage.removeItem('afs_prospect_enrichment');
+        localStorage.removeItem('afs_prospect_segmentacoes');
+        localStorage.removeItem('afs_prospect_catalog');
+      } catch (_) {}
       const v = Date.now();
       const url = new URL(location.href);
       url.searchParams.set('afs_reset', String(v));
@@ -54,7 +59,11 @@ function showRecoveryActions() {
 }
 
 window.AFS_resetLocalData = function () {
-  try { localStorage.removeItem('afs_market_v2'); } catch (_) {}
+  try {
+    localStorage.removeItem('afs_market_v2');
+    localStorage.removeItem('afs_prospect_enrichment');
+    localStorage.removeItem('afs_prospect_segmentacoes');
+  } catch (_) {}
   location.reload();
 };
 

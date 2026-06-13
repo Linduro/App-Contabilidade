@@ -2,6 +2,7 @@
  * Import único do Firestore na primeira carga (opcional).
  */
 import * as store from '../core/store.js';
+import { filterRealLeads } from '../core/purge-fictitious.js';
 
 export async function importFirestoreOnceIfNeeded() {
   const db = store.getDb();
@@ -17,7 +18,7 @@ export async function importFirestoreOnceIfNeeded() {
       api.get('/parceiros').catch(() => ({ parceiros: [] })),
     ]);
 
-    const leads = (leadsRes.leads || []).map((l) => ({
+    const leads = filterRealLeads(leadsRes.leads || []).map((l) => ({
       ...l,
       id: l.id || ('fs_' + (l.cnpj_basico || Math.random().toString(36).slice(2))),
       atualizado_em: new Date().toISOString(),

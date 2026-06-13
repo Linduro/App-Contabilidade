@@ -5,7 +5,7 @@ import {
   fetchOpsStatus, fetchJobs, startPipeline, enqueueFiltros,
   runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads, fetchSocialConfig,
   enriquecerCnpjs, pingHttpBackend,
-} from '../adapters/prospeccao-search-api.js';
+} from '../adapters/prospeccao-search-v6.js';
 import {
   startRfIngest, exportProspectosExcel, fetchRfStatus, backendConfigHint, pollJob,
 } from '../adapters/rf-pipeline-api.js';
