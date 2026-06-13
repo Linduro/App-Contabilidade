@@ -41,3 +41,20 @@ CREATE TABLE IF NOT EXISTS geo_municipios (
 
 CREATE INDEX IF NOT EXISTS idx_contatos_cnpj ON contatos(cnpj_basico);
 CREATE INDEX IF NOT EXISTS idx_contatos_tipo ON contatos(cnpj_basico, tipo);
+
+CREATE TABLE IF NOT EXISTS social_leads (
+    id VARCHAR PRIMARY KEY,
+    fonte VARCHAR NOT NULL,
+    plataforma VARCHAR NOT NULL,
+    nome VARCHAR,
+    cargo VARCHAR,
+    empresa VARCHAR,
+    username VARCHAR,
+    url VARCHAR,
+    seguidores INTEGER,
+    bio TEXT,
+    payload TEXT,
+    coletado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_social_fonte ON social_leads(fonte, plataforma);

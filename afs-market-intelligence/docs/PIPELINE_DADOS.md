@@ -93,3 +93,20 @@ Deploy: GitHub Actions `deploy-afs-market-cloudrun.yml` (requer `ENABLE_GCP_CLOU
 - SMTP probing em massa (queima reputação de IP)
 
 Alternativa legítima para decisores: enriquecer contatos institucionais (Camada 3) + importação manual assistida no CRM.
+
+## Prospecção social (LinkedIn + Instagram)
+
+Módulo opcional em `prospect-automation/` (tutorial Grok — **use por sua conta e risco**):
+
+```bash
+cd prospect-automation
+pip install -r requirements.txt
+playwright install chromium
+copy .env.example .env
+python main.py --csv targets.example.csv --afs
+```
+
+API AFS:
+- `POST /api/social/scrape` — job assíncrono
+- `POST /api/social/import` — importar JSON
+- `GET /api/social/leads` — listar coletados

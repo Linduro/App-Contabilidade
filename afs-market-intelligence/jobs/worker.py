@@ -39,6 +39,15 @@ class JobWorker:
                     result = ScrapingQueueWorker(conn, on_progress=progress).processar_lote(
                         params.get("limite", 50)
                     )
+                elif tipo == "social_scrape":
+                    from layers.enrichment.social_scraper import run_social_scrape, persist_social_leads
+                    result = run_social_scrape(
+                        linkedin_urls=params.get("linkedin_urls"),
+                        instagram_users=params.get("instagram_users"),
+                        headless=params.get("headless", True),
+                    )
+                    saved = persist_social_leads(conn, result.get("rows", []))
+                    result["salvos_duckdb"] = saved
                 elif tipo == "pipeline_completo":
                     from orchestrator.pipeline import PipelineOrchestrator
                     orch = PipelineOrchestrator(conn, params.get("perfil", "patrimonial"))

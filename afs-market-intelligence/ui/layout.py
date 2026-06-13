@@ -584,6 +584,60 @@ def scraping_queue_status():
         return jsonify({"fila": {}})
 
 
+# --- Prospecção social (LinkedIn + Instagram — tutorial Grok) ---
+
+@main_bp.route("/api/social/scrape", methods=["POST"])
+def social_scrape():
+    """Enfileira scrape LinkedIn/Instagram em background."""
+    try:
+        body = request.get_json() or {}
+        conn = _conn()
+        from jobs.store import JobStore
+        from jobs.worker import JobWorker
+
+        params = {
+            "linkedin_urls": body.get("linkedin_urls") or [],
+            "instagram_users": body.get("instagram_users") or [],
+            "headless": body.get("headless", True),
+        }
+        store = JobStore(conn)
+        job_id = store.create("social_scrape", params)
+        JobWorker.start(_conn, job_id, "social_scrape", params)
+        conn.close()
+        return jsonify({"status": "queued", "job_id": job_id})
+    except Exception as e:
+        logger.error("[social/scrape] %s", e)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/social/import", methods=["POST"])
+def social_import():
+    """Importa leads já coletados (CSV/API externa) para DuckDB."""
+    try:
+        body = request.get_json() or {}
+        rows = body.get("leads") or []
+        conn = _conn()
+        from layers.enrichment.social_scraper import persist_social_leads
+        n = persist_social_leads(conn, rows)
+        conn.close()
+        return jsonify({"status": "ok", "importados": n})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/social/leads")
+def social_leads_list():
+    try:
+        limite = min(int(request.args.get("limit", 100)), 500)
+        conn = _conn()
+        from layers.enrichment.social_scraper import list_social_leads
+        items = list_social_leads(conn, limite)
+        conn.close()
+        return jsonify(items)
+    except Exception as e:
+        return jsonify([])
+
+
 @main_bp.route("/api/segmentacoes", methods=["GET"])
 def list_segmentacoes():
     from layers.categorization.prospeccao_search import load_segmentacoes

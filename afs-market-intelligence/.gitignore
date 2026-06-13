@@ -7,3 +7,7 @@ data/**/*.zip
 .venv/
 __pycache__/
 *.pyc
+prospect-automation/.env
+prospect-automation/output/
+prospect-automation/sessions/
+prospect-automation/credentials.json
