@@ -6,7 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
-load_dotenv(ROOT / ".env")
+load_dotenv(ROOT / ".env", override=True)
 
 CONFIG = {
     "LINKEDIN_EMAIL": os.getenv("LINKEDIN_EMAIL", ""),

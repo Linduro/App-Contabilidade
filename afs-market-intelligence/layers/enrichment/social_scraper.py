@@ -29,6 +29,11 @@ def run_social_scrape(
     headless: bool = True,
 ) -> dict[str, Any]:
     _ensure_path()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_PA_ROOT / ".env", override=True)
+    except ImportError:
+        pass
     linkedin_urls = linkedin_urls or []
     instagram_users = instagram_users or []
     rows: list[dict] = []

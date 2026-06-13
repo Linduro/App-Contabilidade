@@ -74,14 +74,22 @@ def scrape_linkedin_profiles(urls: list[str], headless: bool = True) -> list[dic
     return results
 
 
-def _linkedin_login(page, email: str, password: str) -> None:
-    page.goto("https://www.linkedin.com/login", timeout=60000)
-    page.fill('input[name="session_key"]', email)
+def _linkedin_login(page, login: str, password: str) -> None:
+    page.goto("https://www.linkedin.com/login?fromSignIn=true", timeout=60000)
+    page.wait_for_selector('input[name="session_key"]', timeout=30000)
+    page.fill('input[name="session_key"]', login)
     page.fill('input[name="session_password"]', password)
     page.click('button[type="submit"]')
-    page.wait_for_load_state("networkidle", timeout=60000)
-    if "checkpoint" in page.url or "challenge" in page.url:
-        raise RuntimeError("LinkedIn exige verificação 2FA/captcha — complete manualmente e salve sessão")
+    page.wait_for_load_state("domcontentloaded", timeout=60000)
+    time.sleep(random.uniform(2.0, 4.0))
+    url = page.url.lower()
+    if "checkpoint" in url or "challenge" in url or "verification" in url:
+        raise RuntimeError(
+            "LinkedIn pediu verificação (2FA/captcha). Rode uma vez com headless=false "
+            "ou complete o login manualmente e salve sessions/linkedin/state.json"
+        )
+    if "login" in url and "feed" not in url:
+        raise RuntimeError("Login LinkedIn falhou — verifique usuário/senha")
 
 
 def _scrape_one_profile(page, url: str) -> dict[str, Any]:

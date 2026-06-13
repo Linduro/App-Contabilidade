@@ -694,6 +694,27 @@ def social_scrape():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@main_bp.route("/api/social/config")
+def social_config_status():
+    """Indica se credenciais LinkedIn/Instagram estão configuradas (sem expor valores)."""
+    from pathlib import Path
+    try:
+        from dotenv import dotenv_values
+        env_path = Path(__file__).resolve().parent.parent / "prospect-automation" / ".env"
+        env = dotenv_values(env_path) if env_path.exists() else {}
+    except Exception:
+        env = {}
+    li = bool((env.get("LINKEDIN_EMAIL") or os.environ.get("LINKEDIN_EMAIL")) and
+              (env.get("LINKEDIN_PASSWORD") or os.environ.get("LINKEDIN_PASSWORD")))
+    ig = bool(env.get("INSTAGRAM_USERNAME") or os.environ.get("INSTAGRAM_USERNAME"))
+    session = (Path(__file__).resolve().parent.parent / "prospect-automation" / "sessions" / "linkedin" / "state.json").exists()
+    return jsonify({
+        "linkedin_configured": li,
+        "instagram_configured": ig,
+        "linkedin_session_saved": session,
+    })
+
+
 @main_bp.route("/api/social/import", methods=["POST"])
 def social_import():
     """Importa leads já coletados (CSV/API externa) para DuckDB."""

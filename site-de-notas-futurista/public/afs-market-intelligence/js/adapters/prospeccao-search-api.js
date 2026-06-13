@@ -91,6 +91,11 @@ export async function socialScrape({ linkedin_urls, instagram_users, headless = 
   return httpMarketPost('/social/scrape', { linkedin_urls, instagram_users, headless });
 }
 
+export async function fetchSocialConfig() {
+  if (!getHttpApiBase()) return { linkedin_configured: false, linkedin_session_saved: false };
+  return httpMarketGet('/social/config');
+}
+
 export async function fetchSocialLeads(limit = 50) {
   if (!getHttpApiBase()) return [];
   return httpMarketGet('/social/leads?limit=' + limit);

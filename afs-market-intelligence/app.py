@@ -19,7 +19,10 @@ except ImportError:
 
 try:
     from dotenv import load_dotenv
+    from pathlib import Path
+    _ROOT = Path(__file__).resolve().parent
     load_dotenv()
+    load_dotenv(_ROOT / "prospect-automation" / ".env", override=True)
 except ImportError:
     pass
 

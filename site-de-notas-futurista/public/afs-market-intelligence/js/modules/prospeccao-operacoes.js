@@ -3,7 +3,7 @@
  */
 import {
   fetchOpsStatus, fetchJobs, startPipeline, enqueueFiltros,
-  runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads,
+  runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads, fetchSocialConfig,
   enriquecerCnpjs, pingHttpBackend, pollJob,
 } from '../adapters/prospeccao-search-api.js';
 import {
@@ -256,12 +256,19 @@ function renderEnriquecer(el) {
 
 async function renderSocial(el) {
   let leads = [];
+  let cfg = { linkedin_configured: false, linkedin_session_saved: false };
   try { leads = await fetchSocialLeads(30); } catch (_) {}
+  try { cfg = await fetchSocialConfig(); } catch (_) {}
+
+  const liStatus = cfg.linkedin_configured
+    ? (cfg.linkedin_session_saved ? '● LinkedIn: credenciais OK · sessão salva' : '● LinkedIn: credenciais OK · login na 1ª execução')
+    : '○ LinkedIn: credenciais ausentes (prospect-automation/.env)';
 
   el.innerHTML =
     '<section class="l2-card">' +
       '<h3>Scrape LinkedIn + Instagram</h3>' +
-      '<p class="hint">Configure LINKEDIN_EMAIL/PASSWORD no servidor (prospect-automation/.env). Instagram público funciona sem login.</p>' +
+      '<p class="pm-backend-status ' + (cfg.linkedin_configured ? 'online' : 'offline') + '" style="margin-bottom:0.75rem">' + esc(liStatus) + '</p>' +
+      '<p class="hint">Login aceita e-mail ou telefone. Instagram público funciona sem login.</p>' +
       '<label class="ps-field"><span>LinkedIn URLs (1/linha)</span><textarea id="ops-li" rows="3"></textarea></label>' +
       '<label class="ps-field"><span>Instagram users (1/linha)</span><textarea id="ops-ig" rows="2"></textarea></label>' +
       '<button type="button" class="btn primary" id="ops-social-run">Iniciar scrape</button>' +
