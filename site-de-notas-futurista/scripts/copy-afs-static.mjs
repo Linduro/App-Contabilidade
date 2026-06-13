@@ -11,7 +11,7 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
-const BUILD = process.env.AFS_STATIC_BUILD || "26"
+const BUILD = process.env.AFS_STATIC_BUILD || "27"
 
 function buildIndexHtml() {
   const baseHtml = fs.readFileSync(path.join(afsRoot, "templates", "base.html"), "utf8")

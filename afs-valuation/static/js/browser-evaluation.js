@@ -11,10 +11,13 @@ NÃO use dados de planilha, cadastro ou contexto externo — somente o que é vi
 
 ESCALA estado_conservacao (inteiro 1-5):
 5 = produto novo na caixa
-4 = seminovo / open box / poucos meses de uso (saiu da caixa, descaracterização de novo)
+4 = seminovo / open box / poucos meses de uso — SOMENTE se idade_aparente_anos é 0 ou 1
 3 = conservação esperada para a idade do bem vs. pares (ex: torno 40 anos funcional e preservado = 3)
 2 = abaixo do esperado para a idade OU avarias visíveis que exigem reparo
 1 = sucata, totalmente quebrado ou abandonado
+
+REGRA CRÍTICA: estado_conservacao 4 só é válido com idade_aparente_anos 0 ou 1.
+Se idade_aparente_anos > 1, o máximo é 3 (mesmo se o bem parece muito preservado).
 
 Retorne APENAS JSON válido:
 {
@@ -124,23 +127,43 @@ function afsNormalizeVisionNumbers(visionData) {
     return v;
 }
 
-function afsNormalizeTagText(t) {
-    return String(t || '').trim().replace(/\s+/g, '').toLowerCase();
+function afsAlignConservationWithAge(age, conservation) {
+    if (conservation == null || conservation === '') return conservation;
+    const c = parseInt(conservation, 10);
+    if (Number.isNaN(c)) return conservation;
+    if (c !== 4) return c;
+    const a = parseInt(age, 10);
+    if (Number.isNaN(a) || a > 1) return 3;
+    return c;
 }
 
-function afsResolveTagOutput(row, mappings, tagEncontrada) {
-    if (tagEncontrada == null || String(tagEncontrada).trim() === '') return null;
-    const letter = (field) => {
-        const m = mappings[field];
-        return typeof m === 'string' ? m : m?.letter || '';
-    };
-    const origLetter = letter('tag_original');
-    const orig = origLetter ? row[origLetter] : null;
-    const found = String(tagEncontrada).trim();
-    if (orig != null && String(orig).trim() !== '') {
-        if (afsNormalizeTagText(orig) === afsNormalizeTagText(found)) return 'ok';
+const AFS_TAG_UNREADABLE = 'não foi possível verificar';
+
+function afsResolveTagOutput(tagEncontrada, visionAttempted) {
+    if (tagEncontrada != null && String(tagEncontrada).trim() !== '') {
+        return String(tagEncontrada).trim();
     }
-    return found;
+    if (visionAttempted) return AFS_TAG_UNREADABLE;
+    return null;
+}
+
+function afsCorrectTagColumnMappings(mappings, headers) {
+    if (!mappings || !headers?.length) return mappings;
+    const out = { ...mappings };
+    const hasLetter = (l) => headers.some(h => h.letter === l);
+    const tagOut = out.tag_output;
+    const tagOrig = out.tag_original;
+
+    if (hasLetter('D') && !out.tag_original) out.tag_original = 'D';
+    if (hasLetter('C') && !out.tag_output) out.tag_output = 'C';
+
+    if (hasLetter('C') && tagOut === 'D') out.tag_output = 'C';
+    if (hasLetter('D') && !out.tag_original) out.tag_original = 'D';
+    if (tagOut && tagOrig && tagOut === tagOrig && hasLetter('C') && hasLetter('D')) {
+        out.tag_output = 'C';
+        out.tag_original = 'D';
+    }
+    return out;
 }
 
 function parseGeminiJson(text) {
@@ -336,6 +359,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     };
 
     const s = afsLoadState();
+    mappings = afsCorrectTagColumnMappings(mappings, spreadsheet.headers);
     const letter = (field) => {
         const m = mappings[field];
         return typeof m === 'string' ? m : m?.letter || '';
@@ -364,6 +388,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     let marketData = {};
 
     const imageUrls = afsCollectImageUrls(resolvedRow, mappings, spreadsheet);
+    let visionImagesSent = 0;
 
     if (options.runTag || options.runAge || options.runConservation || imageUrls.length) {
         emit(`Análise visual (Vision): ${imageUrls.length} foto(s) — identificando bem...`, 18);
@@ -376,6 +401,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
                 loadedParts++;
             }
         }
+        visionImagesSent = loadedParts;
         if (loadedParts > 0) {
             emit(`Enviando ${loadedParts} imagem(ns) ao Gemini Vision...`, 32);
             try {
@@ -416,10 +442,13 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     marketData.links_comparativos = linksArr;
 
     const tagOut = options.runTag
-        ? afsResolveTagOutput(resolvedRow, mappings, visionData.tag_encontrada)
+        ? afsResolveTagOutput(visionData.tag_encontrada, visionImagesSent > 0)
         : null;
     const ageOut = options.runAge ? (visionData.idade_aparente_anos ?? null) : null;
-    const consOut = options.runConservation ? (visionData.estado_conservacao ?? null) : null;
+    let consOut = options.runConservation ? (visionData.estado_conservacao ?? null) : null;
+    if (consOut != null && ageOut != null) {
+        consOut = afsAlignConservationWithAge(ageOut, consOut);
+    }
 
     const evaluation = {
         row_index: rowIdx,
@@ -470,8 +499,11 @@ async function browserRunEvaluation(options, onProgress) {
     if (!s.api_key) throw new Error('Chave de API não configurada');
     if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
 
-    const mappings = options.mappings || afsGetActiveMappings(s);
     const spreadsheet = s.spreadsheet;
+    const mappings = afsCorrectTagColumnMappings(
+        options.mappings || afsGetActiveMappings(s),
+        spreadsheet.headers
+    );
     const rows = typeof afsResolveAllRowsPhotos === 'function'
         ? afsResolveAllRowsPhotos(spreadsheet, mappings)
         : spreadsheet.rows;
@@ -566,7 +598,7 @@ async function browserRunEvaluation(options, onProgress) {
             s.evaluations.unshift(evaluation);
 
             if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
-            if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, evaluation, mappings);
+            if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, evaluation, mappings, spreadsheet.headers);
             if (options.runAtivo && letter('asset_output') && evaluation.asset_normalized) {
                 row[letter('asset_output')] = evaluation.asset_normalized;
             }
@@ -623,7 +655,7 @@ async function browserRunEvaluation(options, onProgress) {
                 afsMarkRowEvaluated(s, rowIdx);
             }
             if (typeof afsApplyEvaluationToRow === 'function') {
-                afsApplyEvaluationToRow(row, evaluation, mappings);
+                afsApplyEvaluationToRow(row, evaluation, mappings, spreadsheet.headers);
             }
 
             if (options.runAtivo && letter('asset_output') && result.evaluation.asset_normalized) {
@@ -712,7 +744,7 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
         s.evaluations[evIdx] = { ...s.evaluations[evIdx], ...updated };
     }
     if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
-    if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, updated, mappings);
+    if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, updated, mappings, spreadsheet.headers);
 
     const link1Letter = mappings.link1;
     if (link1Letter) row[link1Letter] = '';
@@ -723,3 +755,5 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
 
 window.browserRunEvaluation = browserRunEvaluation;
 window.browserReEvaluateRow = browserReEvaluateRow;
+window.afsCorrectTagColumnMappings = afsCorrectTagColumnMappings;
+window.afsAlignConservationWithAge = afsAlignConservationWithAge;

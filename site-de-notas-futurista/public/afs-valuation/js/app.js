@@ -235,13 +235,22 @@ function updateSideConservationAge(data) {
     const tagEl = document.getElementById('sideTag');
     if (!consEl) return;
 
-    const cons = data.conservation_state ?? data.conservation;
+    let cons = data.conservation_state ?? data.conservation;
     const age = data.apparent_age ?? data.age;
+    if (cons != null && age != null && typeof afsAlignConservationWithAge === 'function') {
+        cons = afsAlignConservationWithAge(age, cons);
+    }
     const tag = data.tag_verificada ?? data.tag_verified ?? data.tag;
 
     consEl.textContent = formatConservationLabel(cons);
     ageEl.textContent = (age !== null && age !== undefined && age !== '') ? `${age} anos` : '-';
-    tagEl.textContent = tag ? `Tag: ${tag}` : '';
+    if (tag && String(tag).toLowerCase() === 'ok') {
+        tagEl.textContent = '';
+    } else if (tag) {
+        tagEl.textContent = `Tag lida: ${tag}`;
+    } else {
+        tagEl.textContent = '';
+    }
     consNote.textContent = data.raciocinio_visual ? String(data.raciocinio_visual).slice(0, 120) : '';
 }
 
@@ -782,8 +791,8 @@ async function buildMappingUI(spreadsheetData) {
     
     // Regras de auto-mapeamento (Letras exatas da planilha padrão do usuário ou palavras-chave)
     const autoMapRules = {
-        "tag_original": { letter: "E", keywords: ["tag", "tombamento", "plaqueta", "origem"] },
-        "tag_output": { letter: "C", keywords: ["tag verificada", "tag nova", "ok", "revisão tag", "revisao tag"] },
+        "tag_original": { letter: "D", keywords: ["tag origem", "tag original", "tombamento origem", "plaqueta origem"] },
+        "tag_output": { letter: "C", keywords: ["tag verificada", "revisão tag", "revisao tag", "tag ia", "tag destino"] },
         "desc_original": { letter: "BB", keywords: ["descrição", "identificação", "original"] },
         "desc_output": { letter: "BC", keywords: ["descrição ia", "reasoning", "descrição verificada"] },
         "age_original": { letter: "BL", keywords: ["idade origem", "idade original"] },

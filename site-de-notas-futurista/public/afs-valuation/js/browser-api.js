@@ -140,7 +140,7 @@ function afsParseWorkbook(file) {
 const AFS_FIELDS = {
     required: {
         tag_original: { label: 'Número da Tag (ORIGEM)', description: 'Coluna com a tag original colhida na vistoria' },
-        tag_output: { label: 'Número da Tag (DESTINO / IA)', description: "Coluna para gravar o 'ok' ou novo número da foto" },
+        tag_output: { label: 'Número da Tag (DESTINO / IA)', description: 'Coluna C — número lido na foto pela IA (ou "não foi possível verificar")' },
         link1: { label: 'Link 1 (Destino)', description: 'Coluna para gravar o primeiro link de referência' },
         link2: { label: 'Link 2 (Destino)', description: 'Coluna para gravar o segundo link de referência' },
         desc_original: { label: 'Descrição (ORIGEM)', description: 'Coluna com a descrição original da vistoria' },
@@ -433,10 +433,13 @@ function afsIsRowPendingEvaluation(row, s, mappings) {
     return true;
 }
 
-function afsApplyEvaluationToRow(row, ev, mappings) {
+function afsApplyEvaluationToRow(row, ev, mappings, headers) {
     if (!row || !ev || !mappings) return;
+    const corrected = typeof afsCorrectTagColumnMappings === 'function'
+        ? afsCorrectTagColumnMappings(mappings, headers)
+        : mappings;
     const letter = (field) => {
-        const m = mappings[field];
+        const m = corrected[field];
         return typeof m === 'string' ? m : m?.letter || '';
     };
     const set = (field, val) => {
@@ -452,8 +455,18 @@ function afsApplyEvaluationToRow(row, ev, mappings) {
     set('value_fipe', ev.value_fipe);
     set('methodology', ev.methodology);
     set('age_output', ev.apparent_age);
-    set('conservation_output', ev.conservation_state);
-    set('tag_output', ev.tag_verified);
+    let cons = ev.conservation_state;
+    if (cons != null && ev.apparent_age != null && typeof afsAlignConservationWithAge === 'function') {
+        cons = afsAlignConservationWithAge(ev.apparent_age, cons);
+    }
+    set('conservation_output', cons);
+    const tagOutCol = letter('tag_output');
+    const tagOrigCol = letter('tag_original');
+    if (tagOutCol && tagOrigCol && tagOutCol === tagOrigCol) {
+        console.warn('[AFS] tag_output e tag_original na mesma coluna — tag da IA não gravada');
+    } else {
+        set('tag_output', ev.tag_verified);
+    }
     const linkParts = (ev.links_array && ev.links_array.length)
         ? ev.links_array
         : String(ev.links || '').split(',').map(x => x.trim()).filter(x => /^https?:\/\//i.test(x));
@@ -472,8 +485,10 @@ function browserExportSpreadsheet() {
     const s = afsLoadState();
     if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
     if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada');
-    const mappings = afsGetActiveMappings(s);
     const spreadsheet = s.spreadsheet;
+    const mappings = typeof afsCorrectTagColumnMappings === 'function'
+        ? afsCorrectTagColumnMappings(afsGetActiveMappings(s), spreadsheet.headers)
+        : afsGetActiveMappings(s);
     const evalByRow = {};
     const evalByControl = {};
     (s.evaluations || []).forEach(ev => {
@@ -496,7 +511,7 @@ function browserExportSpreadsheet() {
         if (!ev && controlLetter && srcRow[controlLetter] != null) {
             ev = evalByControl[String(srcRow[controlLetter]).trim()];
         }
-        if (ev) afsApplyEvaluationToRow(row, ev, mappings);
+        if (ev) afsApplyEvaluationToRow(row, ev, mappings, headers);
         return headers.map(h => row[h.letter] ?? '');
     });
     const ws = XLSX.utils.aoa_to_sheet([headerNames, ...dataRows]);
