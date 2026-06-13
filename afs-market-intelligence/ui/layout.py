@@ -417,3 +417,113 @@ def download_export(filename):
     if not filepath.exists() or ".." in filename:
         return jsonify({"status": "error", "message": "Arquivo não encontrado"}), 404
     return send_file(filepath, as_attachment=True)
+
+
+# --- Prospecção reativa (Leads2b-style) ---
+
+@main_bp.route("/api/prospeccao/count", methods=["POST"])
+def prospeccao_count():
+    try:
+        body = request.get_json() or {}
+        from layers.categorization.prospeccao_search import parse_filtros_body, count_tabs
+        filtros = parse_filtros_body(body)
+        conn = _conn()
+        counts = count_tabs(conn, filtros)
+        conn.close()
+        return jsonify(counts)
+    except Exception as e:
+        logger.error("[prospeccao/count] %s", e)
+        return jsonify({"todas": 0, "nao_enriquecidas": 0, "enriquecidas": 0, "novas": 0, "error": str(e)})
+
+
+@main_bp.route("/api/prospeccao/search", methods=["POST"])
+def prospeccao_search():
+    try:
+        body = request.get_json() or {}
+        from layers.categorization.prospeccao_search import parse_filtros_body, search_rows
+        filtros = parse_filtros_body(body)
+        aba = body.get("aba") or "todas"
+        page = int(body.get("page") or 1)
+        page_size = int(body.get("page_size") or 25)
+        sort = body.get("sort") or "score_desc"
+        conn = _conn()
+        rows, total = search_rows(conn, filtros, aba=aba, page=page, page_size=page_size, sort=sort)
+        conn.close()
+        return jsonify({"total": total, "page": page, "page_size": page_size, "rows": rows})
+    except Exception as e:
+        logger.error("[prospeccao/search] %s", e)
+        return jsonify({"status": "error", "message": str(e), "total": 0, "rows": []}), 500
+
+
+@main_bp.route("/api/cnaes")
+def api_cnaes():
+    try:
+        q = request.args.get("q", "")
+        limite = min(int(request.args.get("limit", 20)), 50)
+        conn = _conn()
+        from layers.categorization.prospeccao_search import search_cnaes
+        result = search_cnaes(conn, q, limite)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify([])
+
+
+@main_bp.route("/api/municipios")
+def api_municipios():
+    try:
+        q = request.args.get("q", "")
+        uf = request.args.get("uf") or None
+        limite = min(int(request.args.get("limit", 20)), 50)
+        conn = _conn()
+        from layers.categorization.prospeccao_search import search_municipios
+        result = search_municipios(conn, q, uf, limite)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify([])
+
+
+@main_bp.route("/api/naturezas-juridicas")
+def api_naturezas():
+    try:
+        conn = _conn()
+        from layers.categorization.prospeccao_search import search_naturezas
+        result = search_naturezas(conn)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify([])
+
+
+@main_bp.route("/api/prospeccao/enriquecer", methods=["POST"])
+def prospeccao_enriquecer():
+    try:
+        body = request.get_json() or {}
+        cnpjs = body.get("cnpjs") or []
+        conn = _conn()
+        from layers.categorization.prospeccao_search import enfileirar_cnpjs
+        result = enfileirar_cnpjs(conn, cnpjs)
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/segmentacoes", methods=["GET"])
+def list_segmentacoes():
+    from layers.categorization.prospeccao_search import load_segmentacoes
+    return jsonify(load_segmentacoes())
+
+
+@main_bp.route("/api/segmentacoes/draft", methods=["POST"])
+def save_segmentacao():
+    try:
+        body = request.get_json() or {}
+        nome = (body.get("nome") or "Pesquisa sem nome").strip()
+        filtros = body.get("filtros") or body
+        from layers.categorization.prospeccao_search import save_segmentacao as _save
+        entry = _save(nome, filtros)
+        return jsonify(entry)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
