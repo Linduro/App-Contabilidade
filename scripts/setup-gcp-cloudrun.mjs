@@ -29,6 +29,7 @@ const SA_ROLES = [
   'roles/iam.serviceAccountUser',
   'roles/storage.admin',
   'roles/artifactregistry.writer',
+  'roles/artifactregistry.admin',
   'roles/serviceusage.serviceUsageAdmin',
 ];
 
@@ -41,6 +42,7 @@ const EXTRA_MEMBERS = [
 const EXTRA_ROLES = [
   'roles/run.admin',
   'roles/artifactregistry.writer',
+  'roles/artifactregistry.admin',
   'roles/storage.admin',
   'roles/logging.logWriter',
 ];

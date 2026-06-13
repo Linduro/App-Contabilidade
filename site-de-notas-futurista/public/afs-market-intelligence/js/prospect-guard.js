@@ -1,6 +1,6 @@
 /** Executado antes dos módulos — remove apenas dados demo fictícios. */
 (function () {
-  window.__AFS_BUILD__ = window.__AFS_BUILD__ || 'busca-leads-v11';
+  window.__AFS_BUILD__ = window.__AFS_BUILD__ || 'cloudrun-live-v12';
 
   ['afs_prospect_enrichment', 'afs_prospect_segmentacoes', 'afs_prospect_catalog'].forEach(function (k) {
     try { localStorage.removeItem(k); } catch (_) {}

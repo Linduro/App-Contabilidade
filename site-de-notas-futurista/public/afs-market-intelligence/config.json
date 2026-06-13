@@ -1,5 +1,5 @@
 {
-  "apiBase": "",
+  "apiBase": "https://afs-market-intelligence-92104290412.southamerica-east1.run.app",
   "firebase": {
     "apiKey": "AIzaSyAQS75d3hx5mDQwixNRjyRPLOSVWpyDpvk",
     "authDomain": "contabilidade-ebed6.firebaseapp.com",

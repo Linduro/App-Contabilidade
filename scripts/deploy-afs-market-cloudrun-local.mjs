@@ -36,8 +36,7 @@ async function createDeployKey(token) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error('createKey: ' + JSON.stringify(data));
-  const keyPath = path.join(REPO_ROOT, '.tmp-afs-deploy-key.json');
-  fs.mkdirSync(path.dirname(keyPath), { recursive: true });
+  const keyPath = path.join(REPO_ROOT, `.tmp-afs-deploy-key-${Date.now()}.json`);
   fs.writeFileSync(keyPath, Buffer.from(data.privateKeyData, 'base64'));
   return { keyPath, keyName: data.name };
 }
@@ -69,6 +68,7 @@ async function main() {
   console.log('Chave temporária criada (será removida após deploy)\n');
 
   try {
+    spawnSync(`"${GCLOUD}" auth revoke --all --quiet`, { shell: true, stdio: 'ignore' });
     run(GCLOUD, ['auth', 'activate-service-account', '--key-file=' + keyPath, '--quiet']);
     run(GCLOUD, ['config', 'set', 'project', PROJECT, '--quiet']);
     run(GCLOUD, [
