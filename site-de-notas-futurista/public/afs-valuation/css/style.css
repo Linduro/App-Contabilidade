@@ -1301,12 +1301,19 @@ body {
 .gallery-photo-frame {
     position: relative;
     width: 100%;
-    min-height: 280px;
-    height: 280px;
+    min-height: 320px !important;
+    height: 320px !important;
+    max-height: 320px !important;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.2);
+}
+
+.gallery-modal-detail .side-gallery,
+.gallery-modal-detail .gallery-detail-photo {
+    flex-shrink: 0;
 }
 
 .modal-photo-container {
@@ -1352,4 +1359,15 @@ body {
     font-size: 1.1rem;
     line-height: 1.2;
     min-height: 1.2em;
+}
+
+.afs-build-badge {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    margin-right: 8px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
 }

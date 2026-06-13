@@ -10,7 +10,7 @@ import { assetPath } from "@/lib/base-path"
 
 function AfsValuationContent() {
   useEffect(() => {
-    window.location.replace(assetPath("/afs-valuation/index.html"))
+    window.location.replace(assetPath("/afs-valuation/index.html?v=25"))
   }, [])
 
   return (
@@ -34,7 +34,7 @@ function AfsValuationContent() {
         <Loader2 className="h-8 w-8 animate-spin text-[#f97316]" />
         <p className="text-sm">Abrindo Asset Solutions Valuation…</p>
         <a
-          href={assetPath("/afs-valuation/index.html")}
+          href={assetPath("/afs-valuation/index.html?v=25")}
           className="text-sm text-[#ea580c] hover:underline"
         >
           Clique aqui se não redirecionar automaticamente

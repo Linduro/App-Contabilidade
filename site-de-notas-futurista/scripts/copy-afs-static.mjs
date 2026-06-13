@@ -11,6 +11,8 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true })
 }
 
+const BUILD = process.env.AFS_STATIC_BUILD || "25"
+
 function buildIndexHtml() {
   const baseHtml = fs.readFileSync(path.join(afsRoot, "templates", "base.html"), "utf8")
   const indexRaw = fs.readFileSync(path.join(afsRoot, "templates", "index.html"), "utf8")
@@ -23,7 +25,10 @@ function buildIndexHtml() {
   const configScript = `
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script>
+      window.__AFS_BUILD__ = "${BUILD}";
       (function () {
+        var badge = document.getElementById("afsBuildBadge");
+        if (badge) badge.textContent = "build ${BUILD}";
         var params = new URLSearchParams(window.location.search);
         var fromQuery = params.get("apiBase");
         if (fromQuery) {
@@ -34,19 +39,23 @@ function buildIndexHtml() {
         }
       })();
     </script>
-    <script src="./js/photo-resolver.js?v=24"></script>
-    <script src="./js/learning-rules.js?v=24"></script>
-    <script src="./js/browser-evaluation.js?v=24"></script>
-    <script src="./js/browser-api.js?v=24"></script>`
+    <script src="./js/photo-resolver.js?v=${BUILD}"></script>
+    <script src="./js/learning-rules.js?v=${BUILD}"></script>
+    <script src="./js/browser-evaluation.js?v=${BUILD}"></script>
+    <script src="./js/browser-api.js?v=${BUILD}"></script>`
 
   return baseHtml
     .replace(
+      '<meta name="viewport"',
+      '<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n    <meta name="viewport"',
+    )
+    .replace(
       'href="{{ url_for(\'static\', filename=\'css/style.css\') }}?v=3"',
-      'href="./css/style.css?v=24"',
+      `href="./css/style.css?v=${BUILD}"`,
     )
     .replace(
       '<script src="{{ url_for(\'static\', filename=\'js/app.js\') }}?v=3"></script>',
-      `${configScript}\n    <script src="./js/app.js?v=24"></script>`,
+      `${configScript}\n    <script src="./js/app.js?v=${BUILD}"></script>`,
     )
     .replace("{% block content %}{% endblock %}", indexBody)
 }
