@@ -199,7 +199,7 @@ export function PublicationMoreMenu({
             <MoreHorizontal className="size-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="border-[var(--jq-border)] bg-[var(--jq-bg)] text-[var(--jq-text)] shadow-xl">
           <DropdownMenuItem onClick={() => setShareDmOpen(true)}>
             <Send className="mr-2 size-4" />
             Enviar por mensagem
