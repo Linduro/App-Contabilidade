@@ -60,7 +60,7 @@ export function ProfileActionMenu() {
             <MoreHorizontal className="size-5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-56 border-[var(--jq-border)] bg-[var(--jq-bg)] text-[var(--jq-text)] shadow-xl">
           <DropdownMenuItem onClick={() => void copyLink()}>Copiar link do perfil</DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {

@@ -42,23 +42,23 @@ export async function voteJqPoll(
   await prisma.$transaction(async (tx) => {
     if (existing) {
       if (existing.pollOptionId === optionId) return;
-      await tx.juridiquesPollOption.update({
+      await tx.redeTestePollOption.update({
         where: { id: existing.pollOptionId },
         data: { votesCount: { decrement: 1 } },
       });
-      await tx.juridiquesPollVote.update({
+      await tx.redeTestePollVote.update({
         where: { id: existing.id },
         data: { pollOptionId: optionId },
       });
-      await tx.juridiquesPollOption.update({
+      await tx.redeTestePollOption.update({
         where: { id: optionId },
         data: { votesCount: { increment: 1 } },
       });
     } else {
-      await tx.juridiquesPollVote.create({
+      await tx.redeTestePollVote.create({
         data: { pollId: poll.id, pollOptionId: optionId, userId },
       });
-      await tx.juridiquesPollOption.update({
+      await tx.redeTestePollOption.update({
         where: { id: optionId },
         data: { votesCount: { increment: 1 } },
       });

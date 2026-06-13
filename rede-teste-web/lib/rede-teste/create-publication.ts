@@ -87,7 +87,7 @@ async function attachMedia(
   },
 ) {
   if (opts.externalGifUrl) {
-    await tx.juridiquesMedia.create({
+    await tx.redeTesteMedia.create({
       data: {
         publicationId: opts.publicationId,
         tenantId: opts.tenantId,
@@ -99,7 +99,7 @@ async function attachMedia(
     });
   }
   if (opts.mediaIds?.length) {
-    await tx.juridiquesMedia.updateMany({
+    await tx.redeTesteMedia.updateMany({
       where: {
         id: { in: opts.mediaIds },
         uploaderId: opts.userId,
@@ -165,7 +165,7 @@ export async function createJqPublicationsFromInput(
 
   const result = await prisma.$transaction(async (tx) => {
     if (input.draftId) {
-      const draft = await tx.juridiquesPublication.findFirst({
+      const draft = await tx.redeTestePublication.findFirst({
         where: {
           id: input.draftId,
           authorId: ctx.userId,
@@ -176,7 +176,7 @@ export async function createJqPublicationsFromInput(
       if (!draft) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Rascunho não encontrado" });
       }
-      await tx.juridiquesPublication.delete({ where: { id: draft.id } });
+      await tx.redeTestePublication.delete({ where: { id: draft.id } });
     }
 
     let threadRootId: string | null = null;
@@ -187,7 +187,7 @@ export async function createJqPublicationsFromInput(
         part.content ||
         (input.poll && i === 0 ? input.poll.options[0]?.slice(0, 560) ?? "" : "");
 
-      const pub = await tx.juridiquesPublication.create({
+      const pub = await tx.redeTestePublication.create({
         data: {
           tenantId: ctx.tenantId,
           authorId: ctx.userId,
@@ -211,7 +211,7 @@ export async function createJqPublicationsFromInput(
       if (i === 0) {
         threadRootId = pub.id;
         if (isThread) {
-          await tx.juridiquesPublication.update({
+          await tx.redeTestePublication.update({
             where: { id: pub.id },
             data: { threadRootId: pub.id },
           });
@@ -234,13 +234,13 @@ export async function createJqPublicationsFromInput(
     }
 
     if (status === "PUBLISHED") {
-      await tx.juridiquesProfile.update({
+      await tx.redeTesteProfile.update({
         where: { userId: ctx.userId },
         data: { publicationsCount: { increment: posts.length } },
       });
 
       if (input.parentId) {
-        await tx.juridiquesPublication.update({
+        await tx.redeTestePublication.update({
           where: { id: input.parentId },
           data: { repliesCount: { increment: 1 } },
         });

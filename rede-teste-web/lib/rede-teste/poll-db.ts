@@ -29,7 +29,7 @@ export async function createJqPoll(
   input: z.infer<typeof jqPollInputSchema>,
 ): Promise<void> {
   const expiresAt = pollExpiresAt(input.durationDays);
-  const poll = await tx.juridiquesPoll.create({
+  const poll = await tx.redeTestePoll.create({
     data: {
       publicationId,
       durationDays: input.durationDays,
@@ -37,7 +37,7 @@ export async function createJqPoll(
     },
   });
 
-  await tx.juridiquesPollOption.createMany({
+  await tx.redeTestePollOption.createMany({
     data: input.options.map((text, position) => ({
       id: randomUUID(),
       pollId: poll.id,

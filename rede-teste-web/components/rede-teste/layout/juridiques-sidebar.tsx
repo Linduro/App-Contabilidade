@@ -171,7 +171,7 @@ export function RedeTesteSidebar({ user, onCompose }: Props) {
             <MoreHorizontal className="size-5 shrink-0 text-[var(--jq-muted)]" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-56 border-[var(--jq-border)] bg-[var(--jq-bg)] text-[var(--jq-text)] shadow-xl">
           <DropdownMenuItem asChild>
             <Link href="/dashboard">
               <ArrowLeft className="mr-2 size-4" />

@@ -62,6 +62,21 @@ export function ExploreView() {
   );
   const courtFilter = searchParams.get("court") ?? undefined;
 
+  useEffect(() => {
+    const urlQ = searchParams.get("q") ?? "";
+    const urlCourt = searchParams.get("court") ?? "";
+    const urlType = searchParams.get("type");
+    const parsedType = urlType ? parseExploreTab(urlType) : urlQ ? inferSearchType(urlQ) : "for-you";
+    setQ(urlQ || urlCourt);
+    setType(parsedType);
+    setSubmitted(
+      urlQ.length > 0 ||
+        urlCourt.length > 0 ||
+        parsedType === "for-you" ||
+        parsedType === "hoje-no-direito",
+    );
+  }, [searchParams]);
+
   const query = submitted ? q.trim() : "";
   const effectiveType = query
     ? inferSearchType(query) === "people"

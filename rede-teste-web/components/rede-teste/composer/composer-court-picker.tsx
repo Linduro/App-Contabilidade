@@ -48,7 +48,11 @@ export function ComposerCourtPicker({ disabled, value, onChange, className }: Pr
           <Landmark className="size-5" strokeWidth={1.75} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 border-[var(--jq-border)] bg-[var(--jq-bg)] p-3" align="start">
+      <PopoverContent
+        className="w-80 border-[var(--jq-border)] bg-[var(--jq-bg)] p-3"
+        align="start"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}

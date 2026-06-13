@@ -1206,14 +1206,14 @@ export const redeTesteRouter = router({
       }
 
       const updated = await ctx.prisma.$transaction(async (tx) => {
-        await tx.juridiquesView.create({
+        await tx.redeTesteView.create({
           data: {
             publicationId: input.publicationId,
             userId: viewerId,
             sessionId: viewerId ? null : sessionId,
           },
         });
-        return tx.juridiquesPublication.update({
+        return tx.redeTestePublication.update({
           where: { id: input.publicationId },
           data: { viewsCount: { increment: 1 } },
           select: { viewsCount: true },
@@ -2546,7 +2546,7 @@ export const redeTesteRouter = router({
       }
 
       const msg = await ctx.prisma.$transaction(async (tx) => {
-        const created = await tx.juridiquesMessage.create({
+        const created = await tx.redeTesteMessage.create({
           data: {
             conversationId: input.conversationId,
             senderId: ctx.user.id,
@@ -2554,7 +2554,7 @@ export const redeTesteRouter = router({
             sharedPublicationId: input.sharedPublicationId ?? null,
           },
         });
-        await tx.juridiquesConversation.update({
+        await tx.redeTesteConversation.update({
           where: { id: input.conversationId },
           data: { updatedAt: new Date() },
         });
@@ -2794,15 +2794,15 @@ export const redeTesteRouter = router({
       }
 
       await ctx.prisma.$transaction(async (tx) => {
-        await tx.juridiquesReport.deleteMany({
+        await tx.redeTesteReport.deleteMany({
           where: { publicationId: input.publicationId },
         });
-        await tx.juridiquesPublication.update({
+        await tx.redeTestePublication.update({
           where: { id: input.publicationId },
           data: { deletedAt: new Date() },
         });
         if (!pub.parentId) {
-          await tx.juridiquesProfile.update({
+          await tx.redeTesteProfile.update({
             where: { userId: pub.authorId },
             data: { publicationsCount: { decrement: 1 } },
           });
@@ -2855,7 +2855,7 @@ export const redeTesteRouter = router({
       });
       if (!member) throw new TRPCError({ code: "NOT_FOUND" });
       await ctx.prisma.$transaction(async (tx) => {
-        await tx.juridiquesCommunityMember.delete({
+        await tx.redeTesteCommunityMember.delete({
           where: {
             communityId_userId: {
               communityId: input.communityId,
@@ -2863,10 +2863,10 @@ export const redeTesteRouter = router({
             },
           },
         });
-        const count = await tx.juridiquesCommunityMember.count({
+        const count = await tx.redeTesteCommunityMember.count({
           where: { communityId: input.communityId },
         });
-        await tx.juridiquesCommunity.update({
+        await tx.redeTesteCommunity.update({
           where: { id: input.communityId },
           data: { membersCount: count },
         });
@@ -2911,7 +2911,7 @@ export const redeTesteRouter = router({
       if (!community) throw new TRPCError({ code: "NOT_FOUND" });
 
       await ctx.prisma.$transaction(async (tx) => {
-        await tx.juridiquesCommunityMember.upsert({
+        await tx.redeTesteCommunityMember.upsert({
           where: {
             communityId_userId: {
               communityId: input.communityId,
@@ -2925,10 +2925,10 @@ export const redeTesteRouter = router({
           },
           update: {},
         });
-        const count = await tx.juridiquesCommunityMember.count({
+        const count = await tx.redeTesteCommunityMember.count({
           where: { communityId: input.communityId },
         });
-        await tx.juridiquesCommunity.update({
+        await tx.redeTesteCommunity.update({
           where: { id: input.communityId },
           data: { membersCount: count },
         });

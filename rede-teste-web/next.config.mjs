@@ -2,6 +2,9 @@
 const nextConfig = {
   output: "standalone",
   images: { unoptimized: true },
+  async rewrites() {
+    return [{ source: "/uploads/:path*", destination: "/api/uploads/:path*" }];
+  },
   experimental: {
     serverComponentsExternalPackages: ["@prisma/client", "firebase-admin"],
   },

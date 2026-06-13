@@ -1,5 +1,6 @@
 /* Rede Teste theme (copiado do módulo social, sem AdvForte) */
-.rt-portal-theme.rt-light {
+[data-rede-teste].jq-theme.jq-light,
+html.rt-portal-theme.jq-light {
   --rt-primary: #1b2a4e;
   --rt-on-primary: #ffffff;
   --rt-accent: #c9a96e;
@@ -11,12 +12,23 @@
   --rt-like: #e0245e;
   --rt-repost: #17bf63;
   --rt-reply: #1d9bf0;
+  --jq-primary: var(--rt-primary);
+  --jq-on-primary: var(--rt-on-primary);
+  --jq-accent: var(--rt-accent);
+  --jq-bg: var(--rt-bg);
+  --jq-surface: var(--rt-surface);
+  --jq-text: var(--rt-text);
+  --jq-muted: var(--rt-muted);
+  --jq-border: var(--rt-border);
+  --jq-like: var(--rt-like);
+  --jq-repost: var(--rt-repost);
+  --jq-reply: var(--rt-reply);
 }
 
 /* Juridiquês — escuro padrão (quase preto) */
 [data-rede-teste].jq-theme.jq-dark,
 [data-rede-teste].rt-theme.rt-dark,
-html.rt-portal-theme.rt-dark {
+html.rt-portal-theme.jq-dark {
   --rt-primary: #f0ede8;
   --rt-on-primary: #0f1419;
   --rt-accent: #d4cfc4;
@@ -44,9 +56,9 @@ html.rt-portal-theme.rt-dark {
 /* Portais Radix (dialog, dropdown, popover) fora do shell Juridiquês */
 html.rt-portal-theme [data-slot="dropdown-menu-content"],
 html.rt-portal-theme [data-slot="popover-content"] {
-  background-color: var(--rt-bg) !important;
-  color: var(--rt-text) !important;
-  border-color: var(--rt-border) !important;
+  background-color: var(--jq-bg, var(--rt-bg)) !important;
+  color: var(--jq-text, var(--rt-text)) !important;
+  border-color: var(--jq-border, var(--rt-border)) !important;
 }
 
 html.rt-portal-theme [data-sonner-toast] {
@@ -75,6 +87,13 @@ html.rt-portal-theme [data-sonner-toast] {
 [data-rede-teste] [data-slot="button"].bg-background:not(.bg-white):hover {
   background: color-mix(in srgb, var(--rt-surface) 85%, var(--rt-text));
   color: var(--rt-text);
+}
+
+html.rt-portal-theme em-emoji-picker,
+html.rt-portal-theme .emoji-mart {
+  --em-rgb-background: var(--jq-bg, var(--rt-bg));
+  --em-rgb-color: var(--jq-text, var(--rt-text));
+  --em-rgb-input: var(--jq-surface, var(--rt-surface));
 }
 
 [data-rede-teste] em-emoji-picker,

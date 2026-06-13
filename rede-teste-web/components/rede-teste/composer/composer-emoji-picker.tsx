@@ -20,7 +20,7 @@ const Picker = dynamic(
 function useJqEmojiTheme(): "light" | "dark" {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   useEffect(() => {
-    const root = document.querySelector("[data-juridiques].jq-theme");
+    const root = document.querySelector("[data-rede-teste].jq-theme");
     const read = () =>
       setTheme(root?.classList.contains("jq-light") ? "light" : "dark");
     read();
@@ -71,6 +71,8 @@ export function ComposerEmojiPicker({ disabled, onPick, className }: Props) {
         sideOffset={8}
         className="z-[250] w-auto border-[var(--jq-border)] bg-[var(--jq-bg)] p-0 shadow-xl"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
       >
         {recent.length > 0 ? (
           <div className="border-b border-[var(--jq-border)] bg-[var(--jq-bg)] px-2 py-2">
