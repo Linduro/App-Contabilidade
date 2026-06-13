@@ -2,6 +2,8 @@
 
 Motor de inteligência de mercado B2B da **Asset Flow Solutions (AFS)** — extração, enriquecimento, validação e funil comercial para conformidade patrimonial e buscas adaptáveis.
 
+> **Deploy produção:** `ENABLE_GCP_CLOUD_RUN=true` no GitHub → workflow *Deploy AFS Market Intelligence (Cloud Run)*.
+
 ## Propósito
 
 - Minerar dados públicos da Receita Federal (Lucro Real, ~230k ICP)
