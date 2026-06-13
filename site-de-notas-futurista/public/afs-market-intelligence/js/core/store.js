@@ -8,7 +8,7 @@ const COLLECTIONS = [
   'products', 'quotes', 'orders', 'clients', 'conversations', 'messages',
   'segmentations', 'emailTemplates', 'messageTemplates', 'automations', 'automationRuns',
   'campaigns', 'goals', 'reports', 'partners', 'users', 'tags', 'customFields',
-  'landingPages', 'forms', 'documents',
+  'landingPages', 'forms', 'documents', 'scrapingGroups',
 ];
 
 const listeners = new Set();

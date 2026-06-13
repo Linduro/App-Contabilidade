@@ -26,6 +26,7 @@ export async function renderHome({ mount }) {
         '<p class="hint">' + date + '</p>' +
       '</div>' +
       '<div class="l2-onboard-grid">' +
+        card('Prospecção em Massa', '~230k LR', '/prospeccao/massa', 'Ingestão RF + mapas') +
         card('Prospecção', leads + ' leads ICP', '/prospeccao', 'Buscar empresas') +
         card('Pipelines', deals + ' negócios', '/crm/pipelines', 'Abrir kanban') +
         card('Atividades', activities + ' pendentes', '/tarefas', overdue ? overdue + ' atrasadas' : 'Em dia') +

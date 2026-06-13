@@ -25,16 +25,20 @@ def get_connection():
 
 def init_db():
     schema_path = ROOT / "db" / "schema.sql"
+    prospect_path = ROOT / "db" / "schema_prospect.sql"
     conn = get_connection()
     try:
-        sql = schema_path.read_text(encoding="utf-8")
-        for stmt in sql.split(";"):
-            stmt = stmt.strip()
-            if stmt:
-                try:
-                    conn.execute(stmt)
-                except Exception as e:
-                    logger.debug("[db] stmt skipped: %s", e)
+        for path in (schema_path, prospect_path):
+            if not path.exists():
+                continue
+            sql = path.read_text(encoding="utf-8")
+            for stmt in sql.split(";"):
+                stmt = stmt.strip()
+                if stmt:
+                    try:
+                        conn.execute(stmt)
+                    except Exception as e:
+                        logger.debug("[db] stmt skipped: %s", e)
         if hasattr(conn, "commit"):
             conn.commit()
         logger.info("[db] Schema inicializado em %s (%s)", DB_PATH, DB_ENGINE)

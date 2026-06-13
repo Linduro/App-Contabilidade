@@ -68,6 +68,11 @@ for (const css of fs.readdirSync(path.join(marketRoot, "static", "css"))) {
   )
 }
 
+const staticData = path.join(marketRoot, "static", "data")
+if (fs.existsSync(staticData)) {
+  copyDir(staticData, path.join(outDir, "data"))
+}
+
 fs.writeFileSync(path.join(outDir, "index.html"), buildIndexHtml(), "utf8")
 
 const firebaseDefaults = {

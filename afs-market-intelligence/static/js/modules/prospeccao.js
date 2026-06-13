@@ -2,6 +2,7 @@ import * as store from '../core/store.js';
 import { openDrawer } from '../components/drawer.js';
 import { toCSV, downloadFile } from '../components/export.js';
 import { fetchCnpjRf, fetchCnpjBatch, onlyDigits, parseCnpjList } from '../adapters/brasilapi-cnpj.js';
+import { fetchRfStatus, startRfIngest, pollJob, fetchProspectos, mapProspectoToStore } from '../adapters/rf-pipeline-api.js';
 import { computeScore } from '../core/scoring.js';
 
 const REGIME_LABELS = { SN: 'Simples Nacional', LP: 'Lucro Presumido', LR: 'Lucro Real' };
@@ -164,9 +165,22 @@ function convertToLead(company) {
 
 function renderRfPanel() {
   return '<section class="l2-card prosp-rf-panel" style="margin-bottom:1rem">' +
-    '<h3 style="margin:0 0 0.35rem">Ingestão Receita Federal (gratuita)</h3>' +
-    '<p class="hint">Consulta em tempo real via <a href="https://brasilapi.com.br" target="_blank" rel="noopener">BrasilAPI</a> — dados abertos oficiais da RF. ' +
-    'Para milhões de registros use o pipeline Python com <code>dados_abertos_cnpj</code> (Cloud Run/local).</p>' +
+    '<h3 style="margin:0 0 0.35rem">Base Receita Federal — Lucro Real (~230k)</h3>' +
+    '<p class="hint" id="prosp-rf-bulk-status">Verificando backend…</p>' +
+    '<div class="prosp-rf-bulk-row" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">' +
+      '<button type="button" class="btn primary sm" id="prosp-rf-bulk-start">Iniciar ingestão completa RF</button>' +
+      '<button type="button" class="btn sm" id="prosp-rf-bulk-import">Importar amostra p/ prospecção</button>' +
+      '<select id="prosp-rf-modo" class="l2-select" style="width:auto">' +
+        '<option value="completo">Modo: todas LR (~230k)</option>' +
+        '<option value="icp_afs">Modo: só ICP AFS (Agro/Ind/Varejo)</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="pipe-bar-row hidden" id="prosp-rf-bulk-progress-wrap" style="margin-bottom:0.75rem">' +
+      '<div class="pipe-bar-track" style="flex:1"><div class="pipe-bar-fill" id="prosp-rf-bulk-progress" style="width:0%"></div></div>' +
+      '<span id="prosp-rf-bulk-progress-lbl">0%</span></div>' +
+    '<details><summary style="cursor:pointer;font-size:0.85rem;color:var(--text-muted)">Consulta unitária via BrasilAPI (testes)</summary>' +
+    '<p class="hint" style="margin-top:0.5rem">Consulta em tempo real via <a href="https://brasilapi.com.br" target="_blank" rel="noopener">BrasilAPI</a>. ' +
+    'Para milhões de registros use o botão acima (pipeline DuckDB).</p>' +
     '<div class="prosp-rf-row">' +
       '<label class="l2-field" style="flex:1"><span>CNPJ</span>' +
         '<input id="prosp-rf-cnpj" placeholder="00.000.000/0001-00" inputmode="numeric"></label>' +
@@ -188,7 +202,7 @@ function renderRfPanel() {
       '<div class="pipe-bar-track" style="flex:1"><div class="pipe-bar-fill" id="prosp-rf-progress" style="width:0%;background:var(--afs-orange-500)"></div></div>' +
       '<span id="prosp-rf-progress-lbl">0%</span></div>' +
     '<div id="prosp-rf-preview" class="hint" style="margin-top:0.5rem"></div>' +
-  '</section>';
+    '</details></section>';
 }
 
 function setRfBusy(mount, busy, msg) {
@@ -212,6 +226,46 @@ function updateRfProgress(mount, current, total) {
 }
 
 function bindRfPanel(mount) {
+  refreshRfBulkStatus(mount);
+
+  mount.querySelector('#prosp-rf-bulk-start')?.addEventListener('click', async () => {
+    const modo = mount.querySelector('#prosp-rf-modo')?.value || 'completo';
+    const wrap = mount.querySelector('#prosp-rf-bulk-progress-wrap');
+    const bar = mount.querySelector('#prosp-rf-bulk-progress');
+    const lbl = mount.querySelector('#prosp-rf-bulk-progress-lbl');
+    wrap?.classList.remove('hidden');
+    try {
+      const { job_id } = await startRfIngest({ modo, skipDownload: false });
+      window.AFSToast?.info('Ingestão RF iniciada — job #' + job_id);
+      await pollJob(job_id, (job) => {
+        if (bar) bar.style.width = (job.progress || 0) + '%';
+        if (lbl) lbl.textContent = (job.progress || 0) + '% — ' + (job.message || job.status);
+        mount.querySelector('#prosp-rf-bulk-status').textContent = job.message || job.status;
+      });
+      window.AFSToast?.success('Base Lucro Real carregada');
+      refreshRfBulkStatus(mount);
+    } catch (e) {
+      window.AFSToast?.error(e.message || String(e));
+    }
+  });
+
+  mount.querySelector('#prosp-rf-bulk-import')?.addEventListener('click', async () => {
+    try {
+      const data = await fetchProspectos({ limite: 200 });
+      let n = 0;
+      (data.prospectos || []).forEach((p) => {
+        const row = mapProspectoToStore(p);
+        row.score = computeScore(row);
+        saveRfRecord(row, false);
+        n++;
+      });
+      window.AFSToast?.success(n + ' prospectos importados da base RF');
+      paintTable(mount);
+    } catch (e) {
+      window.AFSToast?.error(e.message || 'Backend offline ou base vazia');
+    }
+  });
+
   mount.querySelector('#prosp-rf-one')?.addEventListener('click', async () => {
     const cnpj = mount.querySelector('#prosp-rf-cnpj')?.value;
     const asLead = mount.querySelector('#prosp-rf-dest')?.value === 'lead';
@@ -283,6 +337,25 @@ function bindRfPanel(mount) {
   });
 }
 
+async function refreshRfBulkStatus(mount) {
+  const el = mount.querySelector('#prosp-rf-bulk-status');
+  if (!el) return;
+  try {
+    const st = await fetchRfStatus();
+    if (!st) {
+      el.textContent = 'Backend offline — rode python app.py (porta 5001) ou configure Cloud Run em config.json';
+      return;
+    }
+    const u = st.universo || {};
+    el.textContent =
+      'Backend online · Candidatas LR: ' + (u.candidatas_lucro_real || 0).toLocaleString('pt-BR') +
+      ' · Prospectos carregados: ' + (st.prospectos_carregados || 0).toLocaleString('pt-BR') +
+      (st.snapshot?.versao ? ' · Snapshot ' + st.snapshot.versao : '');
+  } catch {
+    el.textContent = 'Backend offline — inicie o servidor Python para ingestão em massa';
+  }
+}
+
 function renderAccordion(mount, allRows) {
   const ufs = ufsFrom(allRows);
   const cnaes = cnaesFrom(allRows);
@@ -332,19 +405,22 @@ function paintTable(mount) {
         '<button type="button" class="btn sm' + (state.source === 'companies' ? ' primary' : '') + '" data-src="companies">Empresas novas</button>' +
       '</div></div>' +
     '<table class="data-table leads-inbox-table"><thead><tr>' +
-      '<th>Empresa</th><th>CNPJ</th><th>UF</th><th>Regime</th><th>Score</th><th>Capital</th><th>Origem</th><th></th>' +
+      '<th>Empresa</th><th>CNPJ</th><th>UF</th><th>CNAE</th><th>Regime</th><th>Score</th><th>Capital</th><th>E-mail</th><th>Origem</th><th></th>' +
     '</tr></thead><tbody>' +
     (pageRows.length ? pageRows.map((r) => {
       const nome = r.razao_social || r.nome || '—';
       const cnpj = r.cnpj_basico || r.cnpj || '—';
-      const origem = r._tipo === 'lead' ? (r.origem || 'lead') : 'empresa';
+      const origem = r.fonte_rf === 'receita_federal_bulk' ? 'RF bulk' : (r._tipo === 'lead' ? (r.origem || 'lead') : 'empresa');
+      const email = r.email || (r.emails_encontrados || '').split(';')[0] || '—';
+      const cnae = r.cnae_codigo || r.cnae || '—';
       const action = r._tipo === 'company'
         ? '<button type="button" class="btn sm" data-convert="' + esc(r._id) + '">→ Lead</button>'
         : '<button type="button" class="btn sm" data-view="' + esc(r._id) + '">Ver</button>';
       return '<tr data-row="' + esc(r._id) + '"><td>' + esc(nome) + '</td><td>' + esc(cnpj) + '</td><td>' + esc(r.uf) + '</td>' +
+        '<td>' + esc(cnae) + '</td>' +
         '<td>' + esc(REGIME_LABELS[r.regime_tributario] || r.regime_tributario || '—') + '</td>' +
-        '<td>' + esc(r.score ?? '—') + '</td><td>' + money(r.capital_social) + '</td><td>' + esc(origem) + '</td><td>' + action + '</td></tr>';
-    }).join('') : '<tr><td colspan="8" class="hint">Nenhum resultado. Ajuste os filtros.</td></tr>') +
+        '<td>' + esc(r.score ?? '—') + '</td><td>' + money(r.capital_social) + '</td><td>' + esc(email) + '</td><td>' + esc(origem) + '</td><td>' + action + '</td></tr>';
+    }).join('') : '<tr><td colspan="10" class="hint">Nenhum resultado. Ajuste os filtros ou importe da RF.</td></tr>') +
     '</tbody></table>' +
     '<div class="pagination-row">' +
       '<button type="button" class="btn sm" id="prosp-prev"' + (state.page <= 1 ? ' disabled' : '') + '>Anterior</button>' +
@@ -407,7 +483,11 @@ export async function renderProspeccao({ mount }) {
   const allRows = allProspectRows();
   mount.innerHTML =
     '<div class="crm-toolbar"><div><h2 style="margin:0">Prospecção</h2>' +
-    '<p class="hint">Dados reais da RF via BrasilAPI + filtros ICP locais</p></div></div>' +
+    '<p class="hint">Consulta unitária (BrasilAPI) · Para a base completa (~230k LR) use a página dedicada</p></div>' +
+    '<a class="btn primary" href="#/prospeccao/massa">⬡ Prospecção em Massa</a></div>' +
+    '<div class="pm-banner l2-card"><strong>Base RF em massa?</strong> ' +
+    'A ingestão dos ~230 mil Lucro Real está em <a href="#/prospeccao/massa">Prospecção em Massa</a> ' +
+    '(menu lateral → primeiro item em Módulos).</div>' +
     renderRfPanel() +
     renderAccordion(mount, allRows) +
     '<div id="prosp-results"></div>';

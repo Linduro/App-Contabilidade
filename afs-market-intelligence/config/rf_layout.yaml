@@ -1,0 +1,125 @@
+# Layout oficial dos arquivos CSV da Receita Federal (sem cabeçalho)
+# Fonte: Layout Dados Abertos CNPJ — Receita Federal do Brasil
+
+urls:
+  primary: "https://dadosabertos.rfb.gov.br/CNPJ/dados_abertos_cnpj"
+  fallback: "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj"
+
+multipart:
+  - Empresas
+  - Estabelecimentos
+  - Socios
+
+single:
+  - Simples
+  - Cnaes
+  - Municipios
+  - Naturezas
+  - Qualificacoes
+  - Motivos
+  - Paises
+
+empresas:
+  columns:
+    - cnpj_basico
+    - razao_social
+    - natureza_juridica
+    - qualificacao_responsavel
+    - capital_social
+    - porte
+    - ente_federativo
+
+estabelecimentos:
+  columns:
+    - cnpj_basico
+    - cnpj_ordem
+    - cnpj_dv
+    - matriz_filial
+    - nome_fantasia
+    - situacao_cadastral
+    - data_situacao
+    - motivo_situacao
+    - cidade_exterior
+    - pais
+    - data_inicio
+    - cnae_fiscal
+    - cnae_secundario
+    - tipo_logradouro
+    - logradouro
+    - numero
+    - complemento
+    - bairro
+    - cep
+    - uf
+    - municipio
+    - ddd1
+    - telefone1
+    - ddd2
+    - telefone2
+    - ddd_fax
+    - fax
+    - email
+    - situacao_especial
+    - data_situacao_especial
+
+simples:
+  columns:
+    - cnpj_basico
+    - opcao_simples
+    - data_opcao_simples
+    - data_exclusao_simples
+    - opcao_mei
+    - data_opcao_mei
+    - data_exclusao_mei
+
+cnaes:
+  columns:
+    - codigo
+    - descricao
+
+socios:
+  columns:
+    - cnpj_basico
+    - identificador_socio
+    - nome_socio
+    - cnpj_cpf_socio
+    - qualificacao_socio
+    - data_entrada_sociedade
+    - pais
+    - representante_legal
+    - nome_representante
+    - qualificacao_representante
+    - faixa_etaria
+
+municipios:
+  columns:
+    - codigo
+    - descricao
+
+qualificacoes:
+  columns:
+    - codigo
+    - descricao
+
+qualificacoes_chave:
+  - "05"
+  - "08"
+  - "10"
+  - "16"
+  - "17"
+  - "49"
+  - "50"
+  - "52"
+  - "53"
+  - "54"
+  - "55"
+  - "56"
+  - "59"
+  - "63"
+  - "65"
+
+lucro_real:
+  capital_min: 2000000
+  filiais_min: 3
+  natureza_juridica: ["2062", "2054", "2046"]
+  situacao_ativa: "02"

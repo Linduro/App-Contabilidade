@@ -1,0 +1,40 @@
+name: RF Ingestão Mensal (CNPJ Receita Federal)
+
+on:
+  schedule:
+    - cron: "0 6 5 * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-rf-ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar ingestão RF via API Cloud Run
+        id: ingest
+        run: |
+          API_URL="${{ vars.AFS_MARKET_API_URL }}"
+          if [ -z "$API_URL" ]; then
+            echo "::error::Configure AFS_MARKET_API_URL em Settings > Variables"
+            exit 1
+          fi
+          RESP=$(curl -sf -X POST "${API_URL}/api/rf/ingest" \
+            -H "Content-Type: application/json" \
+            -d '{"skip_download": false}')
+          echo "$RESP"
+          echo "job_id=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('job_id',''))")" >> "$GITHUB_OUTPUT"
+
+      - name: Aguardar conclusão (poll até 60 min)
+        if: steps.ingest.outputs.job_id != ''
+        run: |
+          API_URL="${{ vars.AFS_MARKET_API_URL }}"
+          JOB_ID="${{ steps.ingest.outputs.job_id }}"
+          for i in $(seq 1 120); do
+            BODY=$(curl -sf "${API_URL}/api/jobs/${JOB_ID}")
+            STATUS=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('status',''))")
+            MSG=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('message',''))")
+            echo "Poll $i: $STATUS — $MSG"
+            [ "$STATUS" = "done" ] && exit 0
+            [ "$STATUS" = "error" ] && echo "$BODY" && exit 1
+            sleep 30
+          done
+          echo "::warning::Timeout aguardando job $JOB_ID"

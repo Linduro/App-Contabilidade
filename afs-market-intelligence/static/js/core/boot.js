@@ -9,6 +9,7 @@ import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 const TITLES = {
   '/apps': 'Home',
   '/prospeccao': 'Prospecção',
+  '/prospeccao/massa': 'Prospecção em Massa',
   '/prospeccao/dead-zone': 'Dead Zone',
   '/prospeccao/transicao': 'Transição de Regime',
   '/crm/pipelines': 'Pipelines',
@@ -24,6 +25,7 @@ const TITLES = {
 const ROUTE_LOADERS = {
   '/apps': () => import('../modules/home.js').then((m) => m.renderHome),
   '/prospeccao': () => import('../modules/prospeccao.js').then((m) => m.renderProspeccao),
+  '/prospeccao/massa': () => import('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
   '/prospeccao/dead-zone': () => import('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
   '/prospeccao/transicao': () => import('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
   '/crm/pipelines': () => import('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
@@ -44,6 +46,7 @@ function lazy(loaderFn) {
 
 function titleFor(path) {
   if (TITLES[path]) return TITLES[path];
+  if (path.startsWith('/prospeccao/massa')) return 'Prospecção em Massa';
   if (path.startsWith('/marketing')) return 'Marketing';
   if (path.startsWith('/comunicacao')) return 'Comunicação';
   if (path.startsWith('/automacao')) return 'Automação';
@@ -58,6 +61,10 @@ function registerAllRoutes() {
   Object.entries(ROUTE_LOADERS).forEach(([path, loader]) => {
     register(path, lazy(loader));
   });
+
+  registerPrefix('/prospeccao/', lazy(
+    () => import('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
+  ));
 
   registerPrefix('/comunicacao/', lazy(
     () => import('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),

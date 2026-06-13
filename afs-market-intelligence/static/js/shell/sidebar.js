@@ -8,7 +8,8 @@ const NAV = [
     { hash: '/tarefas', label: 'Atividades', icon: '☑' },
   ]},
   { section: 'Módulos', items: [
-    { hash: '/prospeccao', label: 'Prospecção', icon: '◎' },
+    { hash: '/prospeccao/massa', label: 'Prospecção em Massa', icon: '⬡', highlight: true },
+    { hash: '/prospeccao', label: 'Prospecção unitária', icon: '◎' },
     { hash: '/crm/leads', label: 'CRM · Leads', icon: '◉' },
     { hash: '/crm/pipelines', label: 'CRM · Pipelines', icon: '▦' },
     { hash: '/marketing/segmentacoes', label: 'Marketing', icon: '◈' },
@@ -47,7 +48,7 @@ export function renderSidebar(el, currentPath) {
             const unread = store.count('conversations', (c) => (c.nao_lidas || 0) > 0);
             if (unread > 0) badge = '<span class="l2-badge">' + unread + '</span>';
           }
-          return '<a class="l2-nav-item' + (active ? ' active' : '') + '" href="#' + item.hash + '">' +
+          return '<a class="l2-nav-item' + (active ? ' active' : '') + (item.highlight ? ' l2-nav-highlight' : '') + '" href="#' + item.hash + '">' +
             '<span class="l2-nav-icon">' + item.icon + '</span>' + item.label + badge + '</a>';
         }).join('') +
       '</div>';

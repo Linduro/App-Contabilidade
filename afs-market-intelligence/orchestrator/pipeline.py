@@ -38,11 +38,15 @@ class PipelineOrchestrator:
     def executar_etapa(self, etapa: str, **kwargs) -> dict:
         try:
             if etapa == "ingestao_rf":
-                from layers.ingestion.receita_federal import ReceitaFederalIngester
-                result = ReceitaFederalIngester(self.conn).executar_ingestao(kwargs.get("versao"))
+                from layers.ingestion.rf_pipeline import RFIngestOrchestrator
+                result = RFIngestOrchestrator(self.conn).executar(
+                    versao=kwargs.get("versao"),
+                    skip_download=kwargs.get("skip_download", False),
+                    modo=kwargs.get("modo", "completo"),
+                )
             elif etapa == "categorizacao_icp":
-                from layers.categorization.icp_filter import ICPFilter
-                result = ICPFilter(self.perfil).aplicar_filtro(self.conn)
+                from layers.categorization.prospect_builder import ProspectBuilder
+                result = ProspectBuilder(self.perfil, modo=kwargs.get("modo", "completo")).construir(self.conn)
             elif etapa == "enriquecimento":
                 from layers.enrichment.enrichment_engine import EnrichmentEngine
                 result = EnrichmentEngine(self.conn).executar_lote(kwargs.get("limite", 50))
