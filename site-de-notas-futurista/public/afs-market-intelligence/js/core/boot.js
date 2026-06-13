@@ -6,6 +6,13 @@ import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
 
+/** Cache-bust em imports dinâmicos (evita JS antigo em cache). */
+function importMod(relPath) {
+  const v = window.__AFS_BUILD__ || Date.now();
+  const sep = relPath.includes('?') ? '&' : '?';
+  return import(relPath + sep + 'b=' + encodeURIComponent(v));
+}
+
 const TITLES = {
   '/apps': 'Home',
   '/prospeccao': 'Prospecção',
@@ -24,25 +31,38 @@ const TITLES = {
 };
 
 const ROUTE_LOADERS = {
-  '/apps': () => import('../modules/home.js').then((m) => m.renderHome),
-  '/prospeccao': () => import('../modules/prospeccao.js').then((m) => m.renderProspeccao),
-  '/prospeccao/massa': () => import('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
-  '/prospeccao/operacoes': () => import('../modules/prospeccao-operacoes.js').then((m) => m.renderProspeccaoOperacoes),
-  '/prospeccao/dead-zone': () => import('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
-  '/prospeccao/transicao': () => import('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
-  '/crm/pipelines': () => import('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
-  '/crm/leads': () => import('../modules/crm-leads.js').then((m) => m.renderLeads),
-  '/crm/oportunidades': () => import('../modules/crm-oportunidades.js').then((m) => m.renderOportunidades),
-  '/tarefas': () => import('../modules/atividades.js').then((m) => m.renderAtividades),
-  '/comunicacao/inbox': () => import('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
-  '/parceiros': () => import('../modules/parceiros.js').then((m) => m.renderParceiros),
-  '/configuracoes': () => import('../modules/configuracoes.js').then((m) => m.renderConfiguracoes),
+  '/apps': () => importMod('../modules/home.js').then((m) => m.renderHome),
+  '/prospeccao': () => importMod('../modules/prospeccao.js').then((m) => m.renderProspeccao),
+  '/prospeccao/massa': () => importMod('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
+  '/prospeccao/operacoes': () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderProspeccaoOperacoes),
+  '/prospeccao/dead-zone': () => importMod('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
+  '/prospeccao/transicao': () => importMod('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
+  '/crm/pipelines': () => importMod('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
+  '/crm/leads': () => importMod('../modules/crm-leads.js').then((m) => m.renderLeads),
+  '/crm/oportunidades': () => importMod('../modules/crm-oportunidades.js').then((m) => m.renderOportunidades),
+  '/tarefas': () => importMod('../modules/atividades.js').then((m) => m.renderAtividades),
+  '/comunicacao/inbox': () => importMod('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
+  '/parceiros': () => importMod('../modules/parceiros.js').then((m) => m.renderParceiros),
+  '/configuracoes': () => importMod('../modules/configuracoes.js').then((m) => m.renderConfiguracoes),
 };
 
 function lazy(loaderFn) {
   return async function (ctx) {
-    const handler = await loaderFn();
-    return handler(ctx);
+    try {
+      const handler = await loaderFn();
+      await handler(ctx);
+    } catch (err) {
+      console.error('[AFS route]', ctx.path, err);
+      if (ctx.mount) {
+        ctx.mount.innerHTML =
+          '<div class="route-error" style="padding:2rem;text-align:center">' +
+            '<h3 style="color:var(--afs-orange-400)">Erro ao carregar a tela</h3>' +
+            '<p class="hint">' + String(err.message || err).replace(/</g, '&lt;') + '</p>' +
+            '<button type="button" class="btn primary sm" onclick="location.reload()">Recarregar</button>' +
+          '</div>';
+      }
+      throw err;
+    }
   };
 }
 
@@ -65,20 +85,20 @@ function registerAllRoutes() {
   });
 
   registerPrefix('/prospeccao/', lazy(
-    () => import('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
+    () => importMod('../modules/prospeccao-massa.js').then((m) => m.renderProspeccaoMassa),
   ));
 
   registerPrefix('/comunicacao/', lazy(
-    () => import('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
+    () => importMod('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
   ));
   registerPrefix('/marketing/', lazy(
-    () => import('../modules/marketing.js').then((m) => m.renderMarketing),
+    () => importMod('../modules/marketing.js').then((m) => m.renderMarketing),
   ));
   registerPrefix('/automacao/', lazy(
-    () => import('../modules/automacao.js').then((m) => m.renderAutomacao),
+    () => importMod('../modules/automacao.js').then((m) => m.renderAutomacao),
   ));
   registerPrefix('/analises/', lazy(
-    () => import('../modules/analises.js').then((m) => m.renderAnalises),
+    () => importMod('../modules/analises.js').then((m) => m.renderAnalises),
   ));
 }
 

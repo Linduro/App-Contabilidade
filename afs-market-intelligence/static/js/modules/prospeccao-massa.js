@@ -1122,20 +1122,30 @@ async function renderAdminPanel(el) {
 
 export async function renderProspeccaoMassa({ mount }) {
   mountEl = mount;
-  state.localMode = window.__AFS_USE_RF_BACKEND__ !== true;
   try {
-    const d = await fetchProspectDefaults();
-    if (d?.icp_ativo && !state.localMode) {
-      state.filtros.capital_min = d.icp_ativo.capital_min ?? state.filtros.capital_min;
-      state.filtros.capital_max = d.icp_ativo.capital_max ?? state.filtros.capital_max;
-    }
-  } catch (_) {}
+    state.localMode = window.__AFS_USE_RF_BACKEND__ !== true;
+    try {
+      const d = await fetchProspectDefaults();
+      if (d?.icp_ativo && !state.localMode) {
+        state.filtros.capital_min = d.icp_ativo.capital_min ?? state.filtros.capital_min;
+        state.filtros.capital_max = d.icp_ativo.capital_max ?? state.filtros.capital_max;
+      }
+    } catch (_) {}
 
-  renderPage(mount);
-  bindEvents(mount);
-  loadNaturezas(mount);
-  loadCnaeDivisoes(mount);
+    renderPage(mount);
+    bindEvents(mount);
+    loadNaturezas(mount);
+    loadCnaeDivisoes(mount);
 
-  state.searched = true;
-  await refreshResults(mount);
+    state.searched = true;
+    await refreshResults(mount);
+  } catch (err) {
+    console.error('[prospeccao-massa]', err);
+    mount.innerHTML =
+      '<div class="route-error" style="padding:2rem;text-align:center">' +
+        '<h3>Prospecção em Massa — erro ao iniciar</h3>' +
+        '<p class="hint">' + String(err.message || err).replace(/</g, '&lt;') + '</p>' +
+        '<button type="button" class="btn primary" onclick="location.reload()">Recarregar</button>' +
+      '</div>';
+  }
 }
