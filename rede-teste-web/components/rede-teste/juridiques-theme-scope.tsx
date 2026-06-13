@@ -51,7 +51,7 @@ export function RedeTesteThemeScope({ children }: { children: React.ReactNode })
 
   return (
     <div
-      data-juridiques
+      data-rede-teste
       className={`jq-theme min-h-svh bg-[var(--jq-bg)] text-[var(--jq-text)] ${mode === "dark" ? "jq-dark" : "jq-light"}`}
     >
       {children}

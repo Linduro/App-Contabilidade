@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { TRPCProvider } from "@/lib/trpc-provider"
 import { Toaster } from "@/components/ui/sonner"
+import "./globals.css"
 import "./rede-teste-theme.css"
 
 export const metadata: Metadata = {

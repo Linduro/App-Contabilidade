@@ -14,6 +14,7 @@
 }
 
 /* Juridiquês — escuro padrão (quase preto) */
+[data-rede-teste].jq-theme.jq-dark,
 [data-rede-teste].rt-theme.rt-dark,
 html.rt-portal-theme.rt-dark {
   --rt-primary: #f0ede8;
@@ -109,10 +110,12 @@ html.rt-portal-theme [data-sonner-toast] {
 }
 
 /* Juridiquês — layout 3 colunas estilo X (scroll único da janela) */
+[data-rede-teste].jq-theme,
 [data-rede-teste].rt-theme {
   overflow: visible;
 }
 
+.jq-layout,
 .rt-layout {
   display: flex;
   flex-direction: column;
@@ -125,7 +128,8 @@ html.rt-portal-theme [data-sonner-toast] {
 
 @media (min-width: 1024px) {
   /* Colunas laterais coladas nos limites da tela; feed ocupa o restante (mais largo). */
-  .rt-layout {
+  .jq-layout,
+.rt-layout {
     display: grid;
     grid-template-columns: 248px minmax(0, 1fr) clamp(300px, 22vw, 360px);
     gap: 0;
@@ -136,34 +140,40 @@ html.rt-portal-theme [data-sonner-toast] {
   }
 
   /* Home agora também usa o feed largo (1fr) em vez do limite fixo X-like. */
-  .rt-layout--home {
+  .jq-layout--home,
+.rt-layout--home {
     grid-template-columns: 248px minmax(0, 1fr) clamp(300px, 22vw, 360px);
   }
 
-  .rt-layout--no-right-rail {
+  .jq-layout--no-right-rail,
+.rt-layout--no-right-rail {
     grid-template-columns: 248px minmax(0, 1fr);
     max-width: 100%;
   }
 }
 
+.jq-sidebar-left,
 .rt-sidebar-left {
   display: none;
 }
 
 @media (min-width: 1024px) {
   /* Menu fixo dentro da viewport, sem rolagem própria (conteúdo compactado p/ caber). */
-  .rt-sidebar-left {
+  .jq-sidebar-left,
+.rt-sidebar-left {
     display: block;
     position: sticky;
     top: 0;
     align-self: start;
     height: 100dvh;
   }
-  .rt-sidebar-left .rt-sidebar-nav {
+  .jq-sidebar-left .jq-sidebar-nav,
+.rt-sidebar-left .rt-sidebar-nav {
     height: 100dvh;
   }
 }
 
+.jq-feed-column,
 .rt-feed-column {
   min-width: 0;
   min-height: 100vh;
@@ -173,17 +183,20 @@ html.rt-portal-theme [data-sonner-toast] {
 }
 
 @media (max-width: 1023px) {
-  .rt-feed-column {
+  .jq-feed-column,
+.rt-feed-column {
     border-left: none;
     border-right: none;
   }
 }
 
+.jq-feed,
 .rt-feed {
   min-height: 100vh;
   overflow: visible;
 }
 
+.jq-feed-tabs-sticky,
 .rt-feed-tabs-sticky {
   position: sticky;
   top: 0;
@@ -199,17 +212,20 @@ html.rt-portal-theme [data-sonner-toast] {
     border-color 0.2s ease;
 }
 
+.jq-feed-tabs-sticky--scrolled,
 .rt-feed-tabs-sticky--scrolled {
   background: color-mix(in srgb, var(--rt-bg) 58%, transparent);
   border-bottom-color: var(--rt-border);
 }
 
+.jq-sidebar-right,
 .rt-sidebar-right {
   display: none;
 }
 
 @media (min-width: 1024px) {
-  .rt-sidebar-right {
+  .jq-sidebar-right,
+.rt-sidebar-right {
     display: block;
     position: static;
     align-self: start;
@@ -218,12 +234,14 @@ html.rt-portal-theme [data-sonner-toast] {
   }
 
   /* Feed: rail direito gruda no fim da viewport após rolar todo o conteúdo dele */
+  .jq-layout--home[data-sticky-rails="true"] .jq-sidebar-right,
   .rt-layout--home[data-sticky-rails="true"] .rt-sidebar-right {
     position: sticky;
     top: var(--rt-right-rail-top, 0px);
     align-self: start;
   }
 
+  .jq-layout:not(.jq-layout--home)[data-sticky-rails="true"] .jq-sidebar-right,
   .rt-layout:not(.rt-layout--home)[data-sticky-rails="true"] .rt-sidebar-right {
     position: sticky;
     top: var(--rt-right-rail-top, 0px);
@@ -231,6 +249,7 @@ html.rt-portal-theme [data-sonner-toast] {
   }
 }
 
+.jq-rail-search-sticky,
 .rt-rail-search-sticky {
   position: static;
   z-index: 15;
@@ -244,6 +263,7 @@ html.rt-portal-theme [data-sonner-toast] {
     backdrop-filter 0.2s ease;
 }
 
+.jq-rail-search-sticky--scrolled,
 .rt-rail-search-sticky--scrolled {
   background: color-mix(in srgb, var(--rt-bg) 58%, transparent);
   border-bottom-color: color-mix(in srgb, var(--rt-border) 70%, transparent);
@@ -253,6 +273,7 @@ html.rt-portal-theme [data-sonner-toast] {
 
 /* Fora da home, pode manter a busca sticky no topo do rail */
 @media (min-width: 1024px) {
+  .jq-layout:not(.jq-layout--home) .jq-rail-search-sticky,
   .rt-layout:not(.rt-layout--home) .rt-rail-search-sticky {
     position: sticky;
     top: 0;
@@ -308,51 +329,6 @@ html.rt-portal-theme [data-sonner-toast] {
   .product-transition-overlay--to-saas {
     background: rgba(245, 243, 238, 0.35);
   }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-    font-size: var(--density-text);
-  }
-
-  [data-slot="button"],
-  [data-slot="input"],
-  [data-slot="textarea"],
-  [data-slot="select-trigger"],
-  [data-slot="table-cell"],
-  [data-slot="table-head"],
-  [data-slot="sidebar-menu-button"],
-  [data-slot="tabs-trigger"] {
-    font-size: var(--density-text);
-    border-radius: var(--density-radius);
-  }
-
-  [data-slot="button"]:not(.h-9):not(.size-9):not(.size-8) {
-    padding-block: var(--density-y);
-    padding-inline: var(--density-x);
-  }
-
-  [data-slot="input"],
-  [data-slot="textarea"],
-  [data-slot="select-trigger"] {
-    padding-block: calc(var(--density-y) * 0.85);
-    padding-inline: var(--density-x);
-  }
-
-  [data-slot="table"] {
-    font-size: var(--density-text);
-  }
-
-  [data-slot="table-cell"],
-  [data-slot="table-head"] {
-    padding-block: calc(var(--density-y) * 0.65);
-    padding-inline: var(--density-x);
-  }
-
 }
 
 /* FullCalendar — agenda */
