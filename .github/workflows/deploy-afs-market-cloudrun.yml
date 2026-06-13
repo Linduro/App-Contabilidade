@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   GCP_PROJECT: contabilidade-ebed6
@@ -77,13 +78,18 @@ jobs:
 
       - name: Update config.json for GitHub Pages
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+        run: node scripts/update-afs-market-config.mjs
+
+      - name: Set AFS_MARKET_API_URL repository variable
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_ADMIN_TOKEN || github.token }}
+          SERVICE_URL: ${{ steps.service.outputs.url }}
         run: |
-          node -e "
-            const fs = require('fs');
-            const path = 'site-de-notas-futurista/public/afs-market-intelligence/config.json';
-            fs.mkdirSync('site-de-notas-futurista/public/afs-market-intelligence', { recursive: true });
-            fs.writeFileSync(path, JSON.stringify({ apiBase: '${{ steps.service.outputs.url }}' }, null, 2));
-          "
+          gh variable set AFS_MARKET_API_URL --repo "${{ github.repository }}" --body "${SERVICE_URL}" || \
+            echo "::warning::Não foi possível gravar AFS_MARKET_API_URL (ok se config.json foi atualizado)."
 
       - name: Commit config.json
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
@@ -93,3 +99,9 @@ jobs:
           git add site-de-notas-futurista/public/afs-market-intelligence/config.json
           git diff --staged --quiet || git commit -m "Atualizar AFS Market API URL (Cloud Run) [skip market]"
           git push
+
+      - name: Trigger GitHub Pages redeploy
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run "Deploy to GitHub Pages" --repo "${{ github.repository }}" --ref main
