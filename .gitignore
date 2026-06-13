@@ -5,3 +5,4 @@ node_modules
 rede-teste-web/.env
 rede-teste-web/.env.render
 .tmp-afs-deploy-key.json
+.tmp-afs-deploy-key-*.json
