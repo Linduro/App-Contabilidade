@@ -783,13 +783,13 @@ async function buildMappingUI(spreadsheetData) {
     // Regras de auto-mapeamento (Letras exatas da planilha padrão do usuário ou palavras-chave)
     const autoMapRules = {
         "tag_original": { letter: "E", keywords: ["tag", "tombamento", "plaqueta", "origem"] },
-        "tag_output": { letter: "D", keywords: ["tag verificada", "tag nova", "ok"] },
+        "tag_output": { letter: "C", keywords: ["tag verificada", "tag nova", "ok", "revisão tag", "revisao tag"] },
         "desc_original": { letter: "BB", keywords: ["descrição", "identificação", "original"] },
         "desc_output": { letter: "BC", keywords: ["descrição ia", "reasoning", "descrição verificada"] },
         "age_original": { letter: "BL", keywords: ["idade origem", "idade original"] },
-        "age_output": { letter: "BK", keywords: ["idade verificada", "idade ia"] },
+        "age_output": { letter: "H", keywords: ["idade verificada", "idade ia", "estimativa idade", "idade aparente"] },
         "conservation_original": { letter: "BN", keywords: ["conservação original", "estado original"] },
-        "conservation_output": { letter: "BM", keywords: ["conservação verificada", "estado ia"] },
+        "conservation_output": { letter: "J", keywords: ["conservação verificada", "estado ia", "conservação ia", "estado conservação"] },
         "methodology": { letter: "BD", keywords: ["metodologia"] },
         "value_new": { letter: "BH", keywords: ["novo"] },
         "value_used": { letter: "BI", keywords: ["usado", "comparativo"] },

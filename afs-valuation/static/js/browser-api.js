@@ -441,7 +441,9 @@ function afsApplyEvaluationToRow(row, ev, mappings) {
     };
     const set = (field, val) => {
         const l = letter(field);
-        if (l && val != null && val !== '') row[l] = val;
+        if (!l) return;
+        if (val === null || val === undefined || val === '') return;
+        row[l] = val;
     };
     set('asset_output', ev.asset_normalized);
     set('category_output', ev.category_normalized);
@@ -473,14 +475,27 @@ function browserExportSpreadsheet() {
     const mappings = afsGetActiveMappings(s);
     const spreadsheet = s.spreadsheet;
     const evalByRow = {};
+    const evalByControl = {};
     (s.evaluations || []).forEach(ev => {
-        if (ev.row_index != null) evalByRow[ev.row_index] = ev;
+        if (ev.row_index != null && evalByRow[ev.row_index] === undefined) {
+            evalByRow[ev.row_index] = ev;
+        }
+        if (ev.control != null && String(ev.control).trim() !== '' && evalByControl[ev.control] === undefined) {
+            evalByControl[String(ev.control).trim()] = ev;
+        }
     });
     const headers = spreadsheet.headers || [];
     const headerNames = headers.map(h => h.name || h.letter);
+    const controlLetter = (() => {
+        const m = mappings.control;
+        return typeof m === 'string' ? m : m?.letter || '';
+    })();
     const dataRows = spreadsheet.rows.map(srcRow => {
         const row = { ...srcRow };
-        const ev = evalByRow[srcRow._row_index];
+        let ev = evalByRow[srcRow._row_index];
+        if (!ev && controlLetter && srcRow[controlLetter] != null) {
+            ev = evalByControl[String(srcRow[controlLetter]).trim()];
+        }
         if (ev) afsApplyEvaluationToRow(row, ev, mappings);
         return headers.map(h => row[h.letter] ?? '');
     });

@@ -59,20 +59,88 @@ REGRAS DE LINKS (CRÍTICO):
 async function urlToInlinePart(url) {
     const normalized = (typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(url) : url);
     if (!normalized || !/^https?:\/\//i.test(normalized)) return null;
-    try {
-        const res = await fetch(normalized, { mode: 'cors' });
-        if (!res.ok) return null;
-        const blob = await res.blob();
+
+    const inferMime = (u) => {
+        if (/\.png(\?|$)/i.test(u)) return 'image/png';
+        if (/\.webp(\?|$)/i.test(u)) return 'image/webp';
+        if (/\.gif(\?|$)/i.test(u)) return 'image/gif';
+        return 'image/jpeg';
+    };
+
+    const blobToInline = async (blob, mimeHint) => {
         const buffer = await blob.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         let binary = '';
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        const b64 = btoa(binary);
-        const mime = blob.type || 'image/jpeg';
-        return { inline_data: { mime_type: mime, data: b64 } };
+        const mime = blob.type || mimeHint || 'image/jpeg';
+        return { inline_data: { mime_type: mime, data: btoa(binary) } };
+    };
+
+    try {
+        const res = await fetch(normalized, { mode: 'cors', referrerPolicy: 'no-referrer', credentials: 'omit' });
+        if (res.ok) return await blobToInline(await res.blob(), inferMime(normalized));
     } catch {
-        return null;
+        /* CORS — tentar canvas ou file_uri */
     }
+
+    const canvasPart = await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.referrerPolicy = 'no-referrer';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                const b64 = dataUrl.split(',')[1];
+                resolve(b64 ? { inline_data: { mime_type: 'image/jpeg', data: b64 } } : null);
+            } catch {
+                resolve(null);
+            }
+        };
+        img.onerror = () => resolve(null);
+        img.src = normalized;
+    });
+    if (canvasPart) return canvasPart;
+
+    return { file_data: { mime_type: inferMime(normalized), file_uri: normalized } };
+}
+
+function afsNormalizeVisionNumbers(visionData) {
+    if (!visionData || typeof visionData !== 'object') return {};
+    const v = { ...visionData };
+    if (v.estado_conservacao != null && v.estado_conservacao !== '') {
+        const n = parseInt(v.estado_conservacao, 10);
+        v.estado_conservacao = Number.isNaN(n) ? v.estado_conservacao : n;
+    }
+    if (v.idade_aparente_anos != null && v.idade_aparente_anos !== '') {
+        const n = parseInt(v.idade_aparente_anos, 10);
+        v.idade_aparente_anos = Number.isNaN(n) ? v.idade_aparente_anos : n;
+    }
+    if (v.tag_encontrada != null) v.tag_encontrada = String(v.tag_encontrada).trim();
+    return v;
+}
+
+function afsNormalizeTagText(t) {
+    return String(t || '').trim().replace(/\s+/g, '').toLowerCase();
+}
+
+function afsResolveTagOutput(row, mappings, tagEncontrada) {
+    if (tagEncontrada == null || String(tagEncontrada).trim() === '') return null;
+    const letter = (field) => {
+        const m = mappings[field];
+        return typeof m === 'string' ? m : m?.letter || '';
+    };
+    const origLetter = letter('tag_original');
+    const orig = origLetter ? row[origLetter] : null;
+    const found = String(tagEncontrada).trim();
+    if (orig != null && String(orig).trim() !== '') {
+        if (afsNormalizeTagText(orig) === afsNormalizeTagText(found)) return 'ok';
+    }
+    return found;
 }
 
 function parseGeminiJson(text) {
@@ -220,20 +288,32 @@ function afsCollectImageUrls(row, mappings, spreadsheet) {
     const resolved = typeof afsResolveRowPhotos === 'function' && spreadsheet
         ? afsResolveRowPhotos(row, spreadsheet.headers, spreadsheet.photo_lookup || {}, mappings)
         : row;
-    const letters = [
-        mappings.photo_original,
-        mappings.photo_spec,
-        mappings.photo_tag
-    ].filter(Boolean);
     const urls = [];
-    for (const letter of letters) {
-        const u = normalizePhotoUrl(resolved[letter]);
+
+    if (typeof afsCollectPhotosForRow === 'function' && spreadsheet) {
+        const photos = afsCollectPhotosForRow(
+            resolved,
+            mappings,
+            afsGetPhotoLookups(spreadsheet),
+            spreadsheet.headers
+        );
+        photos.forEach(p => {
+            const u = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(p.url) : p.url;
+            if (u && /^https?:\/\//i.test(u) && !urls.includes(u)) urls.push(u);
+        });
+    }
+
+    const mapLetter = (field) => {
+        const m = mappings[field];
+        return typeof m === 'string' ? m : m?.letter || '';
+    };
+    for (const field of ['photo_original', 'photo_spec', 'photo_tag']) {
+        const letter = mapLetter(field);
+        if (!letter) continue;
+        const u = typeof normalizePhotoUrl === 'function' ? normalizePhotoUrl(resolved[letter]) : resolved[letter];
         if (u && /^https?:\/\//i.test(u) && !urls.includes(u)) urls.push(u);
     }
-    if (urls.length === 0 && typeof afsCollectPhotosForRow === 'function' && spreadsheet) {
-        const photos = afsCollectPhotosForRow(resolved, mappings, afsGetPhotoLookups(spreadsheet), spreadsheet.headers);
-        photos.forEach(p => { if (p.url && !urls.includes(p.url)) urls.push(p.url); });
-    }
+
     return urls;
 }
 
@@ -288,23 +368,27 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     if (options.runTag || options.runAge || options.runConservation || imageUrls.length) {
         emit(`Análise visual (Vision): ${imageUrls.length} foto(s) — identificando bem...`, 18);
         const parts = [{ text: AFS_VISION_PROMPT }];
+        let loadedParts = 0;
         for (const url of imageUrls) {
             const part = await urlToInlinePart(url);
-            if (part) parts.push(part);
+            if (part) {
+                parts.push(part);
+                loadedParts++;
+            }
         }
-        if (parts.length > 1) {
-            emit('Enviando imagens ao Gemini Vision...', 32);
+        if (loadedParts > 0) {
+            emit(`Enviando ${loadedParts} imagem(ns) ao Gemini Vision...`, 32);
             try {
                 const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', parts, true);
                 totalTokens += res.tokens || 0;
-                visionData = parseGeminiJson(res.text);
+                visionData = afsNormalizeVisionNumbers(parseGeminiJson(res.text));
                 emit('Vision concluída — processando identificação visual...', 48);
             } catch (e) {
                 console.warn('Vision error:', e);
-                emit('Aviso: falha parcial na análise visual, continuando...', 48);
+                emit(`Aviso: falha na análise visual (${e.message || 'erro'}) — continuando...`, 48);
             }
         } else {
-            emit('Sem fotos válidas para Vision — pulando etapa visual...', 48);
+            emit('Sem imagens legíveis para Vision (CORS/URL) — TAG/idade/conservação não calculadas...', 48);
         }
     }
 
@@ -331,6 +415,12 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     const linksArr = afsSanitizeComparativeLinks(marketData.links_comparativos);
     marketData.links_comparativos = linksArr;
 
+    const tagOut = options.runTag
+        ? afsResolveTagOutput(resolvedRow, mappings, visionData.tag_encontrada)
+        : null;
+    const ageOut = options.runAge ? (visionData.idade_aparente_anos ?? null) : null;
+    const consOut = options.runConservation ? (visionData.estado_conservacao ?? null) : null;
+
     const evaluation = {
         row_index: rowIdx,
         control: controlVal,
@@ -345,9 +435,9 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         value_new: marketData.valor_novo ?? null,
         value_used: marketData.valor_usado ?? null,
         value_fipe: marketData.valor_fipe ?? null,
-        apparent_age: visionData.idade_aparente_anos ?? null,
-        conservation_state: visionData.estado_conservacao ?? null,
-        tag_verified: visionData.tag_encontrada ?? null,
+        apparent_age: ageOut,
+        conservation_state: consOut,
+        tag_verified: tagOut,
         links: linksArr.join(','),
         links_array: linksArr,
         reasoning: marketData.raciocinio_detalhado || visionData.raciocinio_visual || '',
@@ -380,7 +470,7 @@ async function browserRunEvaluation(options, onProgress) {
     if (!s.api_key) throw new Error('Chave de API não configurada');
     if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
 
-    const mappings = options.mappings || s.column_mappings || {};
+    const mappings = options.mappings || afsGetActiveMappings(s);
     const spreadsheet = s.spreadsheet;
     const rows = typeof afsResolveAllRowsPhotos === 'function'
         ? afsResolveAllRowsPhotos(spreadsheet, mappings)

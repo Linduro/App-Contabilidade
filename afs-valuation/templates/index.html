@@ -282,14 +282,17 @@
                         </select>
                     </div>
 
-                    <div class="eval-play-actions">
-                        <button class="btn btn-primary" id="btnPlay" onclick="startEvaluation()">
-                            <span class="spinner"></span>
-                            <span class="btn-text">▶ Iniciar / Play</span>
-                        </button>
-                        <button class="btn btn-secondary" id="btnPause" onclick="pauseEvaluation()" disabled>
-                            <span class="btn-text">⏸ Pausar</span>
-                        </button>
+                    <div class="form-group eval-play-column" style="margin-bottom: 0;">
+                        <label class="form-label">Execução</label>
+                        <div class="eval-play-buttons">
+                            <button class="btn btn-primary" id="btnPlay" onclick="startEvaluation()">
+                                <span class="spinner"></span>
+                                <span class="btn-text">▶ Iniciar / Play</span>
+                            </button>
+                            <button class="btn btn-secondary" id="btnPause" onclick="pauseEvaluation()" disabled>
+                                <span class="btn-text">⏸ Pausar</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
