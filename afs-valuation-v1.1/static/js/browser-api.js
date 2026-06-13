@@ -2,7 +2,7 @@
 // AFS — Modo navegador (GitHub Pages sem backend Flask)
 // ============================================================
 
-const AFS_STORAGE_KEY = 'afs_local_state_v1';
+const AFS_STORAGE_KEY = 'afs_local_state_v1_1';
 
 function afsLoadState() {
     try {

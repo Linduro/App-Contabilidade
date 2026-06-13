@@ -1,18 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Asset Solutions Valuation — Avaliação e conciliação de ativo imobilizado patrimonial">
-    <title>Asset Solutions Valuation</title>
-    <link rel="stylesheet" href="./css/style.css?v=32">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23f97316'/><text x='16' y='22' text-anchor='middle' font-family='Inter,sans-serif' font-size='16' font-weight='700' fill='white'>A</text></svg>">
-</head>
-<body>
-    <div class="app-container">
-        
+{% extends "base.html" %}
+
+{% block content %}
 <!-- Header -->
 <header class="app-header">
     <div class="app-header-left">
@@ -793,45 +781,4 @@
     <div>Asset Solutions Valuation &copy; 2026 — Todos os direitos reservados.</div>
 </footer>
 
-
-    </div>
-    
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script>
-      window.__AFS_BUILD__ = "32";
-      window.__AFS_APP_VERSION__ = "1.0";
-      (function () {
-        var badge = document.getElementById("afsBuildBadge");
-        if (badge) badge.textContent = "V1.0 · build 32";
-        var path = window.location.pathname || "";
-        var repoBase = path.replace(/\/(afs-valuation-v1\.1|afs-valuation)(\/.*)?$/, "") || "";
-        var v10 = repoBase + "/afs-valuation/index.html";
-        var v11 = repoBase + "/afs-valuation-v1.1/index.html";
-        var isV11 = /afs-valuation-v1\.1/.test(path);
-        var v10El = document.getElementById("afsVersionV10");
-        var v11El = document.getElementById("afsVersionV11");
-        if (v10El) {
-          v10El.href = v10;
-          v10El.classList.toggle("active", !isV11);
-        }
-        if (v11El) {
-          v11El.href = v11;
-          v11El.classList.toggle("active", isV11);
-        }
-        var params = new URLSearchParams(window.location.search);
-        var fromQuery = params.get("apiBase");
-        if (fromQuery) {
-          var b = fromQuery.replace(/\/$/, "");
-          if (!/\/afs-api$/i.test(b) && !/github\.io\/.*afs-api/i.test(b)) {
-            window.__AFS_API_BASE__ = b;
-          }
-        }
-      })();
-    </script>
-    <script src="./js/photo-resolver.js?v=32"></script>
-    <script src="./js/learning-rules.js?v=32"></script>
-    <script src="./js/browser-evaluation.js?v=32"></script>
-    <script src="./js/browser-api.js?v=32"></script>
-    <script src="./js/app.js?v=32"></script>
-</body>
-</html>
+{% endblock %}
