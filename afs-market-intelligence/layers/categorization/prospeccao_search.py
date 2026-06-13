@@ -11,7 +11,30 @@ from layers.categorization.prospect_filters import load_defaults, parse_filters,
 
 SEGMENTACOES_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "segmentacoes.json"
 
-PORTE_LABELS = {"01": "Micro", "03": "EPP", "05": "Demais"}
+PORTE_LABELS = {
+    "01": "Micro", "1": "Micro",
+    "03": "EPP", "3": "EPP",
+    "05": "Demais", "5": "Demais",
+    "00": "Não informado", "0": "Não informado",
+}
+
+PORTE_ALIASES = {
+    "01": ("01", "1"), "1": ("01", "1"),
+    "03": ("03", "3"), "3": ("03", "3"),
+    "05": ("05", "5"), "5": ("05", "5"),
+    "00": ("00", "0"), "0": ("00", "0"),
+}
+
+
+def _expand_portes(portes: list) -> list[str]:
+    out: set[str] = set()
+    for p in portes:
+        s = str(p).strip()
+        if s in PORTE_ALIASES:
+            out.update(PORTE_ALIASES[s])
+        elif s:
+            out.add(s)
+    return sorted(out)
 
 
 def default_filtros() -> dict:
@@ -22,6 +45,7 @@ def default_filtros() -> dict:
         "ufs": [],
         "clusters": [],
         "cnaes": [],
+        "cnae_divisoes": [],
         "municipios": [],
         "portes": [],
         "naturezas": [],
@@ -69,6 +93,7 @@ def parse_filtros_body(body: dict | None) -> dict:
         "ufs": lst("ufs") or ([f.get("uf")] if f.get("uf") else []),
         "clusters": lst("clusters") or ([f.get("cluster")] if f.get("cluster") else []),
         "cnaes": lst("cnaes") or ([f.get("cnae")] if f.get("cnae") else []),
+        "cnae_divisoes": lst("cnae_divisoes"),
         "municipios": lst("municipios") or ([f.get("municipio")] if f.get("municipio") else []),
         "portes": lst("portes") or ([f.get("porte")] if f.get("porte") else []),
         "naturezas": lst("naturezas"),
@@ -103,9 +128,7 @@ def _legacy_slice(filtros: dict) -> dict:
         f["cnae"] = f["cnaes"][0]
     elif f.get("cnaes"):
         f["cnae"] = None
-    if f.get("portes") and len(f["portes"]) == 1:
-        f["porte"] = f["portes"][0]
-    elif f.get("portes"):
+    if f.get("portes"):
         f["porte"] = None
     if f.get("municipios") and len(f["municipios"]) == 1:
         f["municipio"] = f["municipios"][0]
@@ -140,10 +163,21 @@ def build_where(filtros: dict, alias: str = "p", aba: str | None = None) -> tupl
             params.extend([f"{cc}%", f"{c}%"])
         clauses.append("(" + " OR ".join(cnae_parts) + ")")
 
-    if filtros.get("portes") and len(filtros["portes"]) > 1:
-        placeholders = ", ".join("?" for _ in filtros["portes"])
+    if filtros.get("portes"):
+        expanded = _expand_portes(filtros["portes"])
+        placeholders = ", ".join("?" for _ in expanded)
         clauses.append(f"CAST({p}porte AS VARCHAR) IN ({placeholders})")
-        params.extend([str(x) for x in filtros["portes"]])
+        params.extend(expanded)
+
+    if filtros.get("cnae_divisoes"):
+        div_parts = []
+        for d in filtros["cnae_divisoes"]:
+            dc = str(d).replace("-", "").strip()[:2]
+            if dc:
+                div_parts.append(f"{p}cnae_principal LIKE ?")
+                params.append(f"{dc}%")
+        if div_parts:
+            clauses.append("(" + " OR ".join(div_parts) + ")")
 
     if filtros.get("municipios") and len(filtros["municipios"]) > 1:
         mun_parts = []
@@ -266,9 +300,10 @@ def search_rows(
     page: int = 1,
     page_size: int = 25,
     sort: str = "score_desc",
+    for_batch: bool = False,
 ) -> tuple[list[dict], int]:
     page = max(1, int(page))
-    page_size = min(max(1, int(page_size)), 100)
+    page_size = min(max(1, int(page_size)), 5000 if for_batch else 100)
     offset = (page - 1) * page_size
 
     aba_key = aba if aba in ("nao_enriquecidas", "enriquecidas", "novas") else None
@@ -369,15 +404,18 @@ def search_municipios(conn, q: str, uf: str | None = None, limit: int = 20) -> l
     return [{"ibge": r[0], "nome": r[1], "uf": r[2]} for r in rows]
 
 
-def search_naturezas(conn, limit: int = 50) -> list[str]:
-    rows = conn.execute(
-        """
+def search_naturezas(conn, q: str = "", limit: int = 200) -> list[str]:
+    sql = """
         SELECT DISTINCT natureza_juridica FROM prospectos_rf
         WHERE natureza_juridica IS NOT NULL AND TRIM(natureza_juridica) != ''
-        ORDER BY natureza_juridica LIMIT ?
-        """,
-        [limit],
-    ).fetchall()
+    """
+    params: list = []
+    if q:
+        sql += " AND natureza_juridica ILIKE ?"
+        params.append(f"%{q.strip()}%")
+    sql += " ORDER BY natureza_juridica LIMIT ?"
+    params.append(limit)
+    rows = conn.execute(sql, params).fetchall()
     return [r[0] for r in rows]
 
 
@@ -422,7 +460,11 @@ def enqueue_from_filtros(
 ) -> dict:
     """Enfileira CNPJs da busca atual para enriquecimento."""
     limite = min(max(1, int(limite)), 5000)
-    rows, _ = search_rows(conn, filtros, aba=aba if aba in ("nao_enriquecidas", "enriquecidas", "novas") else None, page=1, page_size=limite)
+    rows, _ = search_rows(
+        conn, filtros,
+        aba=aba if aba in ("nao_enriquecidas", "enriquecidas", "novas") else None,
+        page=1, page_size=limite, for_batch=True,
+    )
     cnpjs = [r["cnpj_basico"] for r in rows if r.get("cnpj_basico")]
     result = enfileirar_cnpjs(conn, cnpjs)
     result["candidatos"] = len(cnpjs)
@@ -450,3 +492,108 @@ def save_segmentacao(nome: str, filtros: dict) -> dict:
     items.append(entry)
     SEGMENTACOES_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
     return entry
+
+
+def executar_prospeccao(
+    conn,
+    filtros: dict,
+    *,
+    aba: str = "nao_enriquecidas",
+    limite: int = 100,
+    on_progress=None,
+) -> dict:
+    """
+    Fluxo único: busca empresas pelos filtros → enriquece contatos (cascata A→E).
+    Retorna resumo + lista de empresas para importação no CRM.
+    """
+    from layers.enrichment.contato_cascade import enriquecer_contato, init_enrichment_schema
+
+    init_enrichment_schema(conn)
+
+    try:
+        n_rf = conn.execute("SELECT COUNT(*) FROM prospectos_rf").fetchone()[0]
+    except Exception:
+        n_rf = 0
+    if n_rf == 0:
+        return {
+            "status": "error",
+            "code": "sem_base_rf",
+            "message": "Base RF vazia. Vá em Operações → Receita Federal e inicie a ingestão.",
+        }
+
+    limite = min(max(1, int(limite)), 500)
+    counts = count_tabs(conn, filtros)
+
+    aba_eff = aba if aba in ("nao_enriquecidas", "enriquecidas", "novas", "todas") else "nao_enriquecidas"
+    aba_search = aba_eff if aba_eff != "todas" else None
+
+    if aba_eff == "nao_enriquecidas" and counts.get("nao_enriquecidas", 0) == 0:
+        aba_search = None
+        aba_eff = "todas"
+
+    if on_progress:
+        on_progress("Buscando empresas com os filtros selecionados…", 8)
+
+    rows, total = search_rows(
+        conn, filtros, aba=aba_search, page=1, page_size=limite, for_batch=True,
+    )
+    if not rows:
+        return {
+            "status": "ok",
+            "message": "Nenhuma empresa encontrada com estes filtros.",
+            "total_buscado": total,
+            "processados": 0,
+            "enriquecidos_ok": 0,
+            "erros": 0,
+            "contatos_coletados": 0,
+            "counts": counts,
+            "empresas": [],
+        }
+
+    if on_progress:
+        on_progress(f"{len(rows)} empresa(s) encontrada(s) — iniciando enriquecimento…", 12)
+
+    ok, err, contatos_total = 0, 0, 0
+    empresas: list[dict] = []
+
+    for i, row in enumerate(rows):
+        cnpj = row.get("cnpj_basico")
+        if not cnpj:
+            continue
+        razao = (row.get("razao_social") or cnpj)[:48]
+        if on_progress:
+            pct = 12 + int((i / max(len(rows), 1)) * 83)
+            on_progress(f"Enriquecendo {i + 1}/{len(rows)}: {razao}…", pct)
+        try:
+            result = enriquecer_contato(conn, cnpj)
+            n_cont = int(result.get("total") or 0)
+            contatos_total += n_cont
+            ok += 1
+            empresas.append({
+                **row,
+                "contatos_coletados": n_cont,
+                "enriquecimento_status": "ok",
+            })
+        except Exception as e:
+            err += 1
+            empresas.append({
+                **row,
+                "contatos_coletados": 0,
+                "enriquecimento_status": "error",
+                "enriquecimento_erro": str(e),
+            })
+
+    if on_progress:
+        on_progress("Prospecção concluída", 100)
+
+    return {
+        "status": "ok",
+        "aba_usada": aba_eff,
+        "total_buscado": total,
+        "processados": len(rows),
+        "enriquecidos_ok": ok,
+        "erros": err,
+        "contatos_coletados": contatos_total,
+        "counts": counts,
+        "empresas": empresas,
+    }

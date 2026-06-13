@@ -455,6 +455,40 @@
 .ps-acc-body.open { display: block; }
 .ps-check-grid { display: flex; flex-wrap: wrap; gap: 0.35rem 0.65rem; max-height: 140px; overflow-y: auto; }
 .ps-check-grid label, .ps-check-list label { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; margin-bottom: 0.35rem; }
+.ps-cnae-div-list, .ps-nat-list { max-height: 180px; overflow-y: auto; margin: 0.35rem 0; }
+.ps-subhint { font-size: 0.72rem; margin: 0 0 0.5rem; }
+.ps-quick-cnaes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.5rem; }
+.ps-quick-cnaes .btn { font-size: 0.72rem; padding: 0.2rem 0.45rem; }
+.ps-help h4 { margin: 1rem 0 0.35rem; font-size: 0.9rem; color: var(--afs-orange-400); }
+.ps-help h4:first-child { margin-top: 0; }
+.ps-help p, .ps-help li { font-size: 0.85rem; line-height: 1.45; color: var(--text-muted); }
+.ps-help ul { margin: 0.25rem 0 0.5rem 1.1rem; padding: 0; }
+.ps-run-btn { font-weight: 600; white-space: nowrap; }
+.ps-run-overlay {
+  position: fixed; inset: 0; z-index: 9999; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(4px);
+}
+.ps-run-panel {
+  background: #12121a; border: 1px solid var(--border-subtle); border-radius: 12px;
+  padding: 2rem 2.5rem; max-width: 420px; width: 90%; text-align: center;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.45);
+}
+.ps-run-panel h3 { margin: 0.75rem 0 0.35rem; font-size: 1.1rem; }
+.ps-run-spinner {
+  width: 40px; height: 40px; margin: 0 auto;
+  border: 3px solid rgba(232,104,26,0.2); border-top-color: var(--afs-orange-500);
+  border-radius: 50%; animation: ps-spin 0.8s linear infinite;
+}
+@keyframes ps-spin { to { transform: rotate(360deg); } }
+.ps-run-bar {
+  height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px;
+  margin: 1rem 0 0.35rem; overflow: hidden;
+}
+.ps-run-fill {
+  height: 100%; width: 0; background: linear-gradient(90deg, var(--afs-orange-500), #ffb347);
+  border-radius: 999px; transition: width 0.35s ease;
+}
 .ps-field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.5rem; }
 .ps-field span { font-size: 0.72rem; color: var(--text-muted); }
 .ps-field input, .ps-search-input {

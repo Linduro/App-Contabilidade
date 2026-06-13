@@ -361,6 +361,35 @@ def ops_status():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@main_bp.route("/api/prospeccao/executar", methods=["POST"])
+def prospeccao_executar():
+    """Um clique: busca + enriquece contatos pelos filtros (job em background)."""
+    try:
+        body = request.get_json() or {}
+        from layers.categorization.prospeccao_search import parse_filtros_body, executar_prospeccao
+        filtros = parse_filtros_body(body)
+        aba = body.get("aba") or "nao_enriquecidas"
+        limite = int(body.get("limite") or 100)
+        sync = bool(body.get("sync"))
+
+        conn = _conn()
+        if sync or limite <= 15:
+            result = executar_prospeccao(conn, filtros, aba=aba, limite=limite)
+            conn.close()
+            return jsonify(result)
+
+        from jobs.store import JobStore
+        from jobs.worker import JobWorker
+        store = JobStore(conn)
+        params = {"filtros": filtros, "aba": aba, "limite": limite}
+        job_id = store.create("prospeccao_executar", params)
+        conn.close()
+        JobWorker.start(_conn, job_id, "prospeccao_executar", params)
+        return jsonify({"status": "ok", "job_id": job_id, "message": "Prospecção iniciada em background"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @main_bp.route("/api/prospeccao/enqueue-filtros", methods=["POST"])
 def prospeccao_enqueue_filtros():
     try:
@@ -571,9 +600,10 @@ def api_municipios():
 @main_bp.route("/api/naturezas-juridicas")
 def api_naturezas():
     try:
+        q = request.args.get("q", "").strip()
         conn = _conn()
         from layers.categorization.prospeccao_search import search_naturezas
-        result = search_naturezas(conn)
+        result = search_naturezas(conn, q=q)
         conn.close()
         return jsonify(result)
     except Exception as e:

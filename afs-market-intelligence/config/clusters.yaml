@@ -22,6 +22,69 @@ clusters:
     dor_comercial: "Dispersão de PDVs sem controle patrimonial unificado"
     script_abordagem: "controle_multi_loja"
 
+  construcao:
+    label: "Construção"
+    foco: "Imobilizado em obra e equipamentos"
+    cnae_prefixos: ["41", "42", "43"]
+    dor_comercial: "Controle patrimonial em obras e contratos"
+    script_abordagem: "generico"
+
+  servicos:
+    label: "Serviços"
+    foco: "Profissionais, administrativos e complementares"
+    cnae_prefixos: ["69", "70", "71", "72", "73", "74", "75", "77", "78", "79", "80", "81", "82", "94", "95", "96"]
+    dor_comercial: "Ativos intangíveis e estrutura enxuta"
+    script_abordagem: "generico"
+
+  tecnologia:
+    label: "Tecnologia & TI"
+    foco: "Software, telecom, equipamentos eletrônicos"
+    cnae_prefixos: ["58", "59", "60", "61", "62", "63", "26"]
+    dor_comercial: "Ativos de TI e capitalização de software"
+    script_abordagem: "generico"
+
+  financeiro:
+    label: "Financeiro & Seguros"
+    foco: "Bancos, fintechs, seguradoras"
+    cnae_prefixos: ["64", "65", "66"]
+    dor_comercial: "Conformidade patrimonial regulatória"
+    script_abordagem: "generico"
+
+  saude:
+    label: "Saúde"
+    foco: "Hospitais, clínicas, laboratórios"
+    cnae_prefixos: ["86", "87", "88"]
+    dor_comercial: "Equipamentos médicos e imobilizado hospitalar"
+    script_abordagem: "generico"
+
+  transporte:
+    label: "Transporte & Logística"
+    foco: "Frotas, armazéns, correios"
+    cnae_prefixos: ["49", "50", "51", "52", "53"]
+    dor_comercial: "Controle de frota e ativos móveis"
+    script_abordagem: "generico"
+
+  extrativas:
+    label: "Extrativas (mineração/petróleo)"
+    foco: "Mineração e petróleo"
+    cnae_prefixos: ["05", "06", "07", "08", "09"]
+    dor_comercial: "Ativos de exploração e E&P"
+    script_abordagem: "generico"
+
+  energia:
+    label: "Energia & Utilities"
+    foco: "Eletricidade, gás, água, resíduos"
+    cnae_prefixos: ["35", "36", "37", "38", "39"]
+    dor_comercial: "Infraestrutura e ativos regulados"
+    script_abordagem: "generico"
+
+  alimentacao:
+    label: "Alimentação & Hotelaria"
+    foco: "Restaurantes, hotéis, bares"
+    cnae_prefixos: ["55", "56"]
+    dor_comercial: "Multi-unidades e franquias"
+    script_abordagem: "generico"
+
   outro:
     label: "Outro"
     foco: "Busca genérica"

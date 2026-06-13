@@ -52,6 +52,16 @@ class JobWorker:
                     from orchestrator.pipeline import PipelineOrchestrator
                     orch = PipelineOrchestrator(conn, params.get("perfil", "patrimonial"))
                     result = orch.executar_pipeline_completo(pular_ingestao=params.get("pular_ingestao", False))
+                elif tipo == "prospeccao_executar":
+                    from layers.categorization.prospeccao_search import parse_filtros_body, executar_prospeccao
+                    filtros = parse_filtros_body({"filtros": params.get("filtros") or params})
+                    result = executar_prospeccao(
+                        conn,
+                        filtros,
+                        aba=params.get("aba", "nao_enriquecidas"),
+                        limite=params.get("limite", 100),
+                        on_progress=progress,
+                    )
                 else:
                     result = {"status": "error", "message": f"Tipo desconhecido: {tipo}"}
 

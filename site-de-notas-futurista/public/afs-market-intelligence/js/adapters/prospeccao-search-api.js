@@ -41,6 +41,14 @@ export async function fetchCnaes(q) {
   return httpMarketGet('/cnaes?' + params.toString());
 }
 
+export async function fetchCnaeSetores(q, secao) {
+  if (!getHttpApiBase()) return { secoes: [], divisoes: [], total: 0 };
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (secao) params.set('secao', secao);
+  return httpMarketGet('/cnae/setores?' + params.toString());
+}
+
 export async function fetchMunicipios(q, uf) {
   if (!getHttpApiBase()) return [];
   const params = new URLSearchParams();
@@ -49,9 +57,12 @@ export async function fetchMunicipios(q, uf) {
   return httpMarketGet('/municipios?' + params.toString());
 }
 
-export async function fetchNaturezas() {
+export async function fetchNaturezas(q) {
   if (!getHttpApiBase()) return [];
-  return httpMarketGet('/naturezas-juridicas');
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  const qs = params.toString();
+  return httpMarketGet('/naturezas-juridicas' + (qs ? '?' + qs : ''));
 }
 
 /** Enfileira CNPJs e opcionalmente processa cascata de contatos (processar=true). */
@@ -131,6 +142,20 @@ export async function startPipeline(opts = {}) {
 export async function enqueueFiltros({ filtros, aba, limite, processar }) {
   if (!getHttpApiBase()) return { status: 'ok', enfileirados: limite || 100 };
   return httpMarketPost('/prospeccao/enqueue-filtros', { filtros, aba, limite, processar });
+}
+
+/** Fluxo único: busca empresas pelos filtros + enriquece contatos (job ou sync). */
+export async function executarProspeccao({ filtros, aba, limite, sync }) {
+  if (!getHttpApiBase()) {
+    return {
+      status: 'ok',
+      processados: 2,
+      enriquecidos_ok: 2,
+      contatos_coletados: 3,
+      empresas: MOCK_ROWS,
+    };
+  }
+  return httpMarketPost('/prospeccao/executar', { filtros, aba, limite, sync });
 }
 
 export async function pollJob(jobId, onTick) {

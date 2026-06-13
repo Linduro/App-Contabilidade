@@ -6,10 +6,10 @@ import * as store from '../core/store.js';
 import { openDrawer } from '../components/drawer.js';
 import { formatCapital } from '../components/prospect-filters.js';
 import {
-  prospeccaoCount, prospeccaoSearch, fetchCnaes, fetchMunicipios,
+  prospeccaoCount, prospeccaoSearch, fetchCnaes, fetchCnaeSetores, fetchMunicipios,
   fetchNaturezas, enriquecerCnpjs, enriquecerCnpjUnitario, fetchContatos,
   runScrapingQueue, fetchScrapingQueueStatus, socialScrape, fetchSocialLeads,
-  saveSegmentacao, fetchSegmentacoes, pingHttpBackend,
+  saveSegmentacao, fetchSegmentacoes, pingHttpBackend, executarProspeccao, pollJob,
 } from '../adapters/prospeccao-search-api.js';
 import {
   fetchRfStatus, startRfIngest, pollJob, exportProspectosExcel,
@@ -19,11 +19,36 @@ import { exportExcel } from '../components/export.js';
 import { PROSPECT_EXPORT_COLS } from '../adapters/rf-pipeline-api.js';
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
-const CLUSTERS = ['agro', 'industria', 'varejo'];
+const CLUSTERS = [
+  { v: 'agro', l: '🌾 Agro (01–03)' },
+  { v: 'extrativas', l: '⛏ Extrativas (05–09)' },
+  { v: 'industria', l: '🏭 Indústria (10–33)' },
+  { v: 'energia', l: '⚡ Energia & Utilities (35–39)' },
+  { v: 'construcao', l: '🏗 Construção (41–43)' },
+  { v: 'varejo', l: '🛒 Comércio (45–47)' },
+  { v: 'transporte', l: '🚚 Transporte (49–53)' },
+  { v: 'alimentacao', l: '🍽 Alimentação & Hotel (55–56)' },
+  { v: 'tecnologia', l: '💻 Tecnologia & TI (58–63)' },
+  { v: 'financeiro', l: '🏦 Financeiro (64–66)' },
+  { v: 'servicos', l: '🛠 Serviços profissionais (69–96)' },
+  { v: 'saude', l: '🏥 Saúde (86–88)' },
+  { v: 'outro', l: '◆ Outros setores' },
+];
 const PORTES = [
-  { v: '01', l: 'Micro (0–9)' },
-  { v: '03', l: 'EPP (10–49)' },
-  { v: '05', l: 'Demais (50+)' },
+  { v: '01', l: 'Microempresa (0–9 func.)' },
+  { v: '03', l: 'EPP (10–49 func.)' },
+  { v: '05', l: 'Demais — médio/grande (50+)' },
+  { v: '00', l: 'Não informado / MEI' },
+];
+const CNAE_QUICK = [
+  { c: '0111301', l: 'Cultivo de arroz' },
+  { c: '2511000', l: 'Estruturas metálicas' },
+  { c: '4711302', l: 'Supermercados' },
+  { c: '6201501', l: 'Desenv. de software' },
+  { c: '8610101', l: 'Atividades hospitalares' },
+  { c: '4120400', l: 'Construção de edifícios' },
+  { c: '4930202', l: 'Transporte rodoviário carga' },
+  { c: '6422100', l: 'Bancos múltiplos' },
 ];
 const CAPITAL_PRESETS = [
   { l: 'R$ 0–81k', min: 0, max: 81000 },
@@ -59,6 +84,7 @@ function defaultFiltros() {
     ufs: [],
     clusters: [],
     cnaes: [],
+    cnae_divisoes: [],
     municipios: [],
     portes: [],
     naturezas: [],
@@ -93,6 +119,7 @@ function activeFilterCount() {
   if (f.ufs?.length) n++;
   if (f.clusters?.length) n++;
   if (f.cnaes?.length) n++;
+  if (f.cnae_divisoes?.length) n++;
   if (f.municipios?.length) n++;
   if (f.portes?.length) n++;
   if (f.naturezas?.length) n++;
@@ -124,6 +151,7 @@ function filtrosFromDom(root) {
   f.clusters = [...root.querySelectorAll('#ps-clusters input:checked')].map((el) => el.value);
   f.portes = [...root.querySelectorAll('#ps-portes input:checked')].map((el) => el.value);
   f.cnaes = (root.querySelector('#ps-cnaes-data')?.value || '').split('|').filter(Boolean);
+  f.cnae_divisoes = [...root.querySelectorAll('#ps-cnae-div input:checked')].map((el) => el.value);
   f.municipios = (root.querySelector('#ps-mun-data')?.value || '').split('|').filter(Boolean);
   f.naturezas = [...root.querySelectorAll('#ps-nat input:checked')].map((el) => el.value);
   return f;
@@ -203,7 +231,8 @@ function renderSidebar() {
     return '<label><input type="checkbox" value="' + u + '"' + (f.ufs.includes(u) ? ' checked' : '') + '> ' + u + '</label>';
   }).join('');
   const clusterChecks = CLUSTERS.map(function (c) {
-    return '<label><input type="checkbox" value="' + c + '"' + (f.clusters.includes(c) ? ' checked' : '') + '> ' + c + '</label>';
+    return '<label title="' + esc(c.v) + '"><input type="checkbox" value="' + c.v + '"' +
+      (f.clusters.includes(c.v) ? ' checked' : '') + '> ' + c.l + '</label>';
   }).join('');
   const porteChecks = PORTES.map(function (p) {
     return '<label><input type="checkbox" value="' + p.v + '"' + (f.portes.includes(p.v) ? ' checked' : '') + '> ' + p.l + '</label>';
@@ -233,7 +262,17 @@ function renderSidebar() {
           '<input type="hidden" id="ps-mun-data" value="' + esc(f.municipios.join('|')) + '">' +
           '<div id="ps-mun-chips" class="ps-chips"></div></div>', true) +
       accordionGroup('cnae', '🏭', 'CNAE / Atividade',
-        '<input type="search" id="ps-cnae-q" placeholder="Buscar CNAE…" autocomplete="off">' +
+        '<p class="hint ps-subhint">Atalhos por divisão (2 dígitos) ou código completo (7 dígitos).</p>' +
+        '<label class="ps-field"><span>Seção CNAE</span>' +
+          '<select id="ps-cnae-secao"><option value="">Todas as seções</option></select></label>' +
+        '<div id="ps-cnae-div" class="ps-check-list ps-cnae-div-list"><p class="hint">Carregando divisões…</p></div>' +
+        '<p class="ps-opt-title">Códigos frequentes</p>' +
+        '<div class="ps-quick-cnaes">' +
+          CNAE_QUICK.map(function (q) {
+            return '<button type="button" class="btn sm ps-cnae-quick" data-c="' + q.c + '">' + esc(q.l) + '</button>';
+          }).join('') +
+        '</div>' +
+        '<input type="search" id="ps-cnae-q" placeholder="Buscar CNAE por código ou descrição…" autocomplete="off">' +
         '<div id="ps-cnae-suggest" class="ps-suggest"></div>' +
         '<input type="hidden" id="ps-cnaes-data" value="' + esc(f.cnaes.join('|')) + '">' +
         '<div id="ps-cnae-chips" class="ps-chips"></div>') +
@@ -263,6 +302,7 @@ function renderSidebar() {
       accordionGroup('socios', '👤', 'Sócios',
         '<input type="search" id="ps-socio" placeholder="Nome do sócio…" value="' + esc(f.socio_nome) + '">') +
       accordionGroup('natureza', '⚖', 'Natureza jurídica',
+        '<input type="search" id="ps-nat-q" placeholder="Filtrar natureza…" autocomplete="off">' +
         '<div id="ps-nat" class="ps-check-list ps-nat-list"><p class="hint">Carregando…</p></div>') +
       '<button type="button" class="btn primary ps-save-search" id="ps-save-search">Salvar pesquisa</button>' +
       '<button type="button" class="btn sm ps-apply" id="ps-apply">Aplicar filtros</button>' +
@@ -283,6 +323,8 @@ function renderMain() {
       '<div class="ps-topbar">' +
         '<input type="search" id="ps-q" class="ps-search-input" placeholder="Razão social ou CNPJ…" value="' + esc(state.filtros.q) + '">' +
         '<div class="ps-topbar-actions">' +
+          '<button type="button" class="btn primary ps-run-btn" id="ps-btn-run" title="Buscar, enriquecer contatos e importar para CRM">⚡ Executar prospecção</button>' +
+          '<button type="button" class="btn sm" id="ps-btn-help" title="Como usar">❓ Como usar</button>' +
           '<button type="button" class="btn sm" id="ps-btn-ops">⚙ Operações</button>' +
           '<button type="button" class="btn sm" id="ps-btn-admin">Base de dados</button>' +
           '<button type="button" class="btn sm" id="ps-btn-intel">📊 Mapas</button>' +
@@ -410,7 +452,11 @@ function renderActiveChips(root) {
   const chips = [];
   const f = state.filtros;
   f.ufs.forEach(function (u) { chips.push(['UF ' + u, function () { f.ufs = f.ufs.filter(function (x) { return x !== u; }); }]); });
-  f.clusters.forEach(function (c) { chips.push([c, function () { f.clusters = f.clusters.filter(function (x) { return x !== c; }); }]); });
+  f.clusters.forEach(function (c) {
+    const lbl = (CLUSTERS.find(function (x) { return x.v === c; }) || {}).l || c;
+    chips.push([lbl, function () { f.clusters = f.clusters.filter(function (x) { return x !== c; }); }]);
+  });
+  f.cnae_divisoes.forEach(function (d) { chips.push(['Div. CNAE ' + d, function () { f.cnae_divisoes = f.cnae_divisoes.filter(function (x) { return x !== d; }); }]); });
   if (f.q) chips.push(['Busca: ' + f.q, function () { f.q = ''; }]);
   el.innerHTML = chips.map(function (c, i) {
     return '<span class="ps-chip-rem">' + esc(c[0]) + ' <button type="button" data-chip="' + i + '">×</button></span>';
@@ -427,21 +473,220 @@ function renderActiveChips(root) {
   });
 }
 
-async function loadNaturezas(root) {
+async function loadNaturezas(root, q) {
   const box = root.querySelector('#ps-nat');
   if (!box) return;
   try {
-    const list = await fetchNaturezas();
-    box.innerHTML = list.slice(0, 40).map(function (n) {
+    const list = await fetchNaturezas(q || '');
+    box.innerHTML = list.map(function (n) {
       return '<label><input type="checkbox" value="' + esc(n) + '"' +
         (state.filtros.naturezas.includes(n) ? ' checked' : '') + '> ' + esc(n) + '</label>';
-    }).join('') || '<p class="hint">Nenhuma natureza na base.</p>';
+    }).join('') || '<p class="hint">Nenhuma natureza encontrada.</p>';
     box.querySelectorAll('input').forEach(function (inp) {
       inp.addEventListener('change', function () { scheduleSearch(root); });
     });
   } catch (_) {
     box.innerHTML = '<p class="hint">Indisponível offline.</p>';
   }
+}
+
+async function loadCnaeDivisoes(root, secao) {
+  const box = root.querySelector('#ps-cnae-div');
+  const sel = root.querySelector('#ps-cnae-secao');
+  if (!box) return;
+  try {
+    const data = await fetchCnaeSetores('', secao || '');
+    if (sel && !sel.dataset.loaded) {
+      sel.innerHTML = '<option value="">Todas as seções</option>' +
+        (data.secoes || []).map(function (s) {
+          return '<option value="' + esc(s.codigo) + '">' + esc(s.codigo + ' — ' + (s.nome || '').slice(0, 45)) + '</option>';
+        }).join('');
+      sel.dataset.loaded = '1';
+      if (secao) sel.value = secao;
+    }
+    const divs = data.divisoes || [];
+    box.innerHTML = divs.map(function (d) {
+      const checked = state.filtros.cnae_divisoes.includes(d.codigo) ? ' checked' : '';
+      return '<label title="' + esc(d.secao_nome || '') + '">' +
+        '<input type="checkbox" value="' + esc(d.codigo) + '"' + checked + '> ' +
+        '<code>' + esc(d.codigo) + '</code> ' + esc((d.divisao || '').slice(0, 42)) + '</label>';
+    }).join('') || '<p class="hint">Nenhuma divisão nesta seção.</p>';
+    box.querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('change', function () { scheduleSearch(root); });
+    });
+  } catch (_) {
+    box.innerHTML = '<p class="hint">Divisões CNAE indisponíveis offline.</p>';
+  }
+}
+
+function showRunOverlay(title, message, pct) {
+  let el = document.getElementById('ps-run-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'ps-run-overlay';
+    el.className = 'ps-run-overlay';
+    el.innerHTML =
+      '<div class="ps-run-panel">' +
+        '<div class="ps-run-spinner"></div>' +
+        '<h3 id="ps-run-title">Executando prospecção</h3>' +
+        '<p id="ps-run-msg" class="hint">—</p>' +
+        '<div class="ps-run-bar"><div id="ps-run-fill" class="ps-run-fill"></div></div>' +
+        '<p id="ps-run-pct" class="hint">0%</p>' +
+      '</div>';
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  const t = el.querySelector('#ps-run-title');
+  const m = el.querySelector('#ps-run-msg');
+  const f = el.querySelector('#ps-run-fill');
+  const p = el.querySelector('#ps-run-pct');
+  if (t) t.textContent = title || 'Executando prospecção';
+  if (m) m.textContent = message || '';
+  if (f) f.style.width = Math.min(100, Math.max(0, pct || 0)) + '%';
+  if (p) p.textContent = Math.round(pct || 0) + '%';
+}
+
+function hideRunOverlay(delayMs) {
+  setTimeout(function () {
+    const el = document.getElementById('ps-run-overlay');
+    if (el) el.style.display = 'none';
+  }, delayMs || 0);
+}
+
+function importEmpresasCrm(empresas) {
+  const rows = (empresas || []).filter(function (e) {
+    return e && e.cnpj_basico && e.enriquecimento_status !== 'error';
+  });
+  if (!rows.length) return 0;
+  store.bulkUpsert('leads', rows.map(function (p) {
+    return { ...mapProspectoToStore(p), id: store.uid('lead') };
+  }));
+  return rows.length;
+}
+
+async function runProspeccao(root) {
+  if (state.runInProgress) return;
+  state.filtros = filtrosFromDom(root);
+  const btn = root.querySelector('#ps-btn-run');
+  state.runInProgress = true;
+  if (btn) btn.disabled = true;
+
+  try {
+    if (!state.backendOnline) {
+      window.AFSToast?.error('Backend offline. Inicie python app.py');
+      return;
+    }
+
+    showRunOverlay('Preparando', 'Contando empresas com os filtros atuais…', 2);
+    const counts = await prospeccaoCount(filtrosForApi(state.filtros));
+    state.counts = counts;
+
+    const alvo = counts.nao_enriquecidas > 0 ? counts.nao_enriquecidas : counts.todas;
+    if (!alvo) {
+      hideRunOverlay(0);
+      window.AFSToast?.error('Nenhuma empresa encontrada. Ajuste os filtros.');
+      return;
+    }
+
+    const limite = Math.min(Math.max(alvo, 1), 100);
+    const aba = counts.nao_enriquecidas > 0 ? 'nao_enriquecidas' : 'todas';
+    showRunOverlay(
+      'Executando prospecção',
+      limite.toLocaleString('pt-BR') + ' empresa(s) — busca + enriquecimento + CRM…',
+      5,
+    );
+
+    const res = await executarProspeccao({
+      filtros: filtrosForApi(state.filtros),
+      aba: aba,
+      limite: limite,
+    });
+
+    if (res.code === 'sem_base_rf' || (res.status === 'error' && res.message)) {
+      hideRunOverlay(0);
+      window.AFSToast?.error(res.message || 'Base RF vazia');
+      if (confirm('A base RF está vazia. Abrir Centro de Operações para ingestão?')) {
+        location.hash = '#/prospeccao/operacoes';
+      }
+      return;
+    }
+
+    let result = res;
+    if (res.job_id) {
+      result = await pollJob(res.job_id, function (j) {
+        showRunOverlay('Executando prospecção', j.message || j.status, j.progress || 0);
+      });
+      result = result?.result || result;
+    }
+
+    const proc = result?.processados ?? 0;
+    const ok = result?.enriquecidos_ok ?? 0;
+    const contatos = result?.contatos_coletados ?? 0;
+    const importados = importEmpresasCrm(result?.empresas);
+
+    showRunOverlay(
+      'Concluído',
+      ok + ' enriquecidas · ' + contatos + ' contatos · ' + importados + ' no CRM',
+      100,
+    );
+    window.AFSToast?.success(
+      'Prospecção concluída: ' + ok + '/' + proc + ' empresas, ' + contatos + ' contatos, ' + importados + ' no CRM',
+    );
+
+    state.searched = true;
+    state.aba = 'enriquecidas';
+    state.page = 1;
+    await refreshResults(root);
+    root.querySelectorAll('.ps-tab').forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-aba') === 'enriquecidas');
+    });
+    hideRunOverlay(1800);
+  } catch (e) {
+    hideRunOverlay(0);
+    window.AFSToast?.error(e.message || 'Erro na prospecção');
+  } finally {
+    state.runInProgress = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+function openHelpDrawer() {
+  openDrawer({
+    title: 'Como usar a Prospecção em Massa',
+    width: '520px',
+    bodyHtml:
+      '<div class="ps-help">' +
+        '<h4>1. Primeira vez — carregar a base</h4>' +
+        '<p>Clique em <strong>⚙ Operações</strong> → aba <strong>RF</strong> → <strong>Iniciar ingestão</strong>. ' +
+        'Ou use o botão laranja <strong>⚡ Executar prospecção</strong> — ele avisa se a base ainda estiver vazia.</p>' +
+        '<h4>2. Modo rápido (recomendado)</h4>' +
+        '<p>Ajuste os filtros à esquerda e clique <strong>⚡ Executar prospecção</strong>. ' +
+        'Em um clique o sistema: busca empresas → enriquece e-mails/telefones → importa para o CRM.</p>' +
+        '<h4>3. Filtrar manualmente</h4>' +
+        '<p>Use os filtros à esquerda: UF, município, <strong>segmento</strong> (cluster), ' +
+        '<strong>divisão CNAE</strong> (2 dígitos), código CNAE completo, porte, capital social, etc. ' +
+        'A busca atualiza sozinha após ~400 ms.</p>' +
+        '<h4>4. Abas de resultado</h4>' +
+        '<ul>' +
+          '<li><strong>Todas</strong> — qualquer empresa do filtro</li>' +
+          '<li><strong>Não enriquecidas</strong> — ainda sem e-mail/telefone extraídos</li>' +
+          '<li><strong>Enriquecidas</strong> — já passaram pela cascata de contatos</li>' +
+          '<li><strong>Novas</strong> — abertas nos últimos 90 dias</li>' +
+        '</ul>' +
+        '<h4>5. Enriquecer contatos (manual)</h4>' +
+        '<p>Clique <strong>Enriquecer</strong> em uma linha ou selecione várias e use ' +
+        '<strong>Enriquecer selecionados</strong>. A cascata busca: RF → APIs → site → MX → OSM.</p>' +
+        '<h4>6. Importar para o CRM</h4>' +
+        '<p>Selecione empresas → <strong>Importar CRM</strong>. Use "Excluir já importadas p/ CRM" para não repetir.</p>' +
+        '<h4>7. Pesquisas salvas</h4>' +
+        '<p>Configure filtros → <strong>Salvar pesquisa</strong> para reutilizar depois.</p>' +
+        '<h4>Atalhos úteis</h4>' +
+        '<p>Cards na tela inicial (ICP R$ 2–10 mi, Transição de Regime…) aplicam filtros prontos. ' +
+        'Presets de capital e códigos CNAE frequentes aceleram a segmentação.</p>' +
+        '<p class="hint">Backend local: <code>python app.py</code> em afs-market-intelligence → ' +
+        '<code>http://127.0.0.1:5001/#/prospeccao/massa</code></p>' +
+      '</div>',
+  });
 }
 
 function bindAutocomplete(root) {
@@ -518,8 +763,20 @@ function bindEvents(root) {
     renderPage(root);
     bindEvents(root);
     loadNaturezas(root);
-    bindAutocomplete(root);
+    loadCnaeDivisoes(root);
+  let natT = null;
+  root.querySelector('#ps-nat-q')?.addEventListener('input', function () {
+    clearTimeout(natT);
+    const q = this.value.trim();
+    natT = setTimeout(function () { loadNaturezas(root, q); }, 350);
   });
+
+  root.querySelector('#ps-cnae-secao')?.addEventListener('change', function () {
+    void loadCnaeDivisoes(root, this.value);
+  });
+
+  bindAutocomplete(root);
+});
 
   root.querySelector('#ps-apply')?.addEventListener('click', function () {
     state.filtros = filtrosFromDom(root);
@@ -559,6 +816,14 @@ function bindEvents(root) {
     state.filtros = filtrosFromDom(root);
     await saveSegmentacao(nome, state.filtros);
     window.AFSToast?.success('Pesquisa salva');
+  });
+
+  root.querySelector('#ps-btn-help')?.addEventListener('click', function () {
+    openHelpDrawer();
+  });
+
+  root.querySelector('#ps-btn-run')?.addEventListener('click', function () {
+    void runProspeccao(root);
   });
 
   root.querySelector('#ps-btn-admin')?.addEventListener('click', function () {
@@ -632,8 +897,19 @@ function bindEvents(root) {
       renderPage(root);
       bindEvents(root);
       loadNaturezas(root);
+      loadCnaeDivisoes(root);
       bindAutocomplete(root);
       void refreshResults(root);
+      return;
+    }
+    const cnaeQuick = e.target.closest('.ps-cnae-quick');
+    if (cnaeQuick) {
+      const c = cnaeQuick.getAttribute('data-c');
+      const hidden = root.querySelector('#ps-cnaes-data');
+      const arr = (hidden.value || '').split('|').filter(Boolean);
+      if (!arr.includes(c)) arr.push(c);
+      hidden.value = arr.join('|');
+      scheduleSearch(root);
     }
   });
 
@@ -862,7 +1138,7 @@ export async function renderProspeccaoMassa({ mount }) {
   renderPage(mount);
   bindEvents(mount);
   loadNaturezas(mount);
-  bindAutocomplete(mount);
+  loadCnaeDivisoes(mount);
 
   state.searched = true;
   await refreshResults(mount);
