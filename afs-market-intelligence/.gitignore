@@ -1,6 +1,6 @@
-data/
-data/rf/raw/
+data/rf/
 data/exports/
+data/**/*.zip
 *.duckdb
 *.log
 .env

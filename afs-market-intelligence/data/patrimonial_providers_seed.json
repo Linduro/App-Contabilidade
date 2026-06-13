@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "descricao": "Prestadores de controle patrimonial / gestão de ativos — seed para mapa e carência regional",
+    "data_atualizacao": "2026-06-11",
+    "total_seed": 28,
+    "uso": "Expandir via raspagem RF (CNAEs-alvo) e enriquecimento IA"
+  },
+  "nota_ia": "Próxima fase: busca RF por CNAE 77.32-9/01, 68.22-6/00, 70.20-4/00 e validação manual. Nuvem de pontos será substituída por coordenadas reais de sede/filiais.",
+  "cnaes_alvo": [
+    {"codigo": "7739099", "descricao": "Aluguel de outras máquinas e equipamentos sem operador"},
+    {"codigo": "6822600", "descricao": "Gestão e administração de imóveis"},
+    {"codigo": "7020400", "descricao": "Consultoria em gestão empresarial"},
+    {"codigo": "7112000", "descricao": "Serviços de engenharia"},
+    {"codigo": "7490199", "descricao": "Outras atividades profissionais, científicas e técnicas"}
+  ],
+  "prestadores": [
+    {"nome": "AFS Asset Flow Solutions", "uf": "SP", "tipo_servico": "Controle patrimonial integrado", "tier": "referencia", "website": null},
+    {"nome": "Patrimonial Control Brasil", "uf": "SP", "tipo_servico": "Inventário e laudos CPC", "tier": "media", "website": null},
+    {"nome": "Gestão Ativos Industriais", "uf": "SP", "tipo_servico": "Imobilizado industrial", "tier": "media", "website": null},
+    {"nome": "Inventário Patrimonial RS", "uf": "RS", "tipo_servico": "Inventário multi-filial", "tier": "pequena", "website": null},
+    {"nome": "Control Assets MG", "uf": "MG", "tipo_servico": "Gestão de ativos fixos", "tier": "media", "website": null},
+    {"nome": "Patrimônio Auditável PR", "uf": "PR", "tipo_servico": "Conformidade patrimonial", "tier": "pequena", "website": null},
+    {"nome": "Ativos em Foco RJ", "uf": "RJ", "tipo_servico": "Controle patrimonial varejo", "tier": "media", "website": null},
+    {"nome": "Imobilizado Certo SC", "uf": "SC", "tipo_servico": "Laudos e inventário", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial Agro BA", "uf": "BA", "tipo_servico": "Ativos rurais e biológicos", "tier": "pequena", "website": null},
+    {"nome": "Control Patrimonial PE", "uf": "PE", "tipo_servico": "Inventário corporativo", "tier": "pequena", "website": null},
+    {"nome": "Gestão Patrimonial GO", "uf": "GO", "tipo_servico": "Multi-unidade agroindustrial", "tier": "media", "website": null},
+    {"nome": "Ativo Real DF", "uf": "DF", "tipo_servico": "Consultoria patrimonial", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial Norte AM", "uf": "AM", "tipo_servico": "Inventário regional", "tier": "pequena", "website": null},
+    {"nome": "Control Assets CE", "uf": "CE", "tipo_servico": "Imobilizado e estoque fixo", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial ES", "uf": "ES", "tipo_servico": "Laudos técnicos", "tier": "pequena", "website": null},
+    {"nome": "Ativos Integrados MT", "uf": "MT", "tipo_servico": "Agro + industrial", "tier": "media", "website": null},
+    {"nome": "Patrimonial MS", "uf": "MS", "tipo_servico": "Controle multi-fazenda", "tier": "pequena", "website": null},
+    {"nome": "Inventário Patrimonial PA", "uf": "PA", "tipo_servico": "Ativos dispersos", "tier": "pequena", "website": null},
+    {"nome": "Control Patrimonial RN", "uf": "RN", "tipo_servico": "Varejo multi-loja", "tier": "pequena", "website": null},
+    {"nome": "Gestão Ativos PB", "uf": "PB", "tipo_servico": "Inventário", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial AL", "uf": "AL", "tipo_servico": "Conformidade", "tier": "pequena", "website": null},
+    {"nome": "Ativos Sul RS", "uf": "RS", "tipo_servico": "Industrial", "tier": "media", "website": null},
+    {"nome": "Patrimonial TO", "uf": "TO", "tipo_servico": "Agro", "tier": "pequena", "website": null},
+    {"nome": "Control Assets RO", "uf": "RO", "tipo_servico": "Regional", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial PI", "uf": "PI", "tipo_servico": "Inventário", "tier": "pequena", "website": null},
+    {"nome": "Gestão Patrimonial MA", "uf": "MA", "tipo_servico": "Multi-filial", "tier": "pequena", "website": null},
+    {"nome": "Ativos SE", "uf": "SE", "tipo_servico": "Controle patrimonial", "tier": "pequena", "website": null},
+    {"nome": "Patrimonial AC", "uf": "AC", "tipo_servico": "Regional", "tier": "pequena", "website": null}
+  ]
+}
