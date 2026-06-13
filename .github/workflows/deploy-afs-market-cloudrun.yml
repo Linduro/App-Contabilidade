@@ -63,10 +63,9 @@ jobs:
 
       - name: Enable required APIs
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
-        continue-on-error: true
         run: |
-          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet || \
-            echo "::warning::Sem permissão para enable APIs — habilite manualmente no GCP Console se o deploy falhar."
+          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com containerregistry.googleapis.com --quiet
+          echo "APIs Cloud Run habilitadas."
 
       - name: Deploy to Cloud Run
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
