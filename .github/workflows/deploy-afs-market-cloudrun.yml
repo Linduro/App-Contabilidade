@@ -77,7 +77,7 @@ jobs:
             --region "${{ env.GCP_REGION }}" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "PORT=8080,DB_ENGINE=duckdb,DB_PATH=/app/data/afs_market.duckdb" \
+            --set-env-vars "DB_ENGINE=duckdb,DB_PATH=/app/data/afs_market.duckdb" \
             --memory 2Gi \
             --cpu 2 \
             --timeout 3600 \
