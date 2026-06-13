@@ -32,6 +32,19 @@ const SA_ROLES = [
   'roles/serviceusage.serviceUsageAdmin',
 ];
 
+const EXTRA_MEMBERS = [
+  `serviceAccount:${FIREBASE_SA}`,
+  'serviceAccount:92104290412@cloudbuild.gserviceaccount.com',
+  'serviceAccount:92104290412-compute@developer.gserviceaccount.com',
+];
+
+const EXTRA_ROLES = [
+  'roles/run.admin',
+  'roles/artifactregistry.writer',
+  'roles/storage.admin',
+  'roles/logging.logWriter',
+];
+
 function firebaseConfigPath() {
   const home = os.homedir();
   const candidates = [
@@ -121,9 +134,23 @@ async function grantRoles(token) {
     }
     if (!binding.members.includes(member)) {
       binding.members.push(member);
-      console.log(`  + ${role}`);
+      console.log(`  + ${role} → firebase-adminsdk`);
     } else {
-      console.log(`  · ${role} (já concedida)`);
+      console.log(`  · ${role} → firebase-adminsdk (já concedida)`);
+    }
+  }
+
+  for (const role of EXTRA_ROLES) {
+    let binding = policy.bindings.find((b) => b.role === role);
+    if (!binding) {
+      binding = { role, members: [] };
+      policy.bindings.push(binding);
+    }
+    for (const m of EXTRA_MEMBERS.slice(1)) {
+      if (!binding.members.includes(m)) {
+        binding.members.push(m);
+        console.log(`  + ${role} → ${m.replace('serviceAccount:', '')}`);
+      }
     }
   }
 

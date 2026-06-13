@@ -1,6 +1,6 @@
 name: Deploy AFS Market Intelligence (Cloud Run)
 
-# Opcional. Para ativar:
+# Retrigger deploy: IAM Cloud Build ajustado
 #   1. Settings → Secrets → FIREBASE_SERVICE_ACCOUNT (JSON da service account GCP)
 #   2. Settings → Variables → ENABLE_GCP_CLOUD_RUN = true
 # Sem isso o job termina em verde; o app segue no Spark via Firestore (browser-api.js).
