@@ -45,10 +45,28 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
+      - name: Verify service account project matches GCP_PROJECT
+        if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
+        env:
+          CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          SA_PROJECT=$(python3 - <<'PY'
+          import json, os
+          print(json.loads(os.environ["CREDENTIALS_JSON"]).get("project_id", ""))
+          PY
+          )
+          echo "Service account project: ${SA_PROJECT}"
+          if [ "${SA_PROJECT}" != "${{ env.GCP_PROJECT }}" ]; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT pertence a '${SA_PROJECT}', esperado '${{ env.GCP_PROJECT }}'."
+            exit 1
+          fi
+
       - name: Enable required APIs
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
+        continue-on-error: true
         run: |
-          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet
+          gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com --quiet || \
+            echo "::warning::Sem permissão para enable APIs — habilite manualmente no GCP Console se o deploy falhar."
 
       - name: Deploy to Cloud Run
         if: ${{ vars.ENABLE_GCP_CLOUD_RUN == 'true' }}
