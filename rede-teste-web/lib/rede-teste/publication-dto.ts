@@ -12,8 +12,9 @@ import {
   loadViewerLastRepliesBatch,
   type JqViewerLastReply,
 } from "@/lib/rede-teste/viewer-last-reply";
+import { loadLastRepliesBatch, type JqLastReply } from "@/lib/rede-teste/last-reply";
 
-export type { JqViewerLastReply };
+export type { JqViewerLastReply, JqLastReply };
 
 export const jqAuthorInclude = {
   select: {
@@ -163,6 +164,8 @@ export type JqPublicationDto = {
   scheduledAt?: Date | null;
   /** Último comentário do viewer neste post (evita N+1 no feed). */
   viewerLastReply?: JqViewerLastReply | null;
+  /** Último comentário de qualquer autor (quando o viewer ainda não comentou). */
+  lastReply?: JqLastReply | null;
 };
 
 function pollDtoToLegacy(dto: JqPollDto): JqPollStored {
@@ -186,6 +189,7 @@ export function mapJqPublication(
   pollV2: JqPollDto | null = null,
   threadPartCount = 0,
   viewerLastReply: JqViewerLastReply | null = null,
+  lastReply: JqLastReply | null = null,
 ): JqPublicationDto {
   const profile = row.author.juridiquesProfile;
   return {
@@ -248,6 +252,7 @@ export function mapJqPublication(
         : null,
     scheduledAt: row.scheduledAt ?? null,
     viewerLastReply: viewerLastReply ?? null,
+    lastReply: lastReply ?? null,
   };
 }
 
@@ -333,13 +338,15 @@ export async function mapJqPublications(
         p?.poll ?? null,
         row.threadId ? threadCounts.get(row.threadId) ?? 0 : 0,
         null,
+        null,
       );
     });
   }
 
-  const [{ likedIds, repostedIds, bookmarkedIds, pollVotes }, lastReplies] =
+  const [{ likedIds, repostedIds, bookmarkedIds, pollVotes }, lastReplies, viewerReplies] =
     await Promise.all([
       loadJqViewerInteractions(prisma, viewerId, ids),
+      loadLastRepliesBatch(prisma, parentIds),
       loadViewerLastRepliesBatch(prisma, viewerId, parentIds),
     ]);
 
@@ -354,6 +361,7 @@ export async function mapJqPublications(
       bookmarkedIds,
       p?.poll ?? null,
       row.threadId ? threadCounts.get(row.threadId) ?? 0 : 0,
+      viewerReplies.get(row.id) ?? null,
       lastReplies.get(row.id) ?? null,
     );
   });

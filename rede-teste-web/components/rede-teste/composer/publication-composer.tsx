@@ -263,14 +263,9 @@ export function PublicationComposer({
       } else {
         toast.success(parentId ? "Resposta enviada" : "Publicação enviada");
       }
-      const isTopLevelPost =
-        !variables.parentId &&
-        !variables.communityId &&
-        !variables.scheduledAt &&
-        !variables.saveAsDraft;
-      onPublished?.(
-        isTopLevelPost && data ? (data as unknown as PublicationItem) : undefined,
-      );
+      if (data && !variables.saveAsDraft && !variables.scheduledAt) {
+        onPublished?.(data as unknown as PublicationItem);
+      }
     },
     onError: (e) => toast.error(e.message),
   });

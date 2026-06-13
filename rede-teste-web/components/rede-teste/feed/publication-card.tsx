@@ -84,6 +84,14 @@ export type PublicationItem = {
     createdAt: Date;
     media: { url: string; type: string }[];
   } | null;
+  lastReply?: {
+    id: string;
+    content: string;
+    createdAt: Date;
+    media: { url: string; type: string }[];
+    author: { name: string; handle: string; image: string | null };
+  } | null;
+  allowGifReplies?: boolean;
 };
 
 type Props = {
@@ -107,6 +115,8 @@ export function PublicationCard({
   const meQuery = trpc.redeTeste.me.useQuery(undefined, { enabled: meProp === undefined });
   const meData = meProp ?? meQuery.data;
   const myLastReply = item.viewerLastReply ?? null;
+  const feedReply = myLastReply ?? item.lastReply ?? null;
+  const feedReplyIsMine = !!myLastReply;
   const [replyOpen, setReplyOpen] = useState(false);
   const [content, setContent] = useState(item.content);
   const [expanded, setExpanded] = useState(false);
@@ -391,25 +401,40 @@ export function PublicationCard({
             />
           </div>
 
-          {myLastReply ? (
+          {feedReply && item.repliesCount > 0 ? (
             <Link
               href={`/rede-teste/publicacao/${item.id}`}
               className="mt-2 flex gap-2 rounded-xl border border-[var(--jq-border)] bg-[var(--jq-surface)]/50 px-3 py-2 transition hover:bg-[var(--jq-surface)]"
             >
-              <JqAvatar src={replyUser.image} name={replyUser.name} size="sm" />
+              <JqAvatar
+                src={
+                  feedReplyIsMine
+                    ? replyUser.image
+                    : item.lastReply?.author.image ?? null
+                }
+                name={
+                  feedReplyIsMine
+                    ? replyUser.name
+                    : item.lastReply?.author.name ?? "Usuário"
+                }
+                size="sm"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-[var(--jq-muted)]">
-                  Seu comentário ·{" "}
-                  {formatJqRelativeTime(myLastReply.createdAt)}
+                  {feedReplyIsMine
+                    ? "Seu comentário"
+                    : item.lastReply?.author.name ?? "Comentário"}
+                  {" · "}
+                  {formatJqRelativeTime(feedReply.createdAt)}
                 </p>
-                {myLastReply.content?.trim() ? (
+                {feedReply.content?.trim() ? (
                   <p className="mt-0.5 line-clamp-2 whitespace-pre-wrap break-words text-sm">
-                    {myLastReply.content}
+                    {feedReply.content}
                   </p>
                 ) : null}
-                {myLastReply.media?.length ? (
+                {feedReply.media?.length ? (
                   <p className="mt-0.5 text-xs text-[var(--jq-muted)]">
-                    {myLastReply.media[0]!.type === "GIF" ? "GIF" : "Mídia anexada"}
+                    {feedReply.media[0]!.type === "GIF" ? "GIF" : "Mídia anexada"}
                   </p>
                 ) : null}
               </div>
@@ -423,9 +448,23 @@ export function PublicationCard({
                 parentId={item.id}
                 parentAllowGifReplies={item.allowGifReplies}
                 placeholder="Escreva um comentário…"
-                onPublished={() => {
+                onPublished={(created) => {
                   setReplyOpen(false);
-                  onUpdate({ repliesCount: item.repliesCount + 1 });
+                  const viewerReply =
+                    created
+                      ? {
+                          id: created.id,
+                          content: created.content,
+                          createdAt: created.createdAt,
+                          media: created.media ?? [],
+                        }
+                      : undefined;
+                  onUpdate({
+                    repliesCount: item.repliesCount + 1,
+                    ...(viewerReply
+                      ? { viewerLastReply: viewerReply, lastReply: null }
+                      : {}),
+                  });
                   void utils.redeTeste.replies.invalidate({ parentId: item.id });
                   void utils.redeTeste.feed.invalidate();
                 }}
