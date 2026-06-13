@@ -188,6 +188,91 @@ function formatControlLabel(controlVal, rowIdx) {
     return rowIdx != null ? `— (${rowIdx})` : '—';
 }
 
+function formatDurationMs(ms) {
+    if (!ms || ms <= 0) return '-';
+    if (ms < 1000) return `${ms} ms`;
+    return `${(ms / 1000).toFixed(1)} s`;
+}
+
+function formatRowTokensHtml(evalObj, sheetName, rowIdx) {
+    if (typeof afsLoadState !== 'function') return '-';
+    const s = afsLoadState();
+    const usage = typeof afsGetRowTokenUsage === 'function'
+        ? afsGetRowTokenUsage(s, sheetName, rowIdx, evalObj)
+        : null;
+    const total = Number(usage?.tokens_total ?? evalObj?.tokens_total ?? evalObj?.tokens) || 0;
+    if (total <= 0) return '-';
+    const vision = Number(usage?.tokens_vision ?? evalObj?.tokens_vision) || 0;
+    const market = Number(usage?.tokens_market ?? evalObj?.tokens_market) || 0;
+    return `<span title="Vision: ${vision.toLocaleString()} · Avaliação: ${market.toLocaleString()}">${total.toLocaleString()}</span>`;
+}
+
+function refreshTokenStatsUI() {
+    const counter = document.getElementById('tokenCounter');
+    const detail = document.getElementById('tokenSessionDetail');
+    const session = window.__afs_session_stats || { tokens_total: 0, tokens_vision: 0, tokens_market: 0 };
+    if (counter) counter.textContent = (session.tokens_total || 0).toLocaleString();
+    if (detail) {
+        detail.textContent = `Sessão — Vision: ${(session.tokens_vision || 0).toLocaleString()} · Avaliação: ${(session.tokens_market || 0).toLocaleString()}`;
+    }
+}
+
+async function refreshUsageStatsUI() {
+    const sheetName = getActiveSpreadsheetName();
+    let stats = null;
+    try {
+        if (hasRemoteApi()) {
+            const data = await apiFetch('/api/usage-stats');
+            stats = data.stats;
+        } else if (typeof afsComputeUsageStats === 'function' && typeof afsLoadState === 'function') {
+            stats = afsComputeUsageStats(afsLoadState(), sheetName);
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar estatísticas:', e);
+    }
+    if (!stats) return;
+
+    const set = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
+    const sheet = stats.sheet || {};
+    const session = stats.session || {};
+    set('statsSheetTotal', (sheet.tokens_total || 0).toLocaleString());
+    set('statsSheetVision', (sheet.tokens_vision || 0).toLocaleString());
+    set('statsSheetMarket', (sheet.tokens_market || 0).toLocaleString());
+    set('statsSheetItems', String(sheet.item_count || 0));
+    set('statsSheetAvg', (stats.sheet_avg_tokens || 0).toLocaleString());
+    set('statsSheetTime', formatDurationMs(sheet.total_duration_ms));
+
+    set('statsSessionTotal', (session.tokens_total || 0).toLocaleString());
+    set('statsSessionVision', (session.tokens_vision || 0).toLocaleString());
+    set('statsSessionMarket', (session.tokens_market || 0).toLocaleString());
+    set('statsSessionItems', String(session.item_count || 0));
+    set('statsSessionAvg', (stats.session_avg_tokens || 0).toLocaleString());
+    set('statsSessionTime', formatDurationMs(session.total_duration_ms));
+
+    const tbody = document.getElementById('usageRecentTableBody');
+    if (!tbody) return;
+    const rows = stats.recent_evaluations || [];
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Nenhuma avaliação registrada.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${r.control != null ? r.control : r.row_index}</td>
+            <td>${r.row_index}</td>
+            <td>${(r.tokens_total || 0).toLocaleString()}</td>
+            <td>${(r.tokens_vision || 0).toLocaleString()}</td>
+            <td>${(r.tokens_market || 0).toLocaleString()}</td>
+            <td>${formatDurationMs(r.duration_ms)}</td>
+            <td style="font-size:0.75rem;color:var(--text-muted);">${r.created_at ? new Date(r.created_at).toLocaleString('pt-BR') : '-'}</td>
+        </tr>
+    `).join('');
+}
+
 function evalRowId(rowIdx, controlVal) {
     const ctrl = controlVal != null && String(controlVal).trim() !== '' ? String(controlVal).trim() : '';
     return ctrl ? `eval_ctrl_${ctrl.replace(/[^a-zA-Z0-9_-]/g, '_')}` : `eval_row_${rowIdx}`;
@@ -339,6 +424,10 @@ function switchTab(tabId) {
     // Auto-load spreadsheet rows for evaluation when switching to evaluation tab
     if (tabId === 'research') {
         loadSpreadsheetRowsForEvaluation();
+        refreshTokenStatsUI();
+    }
+    if (tabId === 'learning') {
+        loadLearningTab();
     }
 }
 
@@ -791,14 +880,14 @@ async function buildMappingUI(spreadsheetData) {
     
     // Regras de auto-mapeamento (Letras exatas da planilha padrão do usuário ou palavras-chave)
     const autoMapRules = {
-        "tag_original": { letter: "D", keywords: ["tag origem", "tag original", "tombamento origem", "plaqueta origem"] },
-        "tag_output": { letter: "C", keywords: ["tag verificada", "revisão tag", "revisao tag", "tag ia", "tag destino"] },
+        "tag_original": { keywords: ["tag origem", "tag original", "tombamento origem", "plaqueta origem", "número da tag origem"] },
+        "tag_output": { keywords: ["tag verificada", "revisão tag", "revisao tag", "tag ia", "tag destino", "validação tag"] },
         "desc_original": { letter: "BB", keywords: ["descrição", "identificação", "original"] },
         "desc_output": { letter: "BC", keywords: ["descrição ia", "reasoning", "descrição verificada"] },
         "age_original": { letter: "BL", keywords: ["idade origem", "idade original"] },
-        "age_output": { letter: "H", keywords: ["idade verificada", "idade ia", "estimativa idade", "idade aparente"] },
+        "age_output": { keywords: ["idade verificada", "idade ia", "estimativa idade", "idade aparente ia"] },
         "conservation_original": { letter: "BN", keywords: ["conservação original", "estado original"] },
-        "conservation_output": { letter: "J", keywords: ["conservação verificada", "estado ia", "conservação ia", "estado conservação"] },
+        "conservation_output": { keywords: ["conservação verificada", "conservação ia", "estado ia", "estado conservação ia"] },
         "methodology": { letter: "BD", keywords: ["metodologia"] },
         "value_new": { letter: "BH", keywords: ["novo"] },
         "value_used": { letter: "BI", keywords: ["usado", "comparativo"] },
@@ -818,7 +907,7 @@ async function buildMappingUI(spreadsheetData) {
         if (!rule) return "";
         
         // 1. Prioriza a letra exata (se existir na planilha)
-        if (headers.some(h => h.letter === rule.letter)) {
+        if (rule.letter && headers.some(h => h.letter === rule.letter)) {
             return rule.letter;
         }
         
@@ -1176,9 +1265,11 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
         return;
     }
 
-    if (data.tokens) {
-        document.getElementById('tokenCounter').textContent = data.tokens.toLocaleString();
+    if (data.session_tokens != null || data.tokens != null) {
+        refreshTokenStatsUI();
     }
+
+    const sheetName = getActiveSpreadsheetName();
 
     if (data.status === 'Avaliando') {
         counters.processing = 1;
@@ -1234,11 +1325,19 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
         `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${rowEl.dataset.eval_id}, ${data.row}, '${ctrlEsc}')">Revisar</button>` :
         `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
 
+    const itemTokensHtml = (data.status && data.status.includes('Concluído'))
+        ? formatRowTokensHtml(
+            { tokens_total: data.item_tokens, tokens_vision: data.tokens_vision, tokens_market: data.tokens_market },
+            sheetName,
+            data.row
+        )
+        : '-';
+
     rowEl.innerHTML = `
         <td>${controlText}</td>
         <td title="${ativoText || descText}">${formatEvalAssetCell(ativoText, descText)}</td>
         <td style="color: ${statusColor}; font-weight: bold;">${data.status}</td>
-        <td>${(data.tokens || 0).toLocaleString()}</td>
+        <td>${itemTokensHtml}</td>
         <td>${btnHtml}</td>
     `;
 
@@ -1274,6 +1373,7 @@ function processEvaluationEvent(data, counters, pendingAtStart) {
         );
         updateSideConservationAge(data);
         updateSideValuation(data);
+        refreshUsageStatsUI();
     }
 
     const container = rowEl.closest('.data-table-container');
@@ -1341,6 +1441,14 @@ async function loadSpreadsheetRowsForEvaluation() {
         let pending = 0;
         let ignored = 0;
         let done = 0;
+        const spreadsheetName = getActiveSpreadsheetName();
+        if (typeof afsInitSessionStats === 'function') afsInitSessionStats(spreadsheetName);
+        if (typeof afsLoadState === 'function' && spreadsheetName && typeof afsRecomputeSpreadsheetUsageTotals === 'function') {
+            const st = afsLoadState();
+            afsRecomputeSpreadsheetUsageTotals(st, spreadsheetName);
+            afsSaveState(st);
+        }
+        refreshTokenStatsUI();
         
         rows.forEach(row => {
             const rowIdx = row._row_index;
@@ -1392,11 +1500,13 @@ async function loadSpreadsheetRowsForEvaluation() {
                 ? `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openReviewModal(${existingEval.id}, ${rowIdx}, '${ctrlEsc}')">Revisar</button>`
                 : `<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" disabled>Revisar</button>`;
             
+            const tokensCell = formatRowTokensHtml(existingEval, spreadsheetName, rowIdx);
+            
             rowEl.innerHTML = `
                 <td>${controlText}</td>
                 <td title="${assetText || descText}">${formatEvalAssetCell(assetText, descText)}</td>
                 <td style="color: ${statusColor}; font-weight: bold;">${status}</td>
-                <td>-</td>
+                <td>${tokensCell}</td>
                 <td>${btnHtml}</td>
             `;
             
@@ -1425,7 +1535,6 @@ async function loadSpreadsheetRowsForEvaluation() {
         document.getElementById('countProcessing').textContent = 0;
         document.getElementById('countDone').textContent = done;
         document.getElementById('countIgnored').textContent = ignored;
-        document.getElementById('tokenCounter').textContent = '0';
         
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--status-error);">Erro de conexão: ${e.message}</td></tr>`;
@@ -1447,6 +1556,10 @@ async function startEvaluation() {
     }
 
     window.__afs_eval_paused = false;
+    if (typeof afsInitSessionStats === 'function') {
+        afsInitSessionStats(getActiveSpreadsheetName());
+    }
+    refreshTokenStatsUI();
     resetEvalProgressUI();
     const progressWrap = document.getElementById('evalProgressWrap');
     if (progressWrap) progressWrap.style.display = 'block';
@@ -2259,6 +2372,7 @@ async function loadLearningTab() {
     } catch (e) {
         console.warn('Erro ao carregar regras:', e);
     }
+    await refreshUsageStatsUI();
 }
 
 async function saveLearningRules() {

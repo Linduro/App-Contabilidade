@@ -147,25 +147,6 @@ function afsResolveTagOutput(tagEncontrada, visionAttempted) {
     return null;
 }
 
-function afsCorrectTagColumnMappings(mappings, headers) {
-    if (!mappings || !headers?.length) return mappings;
-    const out = { ...mappings };
-    const hasLetter = (l) => headers.some(h => h.letter === l);
-    const tagOut = out.tag_output;
-    const tagOrig = out.tag_original;
-
-    if (hasLetter('D') && !out.tag_original) out.tag_original = 'D';
-    if (hasLetter('C') && !out.tag_output) out.tag_output = 'C';
-
-    if (hasLetter('C') && tagOut === 'D') out.tag_output = 'C';
-    if (hasLetter('D') && !out.tag_original) out.tag_original = 'D';
-    if (tagOut && tagOrig && tagOut === tagOrig && hasLetter('C') && hasLetter('D')) {
-        out.tag_output = 'C';
-        out.tag_original = 'D';
-    }
-    return out;
-}
-
 function parseGeminiJson(text) {
     try {
         return JSON.parse(text);
@@ -272,6 +253,11 @@ function afsCloneEvaluationForRow(sourceEv, rowIdx, controlVal, photos, newId, d
         reused_from: sourceEv.id,
         marca_modelo: sourceEv.marca_modelo,
         confianca_identificacao: sourceEv.confianca_identificacao,
+        tokens_total: 0,
+        tokens_vision: 0,
+        tokens_market: 0,
+        tokens: 0,
+        duration_ms: 0,
         created_at: new Date().toISOString()
     };
 }
@@ -359,7 +345,6 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     };
 
     const s = afsLoadState();
-    mappings = afsCorrectTagColumnMappings(mappings, spreadsheet.headers);
     const letter = (field) => {
         const m = mappings[field];
         return typeof m === 'string' ? m : m?.letter || '';
@@ -384,8 +369,11 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     const photosStored = afsPhotosForStorage(photos);
 
     let totalTokens = 0;
+    let visionTokens = 0;
+    let marketTokens = 0;
     let visionData = {};
     let marketData = {};
+    const evalStartedAt = Date.now();
 
     const imageUrls = afsCollectImageUrls(resolvedRow, mappings, spreadsheet);
     let visionImagesSent = 0;
@@ -406,6 +394,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
             emit(`Enviando ${loadedParts} imagem(ns) ao Gemini Vision...`, 32);
             try {
                 const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', parts, true);
+                visionTokens += res.tokens || 0;
                 totalTokens += res.tokens || 0;
                 visionData = afsNormalizeVisionNumbers(parseGeminiJson(res.text));
                 emit('Vision concluída — processando identificação visual...', 48);
@@ -430,6 +419,7 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         const prompt = `${AFS_VALUATION_PROMPT}\n\nBEM:\n${descricao}${ctx}`;
         emit('Consultando Gemini para precificação e raciocínio...', 72);
         const res = await afsGeminiRequest(s.api_key, options.model || 'gemini-2.5-flash', [{ text: prompt }], true);
+        marketTokens += res.tokens || 0;
         totalTokens += res.tokens || 0;
         marketData = parseGeminiJson(res.text);
         marketData = afsNormalizeMarketPrices(marketData);
@@ -449,6 +439,8 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
     if (consOut != null && ageOut != null) {
         consOut = afsAlignConservationWithAge(ageOut, consOut);
     }
+
+    const durationMs = Date.now() - evalStartedAt;
 
     const evaluation = {
         row_index: rowIdx,
@@ -476,6 +468,11 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         photos: photosStored,
         marca_modelo: visionData.marca_modelo || null,
         confianca_identificacao: visionData.confianca_identificacao ?? null,
+        tokens_total: totalTokens,
+        tokens_vision: visionTokens,
+        tokens_market: marketTokens,
+        tokens: totalTokens,
+        duration_ms: durationMs,
         created_at: new Date().toISOString()
     };
 
@@ -490,6 +487,10 @@ async function afsEvaluateSingleRow(row, options, spreadsheet, mappings, feedbac
         marketData,
         evaluation,
         tokens: totalTokens,
+        tokens_total: totalTokens,
+        tokens_vision: visionTokens,
+        tokens_market: marketTokens,
+        duration_ms: durationMs,
         photos: photosStored
     };
 }
@@ -500,10 +501,9 @@ async function browserRunEvaluation(options, onProgress) {
     if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
 
     const spreadsheet = s.spreadsheet;
-    const mappings = afsCorrectTagColumnMappings(
-        options.mappings || afsGetActiveMappings(s),
-        spreadsheet.headers
-    );
+    const mappings = options.mappings || afsGetActiveMappings(s);
+    const sheetName = afsActiveSpreadsheetName(s);
+    if (typeof afsInitSessionStats === 'function') afsInitSessionStats(sheetName);
     const rows = typeof afsResolveAllRowsPhotos === 'function'
         ? afsResolveAllRowsPhotos(spreadsheet, mappings)
         : spreadsheet.rows;
@@ -597,8 +597,15 @@ async function browserRunEvaluation(options, onProgress) {
             s.evaluations = s.evaluations || [];
             s.evaluations.unshift(evaluation);
 
+            if (typeof afsRecordRowTokenUsage === 'function') {
+                afsRecordRowTokenUsage(s, sheetName, rowIdx, evaluation);
+            }
+            if (typeof afsBumpSessionStats === 'function') {
+                afsBumpSessionStats(evaluation, sheetName);
+            }
+
             if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
-            if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, evaluation, mappings, spreadsheet.headers);
+            if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, evaluation, mappings);
             if (options.runAtivo && letter('asset_output') && evaluation.asset_normalized) {
                 row[letter('asset_output')] = evaluation.asset_normalized;
             }
@@ -612,6 +619,11 @@ async function browserRunEvaluation(options, onProgress) {
                 ...basePayload,
                 status: 'Concluído (reutilizado)',
                 tokens: totalTokens,
+                session_tokens: window.__afs_session_stats?.tokens_total ?? totalTokens,
+                item_tokens: evaluation.tokens_total ?? 0,
+                tokens_vision: evaluation.tokens_vision ?? 0,
+                tokens_market: evaluation.tokens_market ?? 0,
+                duration_ms: evaluation.duration_ms ?? 0,
                 eval_id: evaluation.id,
                 photos: evaluation.photos,
                 ativo: evaluation.asset_normalized,
@@ -651,11 +663,18 @@ async function browserRunEvaluation(options, onProgress) {
             s.evaluations = s.evaluations || [];
             s.evaluations.unshift(evaluation);
 
+            if (typeof afsRecordRowTokenUsage === 'function') {
+                afsRecordRowTokenUsage(s, sheetName, rowIdx, evaluation);
+            }
+            if (typeof afsBumpSessionStats === 'function') {
+                afsBumpSessionStats(evaluation, sheetName);
+            }
+
             if (typeof afsMarkRowEvaluated === 'function') {
                 afsMarkRowEvaluated(s, rowIdx);
             }
             if (typeof afsApplyEvaluationToRow === 'function') {
-                afsApplyEvaluationToRow(row, evaluation, mappings, spreadsheet.headers);
+                afsApplyEvaluationToRow(row, evaluation, mappings);
             }
 
             if (options.runAtivo && letter('asset_output') && result.evaluation.asset_normalized) {
@@ -672,6 +691,11 @@ async function browserRunEvaluation(options, onProgress) {
                 ...basePayload,
                 status: 'Concluído',
                 tokens: totalTokens,
+                session_tokens: window.__afs_session_stats?.tokens_total ?? totalTokens,
+                item_tokens: evaluation.tokens_total ?? result.tokens_total ?? 0,
+                tokens_vision: evaluation.tokens_vision ?? result.tokens_vision ?? 0,
+                tokens_market: evaluation.tokens_market ?? result.tokens_market ?? 0,
+                duration_ms: evaluation.duration_ms ?? result.duration_ms ?? 0,
                 eval_id: evaluation.id,
                 photos: evaluation.photos || result.photos,
                 ativo: result.evaluation.asset_normalized,
@@ -708,6 +732,7 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
     if (!s.api_key) throw new Error('Chave de API não configurada');
     const mappings = afsGetActiveMappings(s);
     const spreadsheet = s.spreadsheet;
+    const sheetName = afsActiveSpreadsheetName(s);
     const rows = typeof afsResolveAllRowsPhotos === 'function'
         ? afsResolveAllRowsPhotos(spreadsheet, mappings)
         : spreadsheet.rows;
@@ -744,7 +769,13 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
         s.evaluations[evIdx] = { ...s.evaluations[evIdx], ...updated };
     }
     if (typeof afsMarkRowEvaluated === 'function') afsMarkRowEvaluated(s, rowIdx);
-    if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, updated, mappings, spreadsheet.headers);
+    if (typeof afsApplyEvaluationToRow === 'function') afsApplyEvaluationToRow(row, updated, mappings);
+    if (typeof afsRecordRowTokenUsage === 'function' && sheetName) {
+        afsRecordRowTokenUsage(s, sheetName, rowIdx, updated);
+    }
+    if (typeof afsBumpSessionStats === 'function') {
+        afsBumpSessionStats(updated, sheetName);
+    }
 
     const link1Letter = mappings.link1;
     if (link1Letter) row[link1Letter] = '';
@@ -755,5 +786,4 @@ async function browserReEvaluateRow({ rowIdx, evaluationId, userComment, correct
 
 window.browserRunEvaluation = browserRunEvaluation;
 window.browserReEvaluateRow = browserReEvaluateRow;
-window.afsCorrectTagColumnMappings = afsCorrectTagColumnMappings;
 window.afsAlignConservationWithAge = afsAlignConservationWithAge;

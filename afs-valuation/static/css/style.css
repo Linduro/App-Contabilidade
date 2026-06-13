@@ -1375,3 +1375,32 @@ body {
     font-weight: 600;
     letter-spacing: 0.02em;
 }
+
+.usage-stats-block {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.usage-stat-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.usage-stat-label {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.usage-stat-item strong {
+    font-family: monospace;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}

@@ -47,6 +47,153 @@ function afsSaveMappings(s, mappings, spreadsheetName) {
     }
 }
 
+function afsEnsureUsageState(s) {
+    s.row_token_usage = s.row_token_usage || {};
+    s.spreadsheet_usage_totals = s.spreadsheet_usage_totals || {};
+}
+
+function afsGetRowTokenUsage(s, spreadsheetName, rowIdx, evalObj) {
+    const stored = s.row_token_usage?.[spreadsheetName]?.[rowIdx];
+    if (stored) return stored;
+    if (!evalObj) return null;
+    return {
+        tokens_total: evalObj.tokens_total ?? evalObj.tokens ?? 0,
+        tokens_vision: evalObj.tokens_vision ?? 0,
+        tokens_market: evalObj.tokens_market ?? 0,
+        duration_ms: evalObj.duration_ms ?? 0,
+        updated_at: evalObj.created_at || null
+    };
+}
+
+function afsRecomputeSpreadsheetUsageTotals(s, spreadsheetName) {
+    afsEnsureUsageState(s);
+    if (!spreadsheetName) return;
+    const spreadsheet = s.spreadsheet;
+    const rowMap = s.row_token_usage[spreadsheetName] || {};
+    const byRow = {};
+
+    (s.evaluations || []).forEach(ev => {
+        if (ev.row_index == null || byRow[ev.row_index] !== undefined) return;
+        if (spreadsheet?.file_name === spreadsheetName) {
+            if (!spreadsheet.rows?.some(r => r._row_index === ev.row_index)) return;
+        }
+        byRow[ev.row_index] = {
+            tokens_total: ev.tokens_total ?? ev.tokens ?? 0,
+            tokens_vision: ev.tokens_vision ?? 0,
+            tokens_market: ev.tokens_market ?? 0,
+            duration_ms: ev.duration_ms ?? 0,
+            updated_at: ev.created_at || null
+        };
+    });
+
+    Object.entries(rowMap).forEach(([k, v]) => {
+        const idx = Number(k);
+        if (!Number.isNaN(idx)) byRow[idx] = v;
+    });
+
+    let tokens_total = 0;
+    let tokens_vision = 0;
+    let tokens_market = 0;
+    let total_duration_ms = 0;
+    let item_count = 0;
+
+    Object.values(byRow).forEach(u => {
+        if (!u) return;
+        const t = Number(u.tokens_total) || 0;
+        if (t <= 0 && !u.duration_ms) return;
+        tokens_total += t;
+        tokens_vision += Number(u.tokens_vision) || 0;
+        tokens_market += Number(u.tokens_market) || 0;
+        total_duration_ms += Number(u.duration_ms) || 0;
+        item_count++;
+    });
+
+    s.spreadsheet_usage_totals[spreadsheetName] = {
+        tokens_total,
+        tokens_vision,
+        tokens_market,
+        item_count,
+        total_duration_ms,
+        updated_at: new Date().toISOString()
+    };
+}
+
+function afsRecordRowTokenUsage(s, spreadsheetName, rowIdx, payload) {
+    if (!spreadsheetName || rowIdx == null) return;
+    afsEnsureUsageState(s);
+    const sheetRows = s.row_token_usage[spreadsheetName] || {};
+    sheetRows[rowIdx] = {
+        tokens_total: Number(payload.tokens_total) || 0,
+        tokens_vision: Number(payload.tokens_vision) || 0,
+        tokens_market: Number(payload.tokens_market) || 0,
+        duration_ms: Number(payload.duration_ms) || 0,
+        updated_at: payload.updated_at || new Date().toISOString()
+    };
+    s.row_token_usage[spreadsheetName] = sheetRows;
+    afsRecomputeSpreadsheetUsageTotals(s, spreadsheetName);
+}
+
+function afsComputeUsageStats(s, spreadsheetName) {
+    afsRecomputeSpreadsheetUsageTotals(s, spreadsheetName);
+    const sheet = spreadsheetName ? s.spreadsheet_usage_totals?.[spreadsheetName] : null;
+    const session = typeof window !== 'undefined' ? window.__afs_session_stats : null;
+    const sheetAvg = sheet && sheet.item_count > 0 ? Math.round(sheet.tokens_total / sheet.item_count) : 0;
+    const sessionAvg = session && session.item_count > 0 ? Math.round(session.tokens_total / session.item_count) : 0;
+
+    const recent = [];
+    const seen = new Set();
+    (s.evaluations || []).forEach(ev => {
+        if (ev.row_index == null || seen.has(ev.row_index)) return;
+        seen.add(ev.row_index);
+        const u = afsGetRowTokenUsage(s, spreadsheetName, ev.row_index, ev);
+        recent.push({
+            row_index: ev.row_index,
+            control: ev.control,
+            tokens_total: u?.tokens_total ?? 0,
+            tokens_vision: u?.tokens_vision ?? 0,
+            tokens_market: u?.tokens_market ?? 0,
+            duration_ms: u?.duration_ms ?? 0,
+            created_at: ev.created_at
+        });
+    });
+
+    return {
+        spreadsheet_name: spreadsheetName,
+        sheet: sheet || { tokens_total: 0, tokens_vision: 0, tokens_market: 0, item_count: 0, total_duration_ms: 0 },
+        sheet_avg_tokens: sheetAvg,
+        session: session || { tokens_total: 0, tokens_vision: 0, tokens_market: 0, item_count: 0, total_duration_ms: 0 },
+        session_avg_tokens: sessionAvg,
+        recent_evaluations: recent.slice(0, 30)
+    };
+}
+
+function afsInitSessionStats(spreadsheetName) {
+    if (typeof window === 'undefined') return;
+    window.__afs_session_stats = {
+        spreadsheet: spreadsheetName || '',
+        tokens_total: 0,
+        tokens_vision: 0,
+        tokens_market: 0,
+        item_count: 0,
+        total_duration_ms: 0
+    };
+}
+
+function afsBumpSessionStats(payload, spreadsheetName) {
+    if (typeof window === 'undefined') return;
+    if (!window.__afs_session_stats) afsInitSessionStats(spreadsheetName);
+    const st = window.__afs_session_stats;
+    if (spreadsheetName && st.spreadsheet && st.spreadsheet !== spreadsheetName) {
+        afsInitSessionStats(spreadsheetName);
+    }
+    if (spreadsheetName) st.spreadsheet = spreadsheetName;
+    st.tokens_total += Number(payload.tokens_total) || 0;
+    st.tokens_vision += Number(payload.tokens_vision) || 0;
+    st.tokens_market += Number(payload.tokens_market) || 0;
+    st.total_duration_ms += Number(payload.duration_ms) || 0;
+    st.item_count += 1;
+}
+
 async function afsGeminiRequest(apiKey, model, parts, jsonMode = true) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const body = {
@@ -140,7 +287,7 @@ function afsParseWorkbook(file) {
 const AFS_FIELDS = {
     required: {
         tag_original: { label: 'Número da Tag (ORIGEM)', description: 'Coluna com a tag original colhida na vistoria' },
-        tag_output: { label: 'Número da Tag (DESTINO / IA)', description: 'Coluna C — número lido na foto pela IA (ou "não foi possível verificar")' },
+        tag_output: { label: 'Número da Tag (DESTINO / IA)', description: 'Coluna mapeada para o número lido na foto (ou "não foi possível verificar")' },
         link1: { label: 'Link 1 (Destino)', description: 'Coluna para gravar o primeiro link de referência' },
         link2: { label: 'Link 2 (Destino)', description: 'Coluna para gravar o segundo link de referência' },
         desc_original: { label: 'Descrição (ORIGEM)', description: 'Coluna com a descrição original da vistoria' },
@@ -383,6 +530,11 @@ async function browserApiFetch(path, options = {}) {
         return { status: 'ok', formatted };
     }
 
+    if (path === '/api/usage-stats' && method === 'GET') {
+        const name = afsActiveSpreadsheetName(s);
+        return { status: 'ok', stats: afsComputeUsageStats(s, name) };
+    }
+
     if (path === '/api/download-excel' && method === 'GET') {
         try {
             browserExportSpreadsheet();
@@ -433,13 +585,10 @@ function afsIsRowPendingEvaluation(row, s, mappings) {
     return true;
 }
 
-function afsApplyEvaluationToRow(row, ev, mappings, headers) {
+function afsApplyEvaluationToRow(row, ev, mappings) {
     if (!row || !ev || !mappings) return;
-    const corrected = typeof afsCorrectTagColumnMappings === 'function'
-        ? afsCorrectTagColumnMappings(mappings, headers)
-        : mappings;
     const letter = (field) => {
-        const m = corrected[field];
+        const m = mappings[field];
         return typeof m === 'string' ? m : m?.letter || '';
     };
     const set = (field, val) => {
@@ -486,9 +635,7 @@ function browserExportSpreadsheet() {
     if (!s.spreadsheet?.rows?.length) throw new Error('Nenhuma planilha carregada');
     if (typeof XLSX === 'undefined') throw new Error('Biblioteca XLSX não carregada');
     const spreadsheet = s.spreadsheet;
-    const mappings = typeof afsCorrectTagColumnMappings === 'function'
-        ? afsCorrectTagColumnMappings(afsGetActiveMappings(s), spreadsheet.headers)
-        : afsGetActiveMappings(s);
+    const mappings = afsGetActiveMappings(s);
     const evalByRow = {};
     const evalByControl = {};
     (s.evaluations || []).forEach(ev => {
@@ -511,7 +658,7 @@ function browserExportSpreadsheet() {
         if (!ev && controlLetter && srcRow[controlLetter] != null) {
             ev = evalByControl[String(srcRow[controlLetter]).trim()];
         }
-        if (ev) afsApplyEvaluationToRow(row, ev, mappings, headers);
+        if (ev) afsApplyEvaluationToRow(row, ev, mappings);
         return headers.map(h => row[h.letter] ?? '');
     });
     const ws = XLSX.utils.aoa_to_sheet([headerNames, ...dataRows]);
@@ -525,6 +672,12 @@ window.afsMarkRowEvaluated = afsMarkRowEvaluated;
 window.afsIsRowPendingEvaluation = afsIsRowPendingEvaluation;
 window.afsApplyEvaluationToRow = afsApplyEvaluationToRow;
 window.browserExportSpreadsheet = browserExportSpreadsheet;
+window.afsRecordRowTokenUsage = afsRecordRowTokenUsage;
+window.afsGetRowTokenUsage = afsGetRowTokenUsage;
+window.afsComputeUsageStats = afsComputeUsageStats;
+window.afsBumpSessionStats = afsBumpSessionStats;
+window.afsInitSessionStats = afsInitSessionStats;
+window.afsRecomputeSpreadsheetUsageTotals = afsRecomputeSpreadsheetUsageTotals;
 window.browserHandleUpload = browserHandleUpload;
 window.afsLoadState = afsLoadState;
 window.afsGeminiRequest = afsGeminiRequest;
