@@ -6,6 +6,7 @@ import { importFirestoreOnceIfNeeded } from '../adapters/firestore-adapter.js';
 import { renderSidebar } from '../shell/sidebar.js';
 import { renderHeader } from '../shell/header.js';
 import { mountLegacy, unmountLegacy } from '../legacy/legacy-boot.js';
+import { titleForPath } from '../shell/nav-config.js';
 
 /** Cache-bust em imports dinâmicos (evita JS antigo em cache). */
 function importMod(relPath) {
@@ -14,34 +15,22 @@ function importMod(relPath) {
   return import(relPath + sep + 'b=' + encodeURIComponent(v));
 }
 
-const TITLES = {
-  '/apps': 'Home',
-  '/prospeccao': 'Busca de Leads',
-  '/prospeccao/busca': 'Busca de Leads',
-  '/prospeccao/massa': 'Busca de Leads',
-  '/prospeccao/operacoes': 'Busca de Leads',
-  '/prospeccao/dead-zone': 'Dead Zone',
-  '/prospeccao/transicao': 'Transição de Regime',
-  '/crm/pipelines': 'Pipelines',
-  '/crm/leads': 'Leads',
-  '/crm/oportunidades': 'Oportunidades',
-  '/tarefas': 'Atividades',
-  '/comunicacao/inbox': 'Caixa de entrada',
-  '/parceiros': 'Parceiros B2B2B',
-  '/configuracoes': 'Configurações',
-  '/legacy': 'UI Legada',
-};
-
 const buscaLeadsLoader = () => importMod('../modules/prospeccao-operacoes.js').then((m) => m.renderBuscaLeads);
+const labIntelLoader = () => importMod('../modules/lab-intel.js').then((m) => m.renderProspeccaoMassa);
 
 const ROUTE_LOADERS = {
   '/apps': () => importMod('../modules/home.js').then((m) => m.renderHome),
+  '/lab': () => importMod('../modules/section-hub.js').then((m) => m.renderLabHub),
+  '/estrategia': () => importMod('../modules/section-hub.js').then((m) => m.renderEstrategiaHub),
+  '/operacao': () => importMod('../modules/section-hub.js').then((m) => m.renderOperacaoHub),
   '/prospeccao': buscaLeadsLoader,
   '/prospeccao/busca': buscaLeadsLoader,
   '/prospeccao/massa': buscaLeadsLoader,
   '/prospeccao/operacoes': buscaLeadsLoader,
   '/prospeccao/dead-zone': () => importMod('../modules/prospeccao-dead-zone.js').then((m) => m.renderDeadZone),
   '/prospeccao/transicao': () => importMod('../modules/prospeccao-transicao.js').then((m) => m.renderTransicao),
+  '/estrategia/teses': () => importMod('../modules/teses.js').then((m) => m.renderTeses),
+  '/operacao/coldmail': labIntelLoader,
   '/crm/pipelines': () => importMod('../modules/crm-pipelines.js').then((m) => m.renderPipelines),
   '/crm/leads': () => importMod('../modules/crm-leads.js').then((m) => m.renderLeads),
   '/crm/oportunidades': () => importMod('../modules/crm-oportunidades.js').then((m) => m.renderOportunidades),
@@ -71,17 +60,6 @@ function lazy(loaderFn) {
   };
 }
 
-function titleFor(path) {
-  if (TITLES[path]) return TITLES[path];
-  if (path.startsWith('/prospeccao/busca') || path.startsWith('/prospeccao/massa') || path.startsWith('/prospeccao/operacoes')) return 'Busca de Leads';
-  if (path.startsWith('/prospeccao')) return 'Busca de Leads';
-  if (path.startsWith('/marketing')) return 'Marketing';
-  if (path.startsWith('/comunicacao')) return 'Comunicação';
-  if (path.startsWith('/automacao')) return 'Automação';
-  if (path.startsWith('/analises')) return 'Análises';
-  return 'AFS Market';
-}
-
 function registerAllRoutes() {
   register('/legacy', async () => { await mountLegacy(); });
   registerPrefix('/legacy/', async () => { await mountLegacy(); });
@@ -89,6 +67,8 @@ function registerAllRoutes() {
   Object.entries(ROUTE_LOADERS).forEach(([path, loader]) => {
     register(path, lazy(loader));
   });
+
+  registerPrefix('/lab/', lazy(labIntelLoader));
 
   registerPrefix('/comunicacao/', lazy(
     () => importMod('../modules/comunicacao-inbox.js').then((m) => m.renderComunicacaoInbox),
@@ -111,7 +91,7 @@ function refreshChrome(path) {
   const sidebar = document.getElementById('l2-sidebar');
   const header = document.getElementById('l2-header');
   if (sidebar) renderSidebar(sidebar, path);
-  if (header) renderHeader(header, titleFor(path), path);
+  if (header) renderHeader(header, titleForPath(path), path);
 }
 
 export async function bootApp() {

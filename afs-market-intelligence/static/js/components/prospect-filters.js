@@ -15,6 +15,9 @@ export function defaultFilters() {
     cluster: '',
     municipio: '',
     q: '',
+    excluirFrios: true,
+    apenasQuentes: false,
+    cnaeStatus: '',
   };
 }
 
@@ -28,6 +31,9 @@ export function filtersToQuery(f) {
   if (f.q) q.set('q', f.q);
   if (f.capitalMin != null && f.capitalMin !== '') q.set('capital_min', String(f.capitalMin));
   if (f.capitalMax != null && f.capitalMax !== '') q.set('capital_max', String(f.capitalMax));
+  if (f.excluirFrios) q.set('excluir_frios', 'true');
+  if (f.apenasQuentes) q.set('apenas_quentes', 'true');
+  if (f.cnaeStatus) q.set('cnae_status', f.cnaeStatus);
   return q;
 }
 
@@ -43,6 +49,9 @@ export function readFiltersFromDom(root, prefix) {
     cluster: g('cluster')?.value || '',
     municipio: g('municipio')?.value.trim() || '',
     q: g('q')?.value.trim() || '',
+    excluirFrios: !!g('excluir-frios')?.checked,
+    apenasQuentes: !!g('apenas-quentes')?.checked,
+    cnaeStatus: g('cnae-status')?.value || '',
   };
 }
 
@@ -86,6 +95,17 @@ export function renderFilterBar(prefix, filters, opts) {
           '<input type="text" id="' + prefix + '-municipio" placeholder="Nome ou código IBGE" value="' + (filters.municipio || '') + '"></label>' +
         '<label class="l2-field"><span>Busca</span>' +
           '<input type="text" id="' + prefix + '-q" placeholder="Razão social ou CNPJ" value="' + (filters.q || '') + '"></label>' +
+        '<label class="l2-field pm-check-field"><span>CNAE classificação</span>' +
+          '<select id="' + prefix + '-cnae-status" class="l2-select">' +
+            '<option value="">Todas (exc. frios se marcado)</option>' +
+            '<option value="quente"' + (filters.cnaeStatus === 'quente' ? ' selected' : '') + '>Só quentes</option>' +
+            '<option value="neutro"' + (filters.cnaeStatus === 'neutro' ? ' selected' : '') + '>Só neutros</option>' +
+            '<option value="frio"' + (filters.cnaeStatus === 'frio' ? ' selected' : '') + '>Só frios (debug)</option>' +
+          '</select></label>' +
+      '</div>' +
+      '<div class="pm-filter-checks">' +
+        '<label class="pm-check"><input type="checkbox" id="' + prefix + '-excluir-frios"' + (filters.excluirFrios !== false ? ' checked' : '') + '> Excluir CNAEs frios (blacklist)</label>' +
+        '<label class="pm-check"><input type="checkbox" id="' + prefix + '-apenas-quentes"' + (filters.apenasQuentes ? ' checked' : '') + '> Apenas CNAEs quentes (Cluster AFS)</label>' +
       '</div>' +
       '<div class="pm-filter-actions">' +
         '<button type="button" class="btn sm primary" id="' + prefix + '-apply">Aplicar filtros</button>' +

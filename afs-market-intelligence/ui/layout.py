@@ -168,8 +168,30 @@ def cnae_setores():
     try:
         q = request.args.get("q", "").strip()
         secao = request.args.get("secao", "").strip()
+        classificacao = request.args.get("classificacao", "").strip()
+        limite = min(int(request.args.get("limite", 100)), 200)
+        offset = int(request.args.get("offset", 0))
         from layers.intelligence.market_intel import CnaeSetores
-        return jsonify(CnaeSetores.listar(q, secao))
+        return jsonify(CnaeSetores.listar(q, secao, classificacao, limite, offset))
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@main_bp.route("/api/cnae/classificacao", methods=["GET", "POST"])
+def cnae_classificacao_api():
+    try:
+        from layers.categorization.cnae_classificacao import listar_classificacao, atualizar_divisao
+        if request.method == "GET":
+            return jsonify(listar_classificacao())
+        body = request.get_json(force=True) or {}
+        codigo = str(body.get("codigo", "")).strip().zfill(2)[:2]
+        status = str(body.get("status", "")).strip()
+        nota = str(body.get("nota", "")).strip()
+        if not codigo:
+            return jsonify({"status": "error", "message": "codigo obrigatorio"}), 400
+        return jsonify(atualizar_divisao(codigo, status, nota))
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

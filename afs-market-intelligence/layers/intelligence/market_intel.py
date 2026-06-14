@@ -65,7 +65,15 @@ class CnaeSetores:
         return _load_json("cnae_setores.json")
 
     @classmethod
-    def listar(cls, q: str = "", secao: str = "") -> dict:
+    def listar(
+        cls,
+        q: str = "",
+        secao: str = "",
+        classificacao: str = "",
+        limite: int = 100,
+        offset: int = 0,
+    ) -> dict:
+        from layers.categorization.cnae_classificacao import classificar_divisao, listar_classificacao
         data = cls.carregar()
         rows = data["divisoes"]
         if secao:
@@ -77,7 +85,30 @@ class CnaeSetores:
                 if ql in r["codigo"] or ql in r["divisao"].lower()
                 or ql in r["setor_produtivo"].lower() or ql in r["secao_nome"].lower()
             ]
-        return {"meta": data["meta"], "secoes": data["secoes"], "divisoes": rows, "total": len(rows)}
+        cls_map = listar_classificacao()
+        enriched = []
+        for r in rows:
+            item = dict(r)
+            item["classificacao_afs"] = classificar_divisao(r["codigo"])
+            item["nota_classificacao"] = (
+                cls_map.get("quente", {}).get(r["codigo"])
+                or cls_map.get("frio", {}).get(r["codigo"])
+                or ""
+            )
+            enriched.append(item)
+        if classificacao in ("quente", "frio", "neutro"):
+            enriched = [r for r in enriched if r["classificacao_afs"] == classificacao]
+        total = len(enriched)
+        page = enriched[offset : offset + limite]
+        return {
+            "meta": data["meta"],
+            "secoes": data["secoes"],
+            "divisoes": page,
+            "total": total,
+            "limite": limite,
+            "offset": offset,
+            "classificacao": listar_classificacao(),
+        }
 
 
 class GeoIntel:

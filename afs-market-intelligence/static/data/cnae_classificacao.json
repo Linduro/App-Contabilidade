@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "versao": 1,
+    "descricao": "Classificacao AFS por divisao CNAE (2 digitos): quente | neutro | frio"
+  },
+  "quente": {
+    "01": "Lavouras — ativos rurais",
+    "02": "Florestal — ativos biologicos",
+    "03": "Pesca/aquicultura",
+    "10": "Alimentos — patrimonio industrial",
+    "11": "Bebidas",
+    "20": "Quimicos — ativos de processo",
+    "21": "Farmaceuticos",
+    "22": "Borracha/plastico",
+    "23": "Minerais nao-metalicos",
+    "24": "Metalurgia",
+    "25": "Produtos de metal",
+    "28": "Maquinas e equipamentos",
+    "29": "Veiculos",
+    "46": "Atacado — estoque e ativos circulantes",
+    "52": "Armazenagem/logistica"
+  },
+  "frio": {
+    "64": "Financeiras — fora ICP patrimonial",
+    "65": "Seguros",
+    "66": "Auxiliares financeiros",
+    "68": "Imobiliario puro",
+    "84": "Administracao publica",
+    "85": "Educacao",
+    "86": "Saude",
+    "87": "Servicos de assistencia",
+    "94": "Organizacoes associativas",
+    "95": "Reparacao equipamentos pessoais",
+    "97": "Servicos domesticos",
+    "99": "Organismos internacionais"
+  }
+}

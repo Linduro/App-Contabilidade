@@ -30,6 +30,9 @@ def parse_filters(args) -> dict:
         "q": (get("q") or "").strip() or None,
         "capital_min": float(cap_min) if cap_min not in (None, "") else defaults.get("capital_min"),
         "capital_max": float(cap_max) if cap_max not in (None, "") else defaults.get("capital_max"),
+        "excluir_frios": str(get("excluir_frios") or "").lower() in ("1", "true", "yes"),
+        "apenas_quentes": str(get("apenas_quentes") or "").lower() in ("1", "true", "yes"),
+        "cnae_status": (get("cnae_status") or "").strip() or None,
     }
 
 
@@ -62,6 +65,11 @@ def sql_where(filters: dict, prefix: str = "") -> tuple[str, list]:
     if filters.get("capital_max") is not None:
         clauses.append(f"COALESCE({p}capital_social, 0) <= ?")
         params.append(float(filters["capital_max"]))
+    from layers.categorization.cnae_classificacao import sql_cnae_classificacao
+    cnae_cls_sql, cnae_cls_params = sql_cnae_classificacao(filters, prefix)
+    if cnae_cls_sql != "1=1":
+        clauses.append(f"({cnae_cls_sql})")
+        params.extend(cnae_cls_params)
     return " AND ".join(clauses), params
 
 

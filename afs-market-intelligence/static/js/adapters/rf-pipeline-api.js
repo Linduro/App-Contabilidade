@@ -55,6 +55,9 @@ export async function fetchProspectos(params = {}) {
   if (params.municipio) q.set('municipio', params.municipio);
   if (params.capitalMin != null && params.capitalMin !== '') q.set('capital_min', String(params.capitalMin));
   if (params.capitalMax != null && params.capitalMax !== '') q.set('capital_max', String(params.capitalMax));
+  if (params.excluirFrios) q.set('excluir_frios', 'true');
+  if (params.apenasQuentes) q.set('apenas_quentes', 'true');
+  if (params.cnaeStatus) q.set('cnae_status', params.cnaeStatus);
   q.set('limite', String(params.limite ?? 100));
   q.set('offset', String(params.offset ?? 0));
   return httpMarketGet('/prospectos?' + q.toString());
@@ -79,6 +82,9 @@ export async function exportProspectosExcel(opts = {}) {
     municipio: opts.municipio || null,
     capital_min: opts.capitalMin,
     capital_max: opts.capitalMax,
+    excluir_frios: opts.excluirFrios ? true : undefined,
+    apenas_quentes: opts.apenasQuentes ? true : undefined,
+    cnae_status: opts.cnaeStatus || null,
   });
   if (result.status !== 'ok') throw new Error(result.message || 'Falha na exportação');
   const url = downloadUrl(result.filename);
