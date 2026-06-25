@@ -76,6 +76,11 @@ jobs:
           touch site-de-notas-futurista/out/.nojekyll
           touch site-de-notas-futurista/out/${{ env.NETWORKING_PAGES_SEGMENT }}/.nojekyll
 
+      - name: Garantir páginas Dr Pitoco no artefato
+        run: |
+          cp -R site-de-notas-futurista/public/dr-pitoco site-de-notas-futurista/out/dr-pitoco
+          touch site-de-notas-futurista/out/dr-pitoco/.nojekyll
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site-de-notas-futurista/out
